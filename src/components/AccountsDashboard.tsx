@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   DollarSign, 
   FileText, 
-  CreditCard, 
   PieChart, 
   ArrowUpRight, 
   ArrowDownRight, 
   Clock,
   Users,
-  Search,
   Plus,
   Zap,
   ShieldCheck,
@@ -17,16 +15,25 @@ import {
   Wallet,
   Landmark,
   Smartphone,
-  Tag,
-  Monitor,
-  Printer,
-  BellRing,
+  Tag, 
+  Monitor, 
+  BellRing, 
   CheckCircle2,
   XCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ClipboardCheck,
+  Receipt,
+  FileBarChart
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
+import { StudentManagement } from './StudentManagement';
+import { AdmissionsPanel } from './accounts/AdmissionsPanel';
+import { ExpensePanel } from './accounts/ExpensePanel';
+import { LedgerPanel } from './accounts/LedgerPanel';
+import { DirectorReportPanel } from './accounts/DirectorReportPanel';
+import { computeAllBalances, fetchAccounts, fetchEntries } from '../lib/ledger';
+import type { LedgerAccount } from '../types';
 
 const financialData = [
   { name: 'Jan', revenue: 4000, expense: 2400 },
@@ -36,16 +43,21 @@ const financialData = [
   { name: 'May', revenue: 6890, expense: 4100 },
 ];
 
+const LEDGER_TYPE_ICON: Record<string, React.ReactNode> = {
+  cash: <Wallet size={18} />,
+  bank: <Landmark size={18} />,
+  mobile: <Smartphone size={18} />,
+};
+
 export const AccountsDashboard = () => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
+  const [ledgerBalances, setLedgerBalances] = React.useState<{ account: LedgerAccount; balance: number }[]>([]);
 
-  const ledgers = [
-    { name: 'Main Cash', icon: <Wallet size={18} />, balance: '৳ 125,400', type: 'cash' },
-    { name: 'Petty Cash', icon: <Wallet size={18} />, balance: '৳ 12,500', type: 'cash' },
-    { name: 'City Bank', icon: <Landmark size={18} />, balance: '৳ 1,250,000', type: 'bank' },
-    { name: 'bKash Merchant', icon: <Smartphone size={18} />, balance: '৳ 45,600', type: 'mobile' },
-    { name: 'Nagad Business', icon: <Smartphone size={18} />, balance: '৳ 28,900', type: 'mobile' },
-  ];
+  React.useEffect(() => {
+    Promise.all([fetchAccounts(), fetchEntries()]).then(([accounts, entries]) => {
+      setLedgerBalances(computeAllBalances(accounts, entries));
+    });
+  }, [activeSubTab]);
 
   const assets = [
     { tag: 'FURN-001', name: 'Executive Desk', category: 'Furniture', value: '৳ 12,000', life: '5 Years' },
@@ -62,8 +74,12 @@ export const AccountsDashboard = () => {
   const tabs = [
     { id: 'overview', label: 'Financials', icon: <PieChart size={16} /> },
     { id: 'students', label: 'Student Management', icon: <Users size={16} /> },
+    { id: 'admissions', label: 'Admissions', icon: <ClipboardCheck size={16} /> },
     { id: 'billing', label: 'Invoicing', icon: <FileText size={16} /> },
+    { id: 'expenses', label: 'Expenses', icon: <Receipt size={16} /> },
+    { id: 'ledger', label: 'Bank & MFS Ledger', icon: <Landmark size={16} /> },
     { id: 'assets', label: 'Asset Registry', icon: <Building2 size={16} /> },
+    { id: 'report', label: 'Director Report', icon: <FileBarChart size={16} /> },
     { id: 'approvals', label: 'Approvals', icon: <ShieldCheck size={16} /> },
   ];
 
@@ -150,29 +166,36 @@ export const AccountsDashboard = () => {
                   Multi-Channel Ledgers
                 </h3>
                 <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                  {ledgers.map((ledger, idx) => (
-                    <div key={idx} className="group p-4 rounded-2xl border border-slate-50 hover:border-school-gold/30 hover:bg-slate-50 transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center",
-                            ledger.type === 'cash' ? "bg-amber-50 text-school-gold" : ledger.type === 'bank' ? "bg-blue-50 text-school-blue" : "bg-pink-50 text-pink-500"
-                          )}>
-                            {ledger.icon}
+                  {ledgerBalances.length === 0 ? (
+                    <p className="text-xs text-school-muted font-medium text-center py-8">Loading accounts...</p>
+                  ) : (
+                    ledgerBalances.map(({ account, balance }) => (
+                      <div key={account.id} className="group p-4 rounded-2xl border border-slate-50 hover:border-school-gold/30 hover:bg-slate-50 transition-all">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center",
+                              account.type === 'cash' ? "bg-amber-50 text-school-gold" : account.type === 'bank' ? "bg-blue-50 text-school-blue" : "bg-pink-50 text-pink-500"
+                            )}>
+                              {LEDGER_TYPE_ICON[account.type]}
+                            </div>
+                            <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{account.name}</p>
                           </div>
-                          <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{ledger.name}</p>
+                          <p className="text-xs font-black text-school-blue">৳ {balance.toLocaleString()}</p>
                         </div>
-                        <p className="text-xs font-black text-school-blue">{ledger.balance}</p>
+                        <div className="flex justify-between items-center text-[9px] font-bold text-school-muted uppercase tracking-tighter">
+                          <span>{account.type.toUpperCase()}</span>
+                          <span className="text-emerald-500">Active</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center text-[9px] font-bold text-school-muted uppercase tracking-tighter">
-                        <span>Last sync: 2h ago</span>
-                        <span className="text-emerald-500">Active</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
-                <button className="mt-6 py-3 bg-slate-50 border border-slate-100 text-school-blue text-[9px] font-black rounded-xl uppercase tracking-widest hover:bg-slate-100 transition-colors">
-                  Add Account
+                <button
+                  onClick={() => setActiveSubTab('ledger')}
+                  className="mt-6 py-3 bg-slate-50 border border-slate-100 text-school-blue text-[9px] font-black rounded-xl uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                >
+                  Manage Accounts & Transfers
                 </button>
               </div>
             </div>
@@ -180,75 +203,22 @@ export const AccountsDashboard = () => {
         )}
 
         {activeSubTab === 'students' && (
-          <motion.div 
+          <motion.div
             key="students"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm"
           >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div>
-                <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Student Management</h3>
-                <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">Admission Ops & Dashboard Control</p>
-              </div>
-              <div className="flex gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-school-muted" size={14} />
-                  <input type="text" placeholder="Search ID/Name..." className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20" />
-                </div>
-                <button className="px-6 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 flex items-center gap-2">
-                   <Plus size={14} /> New Admission
-                </button>
-              </div>
-            </div>
+            <StudentManagement />
+          </motion.div>
+        )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead>
-                  <tr className="text-school-muted font-black border-b border-school-border uppercase tracking-widest">
-                    <th className="pb-4">Student ID</th>
-                    <th className="pb-4">Class</th>
-                    <th className="pb-4">Guardian Contact</th>
-                    <th className="pb-4">Dashboard Status</th>
-                    <th className="pb-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {[
-                    { id: 'ANS-2024-001', name: 'Omar Ahmed', class: 'Grade 4', contact: '01712-XXXXXX', status: 'Active' },
-                    { id: 'ANS-2024-002', name: 'Sarah Khan', class: 'Grade 4', contact: '01911-XXXXXX', status: 'Setup Needed' },
-                    { id: 'ANS-2024-003', name: 'Zaid Islam', class: 'Grade 2', contact: '01844-XXXXXX', status: 'Active' },
-                  ].map((s, idx) => (
-                    <tr key={idx} className="group hover:bg-slate-50 transition-colors">
-                      <td className="py-5">
-                        <p className="font-black text-school-blue">{s.id}</p>
-                        <p className="text-[9px] font-bold text-school-muted uppercase">{s.name}</p>
-                      </td>
-                      <td className="py-5 font-black text-school-blue uppercase">{s.class}</td>
-                      <td className="py-5 text-slate-500 font-medium">{s.contact}</td>
-                      <td className="py-5">
-                        <span className={cn(
-                          "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter",
-                          s.status === 'Active' ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-school-gold"
-                        )}>
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="py-5 text-right">
-                        <div className="flex justify-end gap-2 text-school-blue">
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                             <Zap size={14} className="text-school-gold" />
-                          </button>
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                             <Printer size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {activeSubTab === 'admissions' && (
+          <motion.div
+            key="admissions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <AdmissionsPanel />
           </motion.div>
         )}
 
@@ -340,6 +310,36 @@ export const AccountsDashboard = () => {
                  Send Reminders (SMS/Portal)
                </button>
             </div>
+          </motion.div>
+        )}
+
+        {activeSubTab === 'expenses' && (
+          <motion.div
+            key="expenses"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <ExpensePanel />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'ledger' && (
+          <motion.div
+            key="ledger"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <LedgerPanel />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'report' && (
+          <motion.div
+            key="report"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <DirectorReportPanel />
           </motion.div>
         )}
 

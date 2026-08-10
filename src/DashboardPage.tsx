@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { logout } from './lib/auth';
 import { UserRole } from './types';
 import { GuardianDashboard } from './components/GuardianDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
@@ -267,8 +268,8 @@ const DashboardPage = () => {
             {sidebarOpen && <span className="font-bold text-xs text-school-muted uppercase tracking-widest">Settings</span>}
           </div>
           <button 
-            onClick={() => {
-                localStorage.removeItem('userRole');
+            onClick={async () => {
+                await logout();
                 navigate('/login');
             }}
             className={cn(
