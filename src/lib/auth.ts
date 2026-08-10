@@ -10,7 +10,7 @@ import type { UserRole } from '../types';
 
 export const isDemoLoginEnabled = import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true';
 
-const SUPER_ADMIN_EMAIL = 'chotan4480@gmail.com';
+const SUPER_ADMIN_EMAILS = ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
 
 function persistSession(role: UserRole) {
   localStorage.setItem('userRole', role);
@@ -20,13 +20,13 @@ function persistSession(role: UserRole) {
 }
 
 export function demoLogin(userId: string, selectedRole: UserRole): UserRole {
-  const finalRole = userId.trim().toLowerCase() === SUPER_ADMIN_EMAIL ? 'super_admin' : selectedRole;
+  const finalRole = SUPER_ADMIN_EMAILS.includes(userId.trim().toLowerCase()) ? 'super_admin' : selectedRole;
   persistSession(finalRole);
   return finalRole;
 }
 
 async function resolveUserRole(user: User): Promise<UserRole> {
-  if (user.email?.toLowerCase() === SUPER_ADMIN_EMAIL) {
+  if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
     return 'super_admin';
   }
 
