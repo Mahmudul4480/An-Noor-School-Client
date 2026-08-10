@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
+import { fetchGuardianByMobile, normalizeMobile } from './guardians';
 import type { Student } from '../types';
 
 const STUDENTS_COLLECTION = 'students';
@@ -101,6 +102,14 @@ export async function fetchStudents(): Promise<Student[]> {
         guardianContact: data.guardianContact ?? '',
         guardianEmail: data.guardianEmail,
         status: data.status ?? 'Setup Needed',
+        admissionId: data.admissionId,
+        inactiveReason: data.inactiveReason,
+        photoUrl: data.photoUrl,
+        idCardIssuedAt: data.idCardIssuedAt,
+        academicYear: data.academicYear,
+        dob: data.dob,
+        gender: data.gender,
+        fatherName: data.fatherName,
       } satisfies Student;
     })
     .sort((a, b) => a.studentId.localeCompare(b.studentId));
@@ -212,4 +221,21 @@ export function filterStudents(students: Student[], searchTerm: string): Student
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(term)),
   );
+}
+
+export async function fetchStudentById(studentId: string): Promise<Student | null> {
+  const students = await fetchStudents();
+  return students.find((student) => student.studentId === studentId) ?? null;
+}
+
+export async function fetchStudentsForGuardian(mobile: string): Promise<Student[]> {
+  const guardian = await fetchGuardianByMobile(mobile);
+  if (!guardian) {
+    const normalized = normalizeMobile(mobile);
+    const students = await fetchStudents();
+    return students.filter((student) => normalizeMobile(student.guardianContact) === normalized);
+  }
+
+  const students = await fetchStudents();
+  return students.filter((student) => guardian.studentIds.includes(student.studentId));
 }

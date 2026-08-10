@@ -122,17 +122,21 @@ const LoginPage = () => {
                   ? role === 'guardian'
                     ? 'Guardian ID / Email'
                     : 'Employee ID / Email'
-                  : 'Email Address'}
+                  : role === 'guardian'
+                    ? 'Mobile Number'
+                    : 'Email Address'}
               </label>
               <div className="relative">
                 <input
-                  type={isDemoLoginEnabled ? 'text' : 'email'}
+                  type="text"
                   placeholder={
                     isDemoLoginEnabled
                       ? role === 'guardian'
                         ? 'e.g. ANS-GRD-001'
                         : 'e.g. EMP-101'
-                      : 'you@example.com'
+                      : role === 'guardian'
+                        ? 'e.g. 01712345678'
+                        : 'you@example.com'
                   }
                   className="w-full px-5 py-4 bg-slate-50 border border-school-border rounded-2xl focus:ring-2 focus:ring-school-blue outline-none transition-all pl-12 font-medium"
                   value={formData.userId}

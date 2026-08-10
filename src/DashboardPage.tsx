@@ -117,6 +117,15 @@ const DashboardPage = () => {
 
   const activeConfig = currentView ? portalConfigs[currentView] : portalConfigs.super_admin;
 
+  const accountsSidebarSections: Record<string, string> = {
+    overview: 'overview',
+    collections: 'billing',
+    expenses: 'expenses',
+    financials: 'report',
+  };
+
+  const isAccountsSidebarTab = currentView === 'accounts' && activeTab in accountsSidebarSections;
+
   const renderAdminPortal = () => (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
       <motion.div 
@@ -164,7 +173,7 @@ const DashboardPage = () => {
       return renderAdminPortal();
     }
 
-    if (activeTab !== 'overview') {
+    if (activeTab !== 'overview' && !isAccountsSidebarTab) {
       return (
         <div className="h-[60vh] flex flex-col items-center justify-center text-center p-8">
           <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 mb-6">
@@ -185,7 +194,12 @@ const DashboardPage = () => {
     switch (currentView) {
       case 'guardian': return <GuardianDashboard />;
       case 'teacher': return <TeacherDashboard />;
-      case 'accounts': return <AccountsDashboard />;
+      case 'accounts':
+        return (
+          <AccountsDashboard
+            activeSection={accountsSidebarSections[activeTab] ?? 'overview'}
+          />
+        );
       case 'principal': return <PrincipalDashboard />;
       default: return <GuardianDashboard />;
     }
@@ -288,7 +302,16 @@ const DashboardPage = () => {
         <header className="h-20 flex items-center justify-between px-8 sticky top-0 bg-white/80 backdrop-blur-md z-25 border-b-2 border-school-gold shadow-sm">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-black uppercase text-school-blue tracking-tight">
-              {activeTab === 'overview' ? `${currentView || 'Admin'} Dashboard` : activeTab}
+              {currentView === 'accounts'
+                ? ({
+                    overview: 'Accounts Dashboard',
+                    collections: 'Collections',
+                    expenses: 'Expenses',
+                    financials: 'Financials',
+                  }[activeTab] ?? 'Accounts Dashboard')
+                : activeTab === 'overview'
+                  ? `${currentView || 'Admin'} Dashboard`
+                  : activeTab}
             </h2>
           </div>
           

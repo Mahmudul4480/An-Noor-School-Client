@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight } from 'lucide-react';
+import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, transferBetweenAccounts } from '../../lib/ledger';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry } from '../../types';
@@ -9,12 +9,14 @@ const TYPE_ICON: Record<LedgerAccountType, React.ReactNode> = {
   cash: <Wallet size={18} />,
   bank: <Landmark size={18} />,
   mobile: <Smartphone size={18} />,
+  online: <Globe size={18} />,
 };
 
 const TYPE_STYLE: Record<LedgerAccountType, string> = {
   cash: 'bg-amber-50 text-school-gold',
   bank: 'bg-blue-50 text-school-blue',
   mobile: 'bg-pink-50 text-pink-500',
+  online: 'bg-violet-50 text-violet-600',
 };
 
 export function LedgerPanel() {

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { cn } from '../lib/utils';
+import { CategoryApprovalPanel } from './accounts/CategoryRequestPanel';
 
 const enrollmentData = [
   { name: 'Grade 1', students: 45, color: '#1E3A8A' },
@@ -221,6 +222,10 @@ export const PrincipalDashboard = () => {
                     </div>
                  </div>
                ))}
+            </div>
+
+            <div className="mt-8">
+              <CategoryApprovalPanel />
             </div>
           </motion.div>
         )}

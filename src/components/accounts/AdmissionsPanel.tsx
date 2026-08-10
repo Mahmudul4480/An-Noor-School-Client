@@ -17,6 +17,7 @@ import { actOnApproval, cancelAdmission, fetchAdmissions } from '../../lib/admis
 import { fetchAccounts } from '../../lib/ledger';
 import { NewAdmissionModal } from './NewAdmissionModal';
 import { FeeStructureModal } from './FeeStructureModal';
+import { AdmissionReceiptModal, IdCardModal } from './AdmissionReceiptModal';
 import type { Admission, ApprovalDepartment, LedgerAccount } from '../../types';
 
 const STATUS_STYLES: Record<Admission['status'], string> = {
@@ -32,6 +33,8 @@ export function AdmissionsPanel() {
   const [loading, setLoading] = React.useState(true);
   const [showNewModal, setShowNewModal] = React.useState(false);
   const [showFeeSettings, setShowFeeSettings] = React.useState(false);
+  const [receiptAdmission, setReceiptAdmission] = React.useState<Admission | null>(null);
+  const [idCardAdmission, setIdCardAdmission] = React.useState<Admission | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [actingId, setActingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
@@ -109,6 +112,7 @@ export function AdmissionsPanel() {
                 acting={actingId === admission.id}
                 setActing={(value) => setActingId(value ? admission.id : null)}
                 onRefresh={load}
+                onShowIdCard={setIdCardAdmission}
               />
             ))}
           </div>
@@ -117,9 +121,25 @@ export function AdmissionsPanel() {
 
       <AnimatePresence>
         {showNewModal && (
-          <NewAdmissionModal onClose={() => setShowNewModal(false)} onCreated={load} />
+          <NewAdmissionModal
+            onClose={() => setShowNewModal(false)}
+            onCreated={(admission) => {
+              load();
+              setReceiptAdmission(admission);
+            }}
+          />
         )}
         {showFeeSettings && <FeeStructureModal onClose={() => setShowFeeSettings(false)} />}
+        {receiptAdmission && (
+          <AdmissionReceiptModal
+            admission={receiptAdmission}
+            account={accounts.find((account) => account.id === receiptAdmission.receivedInAccountId)}
+            onClose={() => setReceiptAdmission(null)}
+          />
+        )}
+        {idCardAdmission && (
+          <IdCardModal admission={idCardAdmission} onClose={() => setIdCardAdmission(null)} />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -133,6 +153,7 @@ function AdmissionRow({
   acting,
   setActing,
   onRefresh,
+  onShowIdCard,
 }: {
   key?: string;
   admission: Admission;
@@ -142,6 +163,7 @@ function AdmissionRow({
   acting: boolean;
   setActing: (value: boolean) => void;
   onRefresh: () => void;
+  onShowIdCard: (admission: Admission) => void;
 }) {
   const [selectedAccountId, setSelectedAccountId] = React.useState(accounts[0]?.id ?? '');
   const [showCancelForm, setShowCancelForm] = React.useState(false);
@@ -149,7 +171,7 @@ function AdmissionRow({
   const [approvalNote, setApprovalNote] = React.useState('');
   const [activeDept, setActiveDept] = React.useState<ApprovalDepartment | null>(null);
 
-  const nextPendingStep = admission.approvals.find((step) => step.status === 'pending');
+  const nextPendingStep = (admission.approvals ?? []).find((step) => step.status === 'pending');
 
   const handleApprove = async (department: ApprovalDepartment) => {
     if (department === 'accounts' && !selectedAccountId) {
@@ -238,7 +260,7 @@ function AdmissionRow({
             </p>
             <p className="text-[9px] font-bold text-school-muted uppercase tracking-widest mt-1">
               {admission.classApplied} {admission.section ? `• ${admission.section}` : ''} • ৳{' '}
-              {admission.grandTotal.toLocaleString()}
+              {(admission.grandTotal ?? 0).toLocaleString()}
               {admission.studentId ? ` • Student ID: ${admission.studentId}` : ''}
             </p>
           </div>
@@ -247,10 +269,10 @@ function AdmissionRow({
           <span
             className={cn(
               'px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter',
-              STATUS_STYLES[admission.status],
+              STATUS_STYLES[admission.status] ?? STATUS_STYLES.pending_approval,
             )}
           >
-            {admission.status.replace('_', ' ')}
+            {(admission.status ?? 'pending_approval').replace('_', ' ')}
           </span>
           {expanded ? <ChevronUp size={16} className="text-school-muted" /> : <ChevronDown size={16} className="text-school-muted" />}
         </div>
@@ -279,8 +301,8 @@ function AdmissionRow({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {admission.feeItems.map((item) => {
-                        const discount = admission.discounts.find((d) => d.itemKey === item.key);
+                      {(admission.feeItems ?? []).map((item) => {
+                        const discount = (admission.discounts ?? []).find((d) => d.itemKey === item.key);
                         return (
                           <tr key={item.key}>
                             <td className="p-3 font-bold text-school-blue uppercase">{item.label}</td>
@@ -296,11 +318,31 @@ function AdmissionRow({
                   </table>
                 </div>
                 <div className="flex justify-end gap-6 mt-3 text-xs font-black">
-                  <span className="text-school-muted">Gross: ৳ {admission.grossTotal.toLocaleString()}</span>
-                  <span className="text-red-500">Discount: ৳ {admission.totalDiscount.toLocaleString()}</span>
-                  <span className="text-emerald-600">Grand Total: ৳ {admission.grandTotal.toLocaleString()}</span>
+                  <span className="text-school-muted">Gross: ৳ {(admission.grossTotal ?? 0).toLocaleString()}</span>
+                  <span className="text-red-500">Discount: ৳ {(admission.totalDiscount ?? 0).toLocaleString()}</span>
+                  <span className="text-emerald-600">Grand Total: ৳ {(admission.grandTotal ?? 0).toLocaleString()}</span>
                 </div>
               </div>
+
+              {/* Birth Registration */}
+              {(admission.birthRegNo || admission.birthRegDocUrl) && (
+                <div>
+                  <p className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">Birth Registration</p>
+                  {admission.birthRegNo && (
+                    <p className="text-[11px] font-bold text-school-blue mb-2">Reg. No: {admission.birthRegNo}</p>
+                  )}
+                  {admission.birthRegDocUrl && (
+                    <a
+                      href={admission.birthRegDocUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-school-blue hover:bg-slate-100"
+                    >
+                      <ImageIcon size={14} /> {admission.birthRegDocName || 'View certificate'}
+                    </a>
+                  )}
+                </div>
+              )}
 
               {/* Scanned form */}
               {admission.scannedFormUrl && (
@@ -323,7 +365,7 @@ function AdmissionRow({
                   Department Approval Flow
                 </p>
                 <div className="space-y-3">
-                  {admission.approvals.map((step) => (
+                  {(admission.approvals ?? []).map((step) => (
                     <div
                       key={step.department}
                       className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100"
@@ -427,6 +469,25 @@ function AdmissionRow({
                   </p>
                 )}
               </div>
+
+              {/* Actions after approval */}
+              {admission.status === 'approved' && admission.studentId && (
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onShowIdCard(admission)}
+                    className="px-4 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest"
+                  >
+                    View / Print ID Card
+                  </button>
+                  {admission.guardianLoginMobile && (
+                    <div className="px-4 py-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] font-bold text-emerald-700">
+                      Guardian Login: {admission.guardianLoginMobile}
+                      {admission.guardianTempPassword ? ` / Pass: ${admission.guardianTempPassword}` : ' (existing account)'}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Cancellation */}
               {canCancel && (

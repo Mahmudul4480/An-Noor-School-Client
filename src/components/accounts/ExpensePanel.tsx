@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, ArrowDownRight } from 'lucide-react';
-import { EXPENSE_CATEGORIES, createExpense, fetchExpenses } from '../../lib/expenses';
+import { createExpense, fetchExpenses } from '../../lib/expenses';
+import { fetchApprovedCategories } from '../../lib/categories';
 import { fetchAccounts } from '../../lib/ledger';
 import type { Expense, LedgerAccount } from '../../types';
 
@@ -11,9 +12,10 @@ export function ExpensePanel() {
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [categories, setCategories] = React.useState<string[]>([]);
   const [form, setForm] = React.useState({
     date: new Date().toISOString().slice(0, 10),
-    category: EXPENSE_CATEGORIES[0],
+    category: '',
     description: '',
     amount: '',
     accountId: '',
@@ -23,10 +25,19 @@ export function ExpensePanel() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [expenseData, accountData] = await Promise.all([fetchExpenses(), fetchAccounts()]);
+      const [expenseData, accountData, categoryList] = await Promise.all([
+        fetchExpenses(),
+        fetchAccounts(),
+        fetchApprovedCategories('expense'),
+      ]);
       setExpenses(expenseData);
       setAccounts(accountData);
-      setForm((prev) => ({ ...prev, accountId: prev.accountId || accountData[0]?.id || '' }));
+      setCategories(categoryList);
+      setForm((prev) => ({
+        ...prev,
+        accountId: prev.accountId || accountData[0]?.id || '',
+        category: prev.category || categoryList[0] || '',
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load expenses.');
     } finally {
@@ -94,7 +105,7 @@ export function ExpensePanel() {
               onChange={(e) => setForm({ ...form, category: e.target.value })}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
             >
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>

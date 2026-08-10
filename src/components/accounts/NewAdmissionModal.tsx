@@ -8,9 +8,15 @@ import {
   createAdmission,
   fetchFeeStructure,
   uploadScannedForm,
+  uploadStudentPhoto,
+  uploadBirthRegDocument,
   validateDiscount,
 } from '../../lib/admissions';
-import type { AdmissionDiscount, FeeItemKey, FeeStructureItem } from '../../types';
+import { getFirebaseOperationErrorMessage } from '../../lib/auth';
+import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
+import { fetchAccounts } from '../../lib/ledger';
+import { CLASS_OPTIONS, GENDER_OPTIONS } from '../../lib/schoolConstants';
+import type { Admission, AdmissionDiscount, FeeItemKey, FeeStructureItem, LedgerAccount } from '../../types';
 
 const DISCOUNT_REASON_PRESETS = [
   'Sibling Discount',
@@ -23,7 +29,7 @@ const DISCOUNT_REASON_PRESETS = [
 
 interface NewAdmissionModalProps {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (admission: Admission) => void;
 }
 
 export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps) {
@@ -39,6 +45,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     gender: '',
     classApplied: '',
     section: '',
+    birthRegNo: '',
     guardianName: '',
     guardianContact: '',
     guardianEmail: '',
@@ -46,13 +53,24 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     academicYear: String(new Date().getFullYear()),
   });
   const [file, setFile] = React.useState<File | null>(null);
+  const [birthRegFile, setBirthRegFile] = React.useState<File | null>(null);
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
+  const [photoProcessing, setPhotoProcessing] = React.useState(false);
+  const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
+  const [receivedInAccountId, setReceivedInAccountId] = React.useState('');
   const [error, setError] = React.useState('');
+  const [warning, setWarning] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [loadingStructure, setLoadingStructure] = React.useState(true);
 
   React.useEffect(() => {
-    fetchFeeStructure()
-      .then((structure) => setFeeItems(structure.items))
+    Promise.all([fetchFeeStructure(), fetchAccounts()])
+      .then(([structure, accountData]) => {
+        setFeeItems(structure.items);
+        setAccounts(accountData);
+        setReceivedInAccountId(accountData[0]?.id ?? '');
+      })
       .finally(() => setLoadingStructure(false));
   }, []);
 
@@ -68,6 +86,28 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
 
   const totals = computeTotals(feeItems, activeDiscounts);
 
+  const handlePhotoSelect = async (selected: File | null) => {
+    if (!selected) {
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+
+    setPhotoProcessing(true);
+    setError('');
+    try {
+      const stampFile = await prepareStampPhoto(selected);
+      setPhotoFile(stampFile);
+      setPhotoPreview(URL.createObjectURL(stampFile));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Photo process করতে সমস্যা হয়েছে।');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+    } finally {
+      setPhotoProcessing(false);
+    }
+  };
+
   const handleDiscountChange = (key: FeeItemKey, field: 'amount' | 'reason', value: string) => {
     setDiscounts((prev) => ({
       ...prev,
@@ -78,9 +118,15 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setWarning('');
 
-    if (!form.studentName || !form.classApplied || !form.guardianName || !form.guardianContact) {
-      setError('Student Name, Class, Guardian Name ও Guardian Contact আবশ্যক।');
+    if (!form.studentName || !form.classApplied || !form.gender || !form.guardianName || !form.guardianContact) {
+      setError('Student Name, Class, Gender, Guardian Name ও Guardian Contact আবশ্যক।');
+      return;
+    }
+
+    if (!receivedInAccountId) {
+      setError('Admission fee কোন account-এ জমা হয়েছে সেটা select করুন।');
       return;
     }
 
@@ -100,25 +146,60 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     try {
       let scannedFormUrl: string | undefined;
       let scannedFormName: string | undefined;
+      let birthRegDocUrl: string | undefined;
+      let birthRegDocName: string | undefined;
 
-      if (file) {
-        const uploaded = await uploadScannedForm(file, `TEMP-${Date.now()}`);
-        scannedFormUrl = uploaded.url;
-        scannedFormName = uploaded.name;
+      let studentPhotoUrl: string | undefined;
+      const tempId = `TEMP-${Date.now()}`;
+
+      if (birthRegFile) {
+        try {
+          const uploaded = await uploadBirthRegDocument(birthRegFile, tempId);
+          birthRegDocUrl = uploaded.url;
+          birthRegDocName = uploaded.name;
+        } catch (uploadErr) {
+          setWarning(getFirebaseOperationErrorMessage(uploadErr) + ' Birth Reg document upload skipped.');
+        }
       }
 
-      await createAdmission({
+      if (photoFile) {
+        try {
+          studentPhotoUrl = await uploadStudentPhoto(photoFile, tempId);
+        } catch (uploadErr) {
+          setWarning(getFirebaseOperationErrorMessage(uploadErr) + ' Photo upload skipped.');
+        }
+      }
+
+      if (file) {
+        try {
+          const uploaded = await uploadScannedForm(file, `TEMP-${Date.now()}`);
+          scannedFormUrl = uploaded.url;
+          scannedFormName = uploaded.name;
+        } catch (uploadErr) {
+          setWarning(
+            getFirebaseOperationErrorMessage(uploadErr) +
+              ' Admission will be saved without the scanned form.',
+          );
+        }
+      }
+
+      const admission = await createAdmission({
         ...form,
+        birthRegNo: form.birthRegNo || undefined,
         feeItems,
         discounts: activeDiscounts,
         scannedFormUrl,
         scannedFormName,
+        birthRegDocUrl,
+        birthRegDocName,
+        studentPhotoUrl,
+        receivedInAccountId,
       });
 
-      onCreated();
+      onCreated(admission);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Admission তৈরি করতে সমস্যা হয়েছে।');
+      setError(getFirebaseOperationErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -159,10 +240,54 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                 <FormInput label="Father's Name" value={form.fatherName} onChange={(v) => setForm({ ...form, fatherName: v })} />
                 <FormInput label="Mother's Name" value={form.motherName} onChange={(v) => setForm({ ...form, motherName: v })} />
                 <FormInput label="Date of Birth" type="date" value={form.dob} onChange={(v) => setForm({ ...form, dob: v })} />
-                <FormInput label="Gender" value={form.gender} onChange={(v) => setForm({ ...form, gender: v })} placeholder="Male / Female" />
-                <FormInput label="Class Applied *" value={form.classApplied} onChange={(v) => setForm({ ...form, classApplied: v })} placeholder="e.g. Grade 4" />
+                <FormSelect
+                  label="Gender *"
+                  value={form.gender}
+                  onChange={(v) => setForm({ ...form, gender: v })}
+                  options={GENDER_OPTIONS}
+                  placeholder="Select gender..."
+                  required
+                />
+                <FormSelect
+                  label="Class Applied *"
+                  value={form.classApplied}
+                  onChange={(v) => setForm({ ...form, classApplied: v })}
+                  options={CLASS_OPTIONS}
+                  placeholder="Select class..."
+                  required
+                />
                 <FormInput label="Section" value={form.section} onChange={(v) => setForm({ ...form, section: v })} placeholder="e.g. Sapphire" />
                 <FormInput label="Academic Year *" value={form.academicYear} onChange={(v) => setForm({ ...form, academicYear: v })} />
+              </div>
+            </section>
+
+            {/* Birth Registration */}
+            <section className="space-y-3">
+              <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Birth Registration</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput
+                  label="Birth Reg. No."
+                  value={form.birthRegNo}
+                  onChange={(v) => setForm({ ...form, birthRegNo: v })}
+                  placeholder="e.g. 19801234567890123"
+                />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">
+                    Birth Reg. Certificate Upload
+                  </label>
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <Upload size={16} className="text-school-blue shrink-0" />
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setBirthRegFile(e.target.files?.[0] ?? null)}
+                      className="text-xs font-medium text-school-blue w-full"
+                    />
+                  </div>
+                  {birthRegFile && (
+                    <p className="text-[9px] font-bold text-emerald-600 truncate">{birthRegFile.name}</p>
+                  )}
+                </div>
               </div>
             </section>
 
@@ -177,6 +302,73 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   <FormInput label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
                 </div>
               </div>
+            </section>
+
+            {/* Student photo — stamp size for ID card */}
+            <section className="space-y-3">
+              <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">
+                Student Photo (Stamp Size) *
+              </h4>
+              <div className="flex items-start gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <div
+                    className="relative bg-white border-2 border-dashed border-school-gold/60 overflow-hidden"
+                    style={{ width: 64, height: 77 }}
+                  >
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Stamp preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-school-muted uppercase text-center px-1">
+                        25×30mm
+                      </div>
+                    )}
+                    {photoProcessing && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <Loader2 size={16} className="animate-spin text-school-blue" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[8px] font-black text-school-gold uppercase tracking-widest">
+                    ID Card Preview
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={photoProcessing}
+                    onChange={(e) => handlePhotoSelect(e.target.files?.[0] ?? null)}
+                    className="text-xs font-medium text-school-blue w-full"
+                  />
+                  <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-2 leading-relaxed">
+                    Stamp size photo ({STAMP_PHOTO.label}) — white background, face center, ID card-এর মতো ছোট
+                  </p>
+                  <p className="text-[9px] text-school-muted font-medium mt-1">
+                    Upload করলে auto crop/resize হবে 25×30mm (5:6) ratio-তে
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Payment account */}
+            <section className="space-y-3">
+              <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Admission Fee Deposit Account *</h4>
+              <select
+                value={receivedInAccountId}
+                onChange={(e) => setReceivedInAccountId(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+                required
+              >
+                <option value="">Select account...</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.type.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
+                Admission fee ৳ {totals.grandTotal.toLocaleString()} এই account-এ record হবে
+              </p>
             </section>
 
             {/* Scanned form upload */}
@@ -284,6 +476,13 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               </div>
             </section>
 
+            {warning && (
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2">
+                <FileWarning size={16} className="text-amber-500 mt-0.5" />
+                <p className="text-xs font-bold text-amber-700">{warning}</p>
+              </div>
+            )}
+
             {error && (
               <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2">
                 <FileWarning size={16} className="text-red-500 mt-0.5" />
@@ -320,6 +519,41 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+function FormSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20 text-school-blue"
+      >
+        <option value="">{placeholder ?? 'Select...'}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

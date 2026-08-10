@@ -10,9 +10,11 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { isDemoLoginEnabled } from './auth';
+import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { addStudent, getNextStudentId, updateStudentStatus } from './students';
 import { recordCollection, recordReversal } from './ledger';
+import { generateReceiptNumber } from './receipts';
+import { normalizeMobile, provisionGuardianLogin } from './guardians';
 import type {
   Admission,
   AdmissionDiscount,
@@ -73,6 +75,80 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+async function ensureFirebaseSession(): Promise<void> {
+  if (!isDemoLoginEnabled) {
+    await waitForAuthUser();
+  }
+}
+
+function toIsoString(value: unknown): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toDate' in value &&
+    typeof (value as { toDate: () => Date }).toDate === 'function'
+  ) {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  return new Date().toISOString();
+}
+
+function defaultApprovals(): ApprovalStep[] {
+  return APPROVAL_FLOW.map((step) => ({
+    department: step.department,
+    label: step.label,
+    status: 'pending',
+  }));
+}
+
+function normalizeAdmission(id: string, data: Record<string, unknown>): Admission | null {
+  if (!data.studentName || !data.formSerial) {
+    return null;
+  }
+
+  return {
+    id: typeof data.id === 'string' ? data.id : id,
+    formSerial: String(data.formSerial),
+    studentName: String(data.studentName),
+    fatherName: data.fatherName ? String(data.fatherName) : undefined,
+    motherName: data.motherName ? String(data.motherName) : undefined,
+    dob: data.dob ? String(data.dob) : undefined,
+    gender: data.gender ? String(data.gender) : undefined,
+    classApplied: String(data.classApplied ?? ''),
+    section: data.section ? String(data.section) : undefined,
+    birthRegNo: data.birthRegNo ? String(data.birthRegNo) : undefined,
+    birthRegDocUrl: data.birthRegDocUrl ? String(data.birthRegDocUrl) : undefined,
+    birthRegDocName: data.birthRegDocName ? String(data.birthRegDocName) : undefined,
+    guardianName: String(data.guardianName ?? ''),
+    guardianContact: String(data.guardianContact ?? ''),
+    guardianEmail: data.guardianEmail ? String(data.guardianEmail) : undefined,
+    address: data.address ? String(data.address) : undefined,
+    academicYear: String(data.academicYear ?? new Date().getFullYear()),
+    feeItems: Array.isArray(data.feeItems) ? (data.feeItems as FeeStructureItem[]) : DEFAULT_FEE_ITEMS,
+    discounts: Array.isArray(data.discounts) ? (data.discounts as AdmissionDiscount[]) : [],
+    grossTotal: Number(data.grossTotal) || 0,
+    totalDiscount: Number(data.totalDiscount) || 0,
+    grandTotal: Number(data.grandTotal) || 0,
+    receivedInAccountId: data.receivedInAccountId ? String(data.receivedInAccountId) : undefined,
+    scannedFormUrl: data.scannedFormUrl ? String(data.scannedFormUrl) : undefined,
+    scannedFormName: data.scannedFormName ? String(data.scannedFormName) : undefined,
+    studentPhotoUrl: data.studentPhotoUrl ? String(data.studentPhotoUrl) : undefined,
+    receiptNumber: data.receiptNumber ? String(data.receiptNumber) : undefined,
+    paymentRecorded: Boolean(data.paymentRecorded),
+    idCardIssued: Boolean(data.idCardIssued),
+    guardianLoginMobile: data.guardianLoginMobile ? String(data.guardianLoginMobile) : undefined,
+    guardianTempPassword: data.guardianTempPassword ? String(data.guardianTempPassword) : undefined,
+    approvals: Array.isArray(data.approvals) ? (data.approvals as ApprovalStep[]) : defaultApprovals(),
+    status: (data.status as Admission['status']) || 'pending_approval',
+    cancelReason: data.cancelReason ? String(data.cancelReason) : undefined,
+    studentId: data.studentId ? String(data.studentId) : undefined,
+    createdAt: toIsoString(data.createdAt),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
 /* ---------------- Fee Structure ---------------- */
 
 export async function fetchFeeStructure(): Promise<FeeStructure> {
@@ -80,6 +156,7 @@ export async function fetchFeeStructure(): Promise<FeeStructure> {
     return readLocal<FeeStructure>(LOCAL_FEE_STRUCTURES_KEY, DEFAULT_FEE_STRUCTURE);
   }
 
+  await ensureFirebaseSession();
   const snapshot = await getDocs(query(collection(db, FEE_STRUCTURES_COLLECTION)));
   const defaultDoc = snapshot.docs.find((document) => document.id === 'default');
   return defaultDoc ? (defaultDoc.data() as FeeStructure) : DEFAULT_FEE_STRUCTURE;
@@ -97,6 +174,7 @@ export async function saveFeeStructure(items: FeeStructureItem[]): Promise<FeeSt
     return structure;
   }
 
+  await ensureFirebaseSession();
   await setDoc(doc(db, FEE_STRUCTURES_COLLECTION, 'default'), { ...structure, updatedAt: serverTimestamp() });
   return structure;
 }
@@ -140,6 +218,22 @@ export async function getNextFormSerial(academicYear: string): Promise<string> {
 
 /* ---------------- Scanned form upload ---------------- */
 
+export async function uploadStudentPhoto(file: File, admissionId: string): Promise<string> {
+  if (isDemoLoginEnabled) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const path = `student-photos/${admissionId}-${file.name}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file);
+  return getDownloadURL(ref);
+}
+
 export async function uploadScannedForm(file: File, formSerial: string): Promise<{ url: string; name: string }> {
   if (isDemoLoginEnabled) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -152,6 +246,24 @@ export async function uploadScannedForm(file: File, formSerial: string): Promise
   }
 
   const path = `admission-forms/${formSerial}-${file.name}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file);
+  const url = await getDownloadURL(ref);
+  return { url, name: file.name };
+}
+
+export async function uploadBirthRegDocument(file: File, formSerial: string): Promise<{ url: string; name: string }> {
+  if (isDemoLoginEnabled) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    return { url: dataUrl, name: file.name };
+  }
+
+  const path = `birth-reg-docs/${formSerial}-${file.name}`;
   const ref = storageRef(storage, path);
   await uploadBytes(ref, file);
   const url = await getDownloadURL(ref);
@@ -173,9 +285,11 @@ export async function fetchAdmissions(): Promise<Admission[]> {
     return readLocalAdmissions().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  await ensureFirebaseSession();
   const snapshot = await getDocs(query(collection(db, ADMISSIONS_COLLECTION)));
   return snapshot.docs
-    .map((document) => document.data() as Admission)
+    .map((document) => normalizeAdmission(document.id, document.data() as Record<string, unknown>))
+    .filter((admission): admission is Admission => admission !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -187,6 +301,9 @@ export interface CreateAdmissionInput {
   gender?: string;
   classApplied: string;
   section?: string;
+  birthRegNo?: string;
+  birthRegDocUrl?: string;
+  birthRegDocName?: string;
   guardianName: string;
   guardianContact: string;
   guardianEmail?: string;
@@ -196,6 +313,8 @@ export interface CreateAdmissionInput {
   discounts: AdmissionDiscount[];
   scannedFormUrl?: string;
   scannedFormName?: string;
+  studentPhotoUrl?: string;
+  receivedInAccountId: string;
 }
 
 export async function createAdmission(input: CreateAdmissionInput): Promise<Admission> {
@@ -213,6 +332,9 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     gender: input.gender,
     classApplied: input.classApplied,
     section: input.section,
+    birthRegNo: input.birthRegNo,
+    birthRegDocUrl: input.birthRegDocUrl,
+    birthRegDocName: input.birthRegDocName,
     guardianName: input.guardianName,
     guardianContact: input.guardianContact,
     guardianEmail: input.guardianEmail,
@@ -225,6 +347,12 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     grandTotal,
     scannedFormUrl: input.scannedFormUrl,
     scannedFormName: input.scannedFormName,
+    studentPhotoUrl: input.studentPhotoUrl,
+    receivedInAccountId: input.receivedInAccountId,
+    receiptNumber: generateReceiptNumber(),
+    paymentRecorded: false,
+    idCardIssued: false,
+    guardianLoginMobile: normalizeMobile(input.guardianContact),
     approvals: APPROVAL_FLOW.map((step) => ({
       department: step.department,
       label: step.label,
@@ -235,12 +363,24 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     updatedAt: now,
   };
 
+  if (input.receivedInAccountId && admission.grandTotal > 0) {
+    await recordCollection({
+      accountId: input.receivedInAccountId,
+      amount: admission.grandTotal,
+      reference: `Admission Fee — ${admission.studentName} (${admission.formSerial})`,
+      relatedId: admission.id,
+      date: now.slice(0, 10),
+    });
+    admission.paymentRecorded = true;
+  }
+
   if (isDemoLoginEnabled) {
     const existing = readLocalAdmissions();
     writeLocalAdmissions([...existing, admission]);
     return admission;
   }
 
+  await ensureFirebaseSession();
   await setDoc(doc(db, ADMISSIONS_COLLECTION, admission.id), { ...admission, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   return admission;
 }
@@ -252,6 +392,7 @@ async function persistAdmission(admission: Admission): Promise<void> {
     return;
   }
 
+  await ensureFirebaseSession();
   await updateDoc(doc(db, ADMISSIONS_COLLECTION, admission.id), {
     ...admission,
     updatedAt: serverTimestamp(),
@@ -310,20 +451,30 @@ export async function actOnApproval(params: {
       guardianEmail: admission.guardianEmail,
       status: 'Active',
       admissionId: admission.id,
+      photoUrl: admission.studentPhotoUrl,
+      academicYear: admission.academicYear,
+      dob: admission.dob,
+      gender: admission.gender,
+      fatherName: admission.fatherName,
+      idCardIssuedAt: new Date().toISOString(),
     };
 
     await addStudent(student);
 
-    if (updated.receivedInAccountId) {
-      await recordCollection({
-        accountId: updated.receivedInAccountId,
-        amount: updated.grandTotal,
-        reference: `Admission Fee Collection — ${admission.studentName} (${admission.formSerial})`,
-        relatedId: admission.id,
-      });
-    }
+    const guardianLogin = await provisionGuardianLogin({
+      mobile: admission.guardianContact,
+      guardianName: admission.guardianName,
+      studentId,
+    });
 
-    updated = { ...updated, status: 'approved', studentId };
+    updated = {
+      ...updated,
+      status: 'approved',
+      studentId,
+      idCardIssued: true,
+      guardianLoginMobile: guardianLogin.mobile,
+      guardianTempPassword: guardianLogin.password,
+    };
   }
 
   await persistAdmission(updated);

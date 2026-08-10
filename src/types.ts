@@ -14,6 +14,12 @@ export interface Student {
   status: StudentStatus;
   admissionId?: string;
   inactiveReason?: string;
+  photoUrl?: string;
+  idCardIssuedAt?: string;
+  academicYear?: string;
+  dob?: string;
+  gender?: string;
+  fatherName?: string;
 }
 
 export interface ParsedStudentRow {
@@ -90,6 +96,9 @@ export interface Admission {
   gender?: string;
   classApplied: string;
   section?: string;
+  birthRegNo?: string;
+  birthRegDocUrl?: string;
+  birthRegDocName?: string;
   guardianName: string;
   guardianContact: string;
   guardianEmail?: string;
@@ -103,12 +112,89 @@ export interface Admission {
   receivedInAccountId?: string;
   scannedFormUrl?: string;
   scannedFormName?: string;
+  studentPhotoUrl?: string;
+  receiptNumber?: string;
+  paymentRecorded?: boolean;
+  idCardIssued?: boolean;
+  guardianLoginMobile?: string;
+  guardianTempPassword?: string;
   approvals: ApprovalStep[];
   status: AdmissionStatus;
   cancelReason?: string;
   studentId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/* ---------------- Guardian Accounts ---------------- */
+
+export interface GuardianAccount {
+  id: string;
+  mobile: string;
+  authEmail: string;
+  guardianName: string;
+  studentIds: string[];
+  createdAt: string;
+}
+
+/* ---------------- Categories (Principal Approval) ---------------- */
+
+export type CategoryType = 'income' | 'expense';
+
+export type CategoryRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CategoryRequest {
+  id: string;
+  type: CategoryType;
+  name: string;
+  requestedBy: string;
+  status: CategoryRequestStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  note?: string;
+  createdAt: string;
+}
+
+/* ---------------- Income ---------------- */
+
+export interface Income {
+  id: string;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  accountId: string;
+  note?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+/* ---------------- Day Close ---------------- */
+
+export interface DayCloseRecord {
+  id: string;
+  date: string;
+  totalIncome: number;
+  totalExpense: number;
+  netCash: number;
+  accountSnapshots: {
+    accountId: string;
+    accountName: string;
+    accountType: LedgerAccountType;
+    balance: number;
+    todayIncome: number;
+    todayExpense: number;
+  }[];
+  depositReminders: {
+    accountId: string;
+    accountName: string;
+    cashInHand: number;
+    suggestedDeposit: number;
+    message: string;
+  }[];
+  closedBy: string;
+  closedAt: string;
+  note?: string;
 }
 
 /* ---------------- Expenses ---------------- */
@@ -127,7 +213,7 @@ export interface Expense {
 
 /* ---------------- Bank / MFS Ledger ---------------- */
 
-export type LedgerAccountType = 'cash' | 'bank' | 'mobile';
+export type LedgerAccountType = 'cash' | 'bank' | 'mobile' | 'online';
 
 export interface LedgerAccount {
   id: string;
@@ -135,6 +221,8 @@ export interface LedgerAccount {
   type: LedgerAccountType;
   openingBalance: number;
   createdAt: string;
+  /** System-managed accounts cannot be deleted from UI */
+  systemManaged?: boolean;
 }
 
 export type LedgerEntryType = 'debit' | 'credit';
@@ -145,7 +233,7 @@ export interface LedgerEntry {
   type: LedgerEntryType;
   amount: number;
   reference: string;
-  relatedType?: 'admission' | 'expense' | 'transfer';
+  relatedType?: 'admission' | 'expense' | 'transfer' | 'invoice';
   relatedId?: string;
   date: string;
   note?: string;
@@ -164,4 +252,99 @@ export interface FinancialSummary {
   accountBalances: { account: LedgerAccount; balance: number }[];
   admissionsInRange: Admission[];
   expensesInRange: Expense[];
+}
+
+/* ---------------- Asset Registry ---------------- */
+
+export interface AssetCategory {
+  id: string;
+  name: string;
+  /** Short code used in asset numbers, e.g. IT, FURN */
+  prefix: string;
+  nextNumber: number;
+  createdAt: string;
+}
+
+export type AssetCondition = 'excellent' | 'good' | 'fair' | 'poor' | 'disposed';
+
+export interface SchoolAsset {
+  id: string;
+  assetNumber: string;
+  categoryId: string;
+  categoryName: string;
+  name: string;
+  description?: string;
+  purchaseValue: number;
+  purchaseDate?: string;
+  location?: string;
+  usefulLifeYears?: number;
+  condition: AssetCondition;
+  serialNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ---------------- Invoicing & Online Payments ---------------- */
+
+export type InvoiceStatus = 'pending' | 'paid' | 'partial' | 'overdue' | 'cancelled';
+
+export type InvoiceFeeType =
+  | 'tuitionFee'
+  | 'examFee'
+  | 'busFee'
+  | 'sportsFee'
+  | 'utilityBill'
+  | 'other';
+
+export type PaymentMethod = 'cash' | 'bank' | 'mobile' | 'online' | 'gateway';
+
+export type PaymentGatewayProvider = 'bkash' | 'nagad' | 'sslcommerz' | 'stripe' | 'manual';
+
+export interface InvoiceLineItem {
+  key: InvoiceFeeType;
+  label: string;
+  amount: number;
+}
+
+export interface StudentInvoice {
+  id: string;
+  invoiceNumber: string;
+  studentId: string;
+  studentName: string;
+  className: string;
+  section?: string;
+  guardianContact: string;
+  billingMonth: string;
+  academicYear: string;
+  lineItems: InvoiceLineItem[];
+  totalAmount: number;
+  paidAmount: number;
+  status: InvoiceStatus;
+  dueDate: string;
+  generatedAt: string;
+  paidAt?: string;
+  paymentMethod?: PaymentMethod;
+  paymentAccountId?: string;
+  gatewayRef?: string;
+  gatewayProvider?: PaymentGatewayProvider;
+  receiptNumber?: string;
+  autoGenerated?: boolean;
+}
+
+export type PaymentIntentStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+
+export interface PaymentIntent {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  studentId: string;
+  studentName: string;
+  amount: number;
+  provider: PaymentGatewayProvider;
+  status: PaymentIntentStatus;
+  gatewaySessionId?: string;
+  gatewayTransactionId?: string;
+  redirectUrl?: string;
+  createdAt: string;
+  completedAt?: string;
 }

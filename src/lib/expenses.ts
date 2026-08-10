@@ -2,6 +2,7 @@ import { collection, doc, getDocs, query, serverTimestamp, setDoc } from 'fireba
 import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
 import { recordExpense } from './ledger';
+import { omitUndefined } from './utils';
 import type { Expense } from '../types';
 
 const EXPENSES_COLLECTION = 'expenses';
@@ -72,7 +73,10 @@ export async function createExpense(input: CreateExpenseInput): Promise<Expense>
     const existing = readLocal<Expense[]>(LOCAL_EXPENSES_KEY, []);
     writeLocal(LOCAL_EXPENSES_KEY, [...existing, expense]);
   } else {
-    await setDoc(doc(db, EXPENSES_COLLECTION, expense.id), { ...expense, createdAt: serverTimestamp() });
+    await setDoc(
+      doc(db, EXPENSES_COLLECTION, expense.id),
+      omitUndefined({ ...expense, createdAt: serverTimestamp() }),
+    );
   }
 
   await recordExpense({

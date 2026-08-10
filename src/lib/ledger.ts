@@ -8,7 +8,8 @@ import {
   addDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { isDemoLoginEnabled } from './auth';
+import { isDemoLoginEnabled, waitForAuthUser } from './auth';
+import { omitUndefined } from './utils';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry } from '../types';
 
 const ACCOUNTS_COLLECTION = 'ledgerAccounts';
@@ -16,12 +17,22 @@ const ENTRIES_COLLECTION = 'ledgerEntries';
 const LOCAL_ACCOUNTS_KEY = 'an-noor-ledger-accounts';
 const LOCAL_ENTRIES_KEY = 'an-noor-ledger-entries';
 
+export const ONLINE_PAYMENT_ACCOUNT_ID = 'online-payment';
+
 const DEFAULT_ACCOUNTS: LedgerAccount[] = [
   { id: 'main-cash', name: 'Main Cash', type: 'cash', openingBalance: 125400, createdAt: new Date().toISOString() },
   { id: 'petty-cash', name: 'Petty Cash', type: 'cash', openingBalance: 12500, createdAt: new Date().toISOString() },
   { id: 'city-bank', name: 'City Bank', type: 'bank', openingBalance: 1250000, createdAt: new Date().toISOString() },
   { id: 'bkash-merchant', name: 'bKash Merchant', type: 'mobile', openingBalance: 45600, createdAt: new Date().toISOString() },
   { id: 'nagad-business', name: 'Nagad Business', type: 'mobile', openingBalance: 28900, createdAt: new Date().toISOString() },
+  {
+    id: ONLINE_PAYMENT_ACCOUNT_ID,
+    name: 'Online Payment',
+    type: 'online',
+    openingBalance: 0,
+    systemManaged: true,
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -43,17 +54,54 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function mergeDefaultAccounts(accounts: LedgerAccount[]): LedgerAccount[] {
+  const map = new Map(accounts.map((account) => [account.id, account]));
+  for (const defaultAccount of DEFAULT_ACCOUNTS) {
+    if (!map.has(defaultAccount.id)) {
+      map.set(defaultAccount.id, defaultAccount);
+    }
+  }
+  return Array.from(map.values());
+}
+
+async function ensureDefaultAccountsInFirestore(): Promise<LedgerAccount[]> {
+  await waitForAuthUser();
+  const snapshot = await getDocs(query(collection(db, ACCOUNTS_COLLECTION)));
+  const existing = snapshot.docs.map((document) => document.data() as LedgerAccount);
+
+  if (existing.length === 0) {
+    await Promise.all(
+      DEFAULT_ACCOUNTS.map((account) =>
+        setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), omitUndefined({ ...account, createdAt: serverTimestamp() })),
+      ),
+    );
+    return DEFAULT_ACCOUNTS;
+  }
+
+  const merged = mergeDefaultAccounts(existing);
+  const missing = merged.filter((account) => !existing.some((item) => item.id === account.id));
+  if (missing.length > 0) {
+    await Promise.all(
+      missing.map((account) =>
+        setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), omitUndefined({ ...account, createdAt: serverTimestamp() })),
+      ),
+    );
+  }
+  return merged;
+}
+
 export async function fetchAccounts(): Promise<LedgerAccount[]> {
   if (isDemoLoginEnabled) {
-    const accounts = readLocal<LedgerAccount[]>(LOCAL_ACCOUNTS_KEY, DEFAULT_ACCOUNTS);
-    if (!localStorage.getItem(LOCAL_ACCOUNTS_KEY)) {
-      writeLocal(LOCAL_ACCOUNTS_KEY, accounts);
-    }
+    const accounts = mergeDefaultAccounts(readLocal<LedgerAccount[]>(LOCAL_ACCOUNTS_KEY, DEFAULT_ACCOUNTS));
+    writeLocal(LOCAL_ACCOUNTS_KEY, accounts);
     return accounts;
   }
 
-  const snapshot = await getDocs(query(collection(db, ACCOUNTS_COLLECTION)));
-  return snapshot.docs.map((document) => document.data() as LedgerAccount);
+  return ensureDefaultAccountsInFirestore();
+}
+
+export function getOnlinePaymentAccount(accounts: LedgerAccount[]): LedgerAccount | undefined {
+  return accounts.find((account) => account.id === ONLINE_PAYMENT_ACCOUNT_ID);
 }
 
 export async function addAccount(input: { name: string; type: LedgerAccountType; openingBalance: number }): Promise<LedgerAccount> {
@@ -71,7 +119,7 @@ export async function addAccount(input: { name: string; type: LedgerAccountType;
     return account;
   }
 
-  await setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), { ...account, createdAt: serverTimestamp() });
+  await setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), omitUndefined({ ...account, createdAt: serverTimestamp() }));
   return account;
 }
 
@@ -97,7 +145,7 @@ export async function addEntry(input: Omit<LedgerEntry, 'id' | 'createdAt'>): Pr
     return entry;
   }
 
-  await addDoc(collection(db, ENTRIES_COLLECTION), { ...entry, createdAt: serverTimestamp() });
+  await addDoc(collection(db, ENTRIES_COLLECTION), omitUndefined({ ...entry, createdAt: serverTimestamp() }));
   return entry;
 }
 
@@ -106,16 +154,19 @@ export async function recordCollection(params: {
   amount: number;
   reference: string;
   relatedId: string;
+  relatedType?: LedgerEntry['relatedType'];
   date?: string;
+  note?: string;
 }): Promise<LedgerEntry> {
   return addEntry({
     accountId: params.accountId,
     type: 'credit',
     amount: params.amount,
     reference: params.reference,
-    relatedType: 'admission',
+    relatedType: params.relatedType ?? 'admission',
     relatedId: params.relatedId,
     date: params.date ?? new Date().toISOString(),
+    note: params.note,
   });
 }
 

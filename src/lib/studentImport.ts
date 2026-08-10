@@ -1,7 +1,10 @@
 import * as XLSX from 'xlsx';
 import type { ParsedStudentRow, Student } from '../types';
 
-type StudentField = keyof Omit<Student, 'status' | 'admissionId' | 'inactiveReason'>;
+type StudentField = keyof Omit<
+  Student,
+  'status' | 'admissionId' | 'inactiveReason' | 'photoUrl' | 'idCardIssuedAt' | 'academicYear' | 'dob' | 'gender' | 'fatherName'
+>;
 
 const COLUMN_ALIASES: Record<StudentField, string[]> = {
   studentId: ['studentid', 'student id', 'id', 'student_id', 'ans id', 'student code'],

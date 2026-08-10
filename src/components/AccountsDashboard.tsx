@@ -4,26 +4,23 @@ import {
   DollarSign, 
   FileText, 
   PieChart, 
-  ArrowUpRight, 
   ArrowDownRight, 
   Clock,
   Users,
-  Plus,
-  Zap,
   ShieldCheck,
   Building2,
   Wallet,
   Landmark,
   Smartphone,
-  Tag, 
-  Monitor, 
+  Globe,
   BellRing, 
   CheckCircle2,
   XCircle,
-  FileSpreadsheet,
   ClipboardCheck,
   Receipt,
-  FileBarChart
+  FileBarChart,
+  Lock,
+  Tags
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
@@ -32,6 +29,10 @@ import { AdmissionsPanel } from './accounts/AdmissionsPanel';
 import { ExpensePanel } from './accounts/ExpensePanel';
 import { LedgerPanel } from './accounts/LedgerPanel';
 import { DirectorReportPanel } from './accounts/DirectorReportPanel';
+import { DayClosePanel } from './accounts/DayClosePanel';
+import { CategoryRequestPanel } from './accounts/CategoryRequestPanel';
+import { AssetRegistryPanel } from './accounts/AssetRegistryPanel';
+import { InvoicingPanel } from './accounts/InvoicingPanel';
 import { computeAllBalances, fetchAccounts, fetchEntries } from '../lib/ledger';
 import type { LedgerAccount } from '../types';
 
@@ -47,24 +48,26 @@ const LEDGER_TYPE_ICON: Record<string, React.ReactNode> = {
   cash: <Wallet size={18} />,
   bank: <Landmark size={18} />,
   mobile: <Smartphone size={18} />,
+  online: <Globe size={18} />,
 };
 
-export const AccountsDashboard = () => {
-  const [activeSubTab, setActiveSubTab] = React.useState('overview');
+export const AccountsDashboard = ({
+  activeSection = 'overview',
+}: {
+  activeSection?: string;
+}) => {
+  const [activeSubTab, setActiveSubTab] = React.useState(activeSection);
   const [ledgerBalances, setLedgerBalances] = React.useState<{ account: LedgerAccount; balance: number }[]>([]);
+
+  React.useEffect(() => {
+    setActiveSubTab(activeSection);
+  }, [activeSection]);
 
   React.useEffect(() => {
     Promise.all([fetchAccounts(), fetchEntries()]).then(([accounts, entries]) => {
       setLedgerBalances(computeAllBalances(accounts, entries));
     });
   }, [activeSubTab]);
-
-  const assets = [
-    { tag: 'FURN-001', name: 'Executive Desk', category: 'Furniture', value: '৳ 12,000', life: '5 Years' },
-    { tag: 'ELEC-102', name: 'Smart Board (Class 4)', category: 'Electronics', value: '৳ 85,000', life: '3 Years' },
-    { tag: 'ELEC-105', name: 'HP LaserJet Pro', category: 'Electronics', value: '৳ 35,000', life: '4 Years' },
-    { tag: 'PROP-201', name: 'Water Purifier System', category: 'Property', value: '৳ 65,000', life: '10 Years' },
-  ];
 
   const pendingApprovals = [
     { id: 'APP-99', type: 'Notice', title: 'Payment Reminder: Term 2', status: 'Pending', date: '26 Apr' },
@@ -80,6 +83,8 @@ export const AccountsDashboard = () => {
     { id: 'ledger', label: 'Bank & MFS Ledger', icon: <Landmark size={16} /> },
     { id: 'assets', label: 'Asset Registry', icon: <Building2 size={16} /> },
     { id: 'report', label: 'Director Report', icon: <FileBarChart size={16} /> },
+    { id: 'dayclose', label: 'Day Close', icon: <Lock size={16} /> },
+    { id: 'categories', label: 'Categories', icon: <Tags size={16} /> },
     { id: 'approvals', label: 'Approvals', icon: <ShieldCheck size={16} /> },
   ];
 
@@ -175,7 +180,7 @@ export const AccountsDashboard = () => {
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center",
-                              account.type === 'cash' ? "bg-amber-50 text-school-gold" : account.type === 'bank' ? "bg-blue-50 text-school-blue" : "bg-pink-50 text-pink-500"
+                              account.type === 'cash' ? "bg-amber-50 text-school-gold" : account.type === 'bank' ? "bg-blue-50 text-school-blue" : account.type === 'online' ? "bg-violet-50 text-violet-600" : "bg-pink-50 text-pink-500"
                             )}>
                               {LEDGER_TYPE_ICON[account.type]}
                             </div>
@@ -223,93 +228,8 @@ export const AccountsDashboard = () => {
         )}
 
         {activeSubTab === 'billing' && (
-          <motion.div 
-            key="billing"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-          >
-            <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
-               <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-6 flex items-center gap-2">
-                 <Zap size={16} className="text-school-gold" />
-                 Bulk Invoice Generator
-               </h3>
-               <div className="space-y-6">
-                 <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Select Class</label>
-                     <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:ring-2 ring-school-gold/20">
-                       <option>All Classes</option>
-                       <option>Grade 1</option>
-                       <option>Grade 4 (Sapphire)</option>
-                     </select>
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Billing Month</label>
-                     <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-black uppercase outline-none focus:ring-2 ring-school-gold/20">
-                       <option>December 2024</option>
-                       <option>January 2025</option>
-                     </select>
-                   </div>
-                 </div>
-
-                 <div className="space-y-3">
-                   <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Fee Categories</label>
-                   <div className="grid grid-cols-2 gap-3">
-                     {['Tuition Fee', 'Exam Fee', 'Bus Fee', 'Utility Bill', 'Sports Charge'].map(cat => (
-                        <label key={cat} className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:border-school-gold/30 transition-all">
-                          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-school-blue focus:ring-school-blue" />
-                          <span className="text-[10px] font-black text-school-blue uppercase">{cat}</span>
-                        </label>
-                     ))}
-                   </div>
-                 </div>
-
-                 <button className="w-full py-5 bg-school-blue text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/10 hover:bg-blue-900 transition-all">
-                   Preview Invoices (245 Items)
-                 </button>
-               </div>
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
-               <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-6 flex items-center gap-2">
-                 <ArrowUpRight size={16} className="text-emerald-500" />
-                 Collection Stats
-               </h3>
-               <div className="grid grid-cols-2 gap-6 mb-8">
-                 <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Paid Invoices</p>
-                    <p className="text-2xl font-black text-emerald-700">182</p>
-                 </div>
-                 <div className="p-6 bg-red-50 rounded-3xl border border-red-100">
-                    <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Unpaid/Due</p>
-                    <p className="text-2xl font-black text-red-700">63</p>
-                 </div>
-               </div>
-               <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-school-muted uppercase tracking-widest">Recent Collection Alerts</h4>
-                  {[
-                    { student: 'Omar Bin Ahmed', amount: '৳ 4,500', method: 'bKash', status: 'Pending Approval' },
-                    { student: 'Sarah Khan', amount: '৳ 12,000', method: 'Cash', status: 'Verified' },
-                  ].map((alert, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <div>
-                        <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{alert.student}</p>
-                        <p className="text-[9px] font-bold text-school-muted uppercase">{alert.amount} via {alert.method}</p>
-                      </div>
-                      <span className={cn(
-                        "text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-tighter",
-                        alert.status === 'Verified' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-school-gold"
-                      )}>
-                        {alert.status}
-                      </span>
-                    </div>
-                  ))}
-               </div>
-               <button className="w-full mt-8 py-4 bg-slate-50 text-school-blue border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors">
-                 Send Reminders (SMS/Portal)
-               </button>
-            </div>
+          <motion.div key="billing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <InvoicingPanel />
           </motion.div>
         )}
 
@@ -343,59 +263,21 @@ export const AccountsDashboard = () => {
           </motion.div>
         )}
 
-        {activeSubTab === 'assets' && (
-          <motion.div 
-            key="assets"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Asset & Property Registry</h3>
-              <button className="px-6 py-2.5 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                 <Plus size={14} /> Register Asset
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-               {[
-                 { label: 'IT Assets', count: 42, icon: <Monitor /> },
-                 { label: 'Furniture', count: 156, icon: <Tag /> },
-                 { label: 'Books', count: 1200, icon: <FileSpreadsheet /> },
-                 { label: 'Others', count: 18, icon: <Building2 /> },
-               ].map((c, idx) => (
-                 <div key={idx} className="p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="p-3 bg-slate-50 text-school-blue rounded-xl">{c.icon}</div>
-                      <span className="text-xs font-black text-school-blue">{c.count}</span>
-                    </div>
-                    <p className="text-[10px] font-black text-school-muted uppercase tracking-widest">{c.label}</p>
-                 </div>
-               ))}
-            </div>
+        {activeSubTab === 'dayclose' && (
+          <motion.div key="dayclose" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <DayClosePanel />
+          </motion.div>
+        )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead>
-                  <tr className="text-school-muted font-black border-b border-school-border uppercase tracking-widest">
-                    <th className="pb-4">Tag #</th>
-                    <th className="pb-4">Asset Name</th>
-                    <th className="pb-4">Category</th>
-                    <th className="pb-4 text-right">Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {assets.map((asset, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-5 font-black text-school-gold tracking-tight">{asset.tag}</td>
-                      <td className="py-5 font-black text-school-blue uppercase">{asset.name}</td>
-                      <td className="py-5 text-slate-500 font-medium">{asset.category}</td>
-                      <td className="py-5 text-right font-black text-school-blue">{asset.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {activeSubTab === 'categories' && (
+          <motion.div key="categories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <CategoryRequestPanel />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'assets' && (
+          <motion.div key="assets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <AssetRegistryPanel />
           </motion.div>
         )}
 
