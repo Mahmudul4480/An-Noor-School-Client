@@ -13,14 +13,11 @@ import {
   Landmark,
   Smartphone,
   Globe,
-  BellRing, 
-  CheckCircle2,
-  XCircle,
-  ClipboardCheck,
   Receipt,
   FileBarChart,
   Lock,
-  Tags
+  Tags,
+  ClipboardCheck,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
@@ -33,6 +30,7 @@ import { DayClosePanel } from './accounts/DayClosePanel';
 import { CategoryRequestPanel } from './accounts/CategoryRequestPanel';
 import { AssetRegistryPanel } from './accounts/AssetRegistryPanel';
 import { InvoicingPanel } from './accounts/InvoicingPanel';
+import { ApprovalsPanel } from './accounts/ApprovalsPanel';
 import { computeAllBalances, fetchAccounts, fetchEntries } from '../lib/ledger';
 import type { LedgerAccount } from '../types';
 
@@ -68,11 +66,6 @@ export const AccountsDashboard = ({
       setLedgerBalances(computeAllBalances(accounts, entries));
     });
   }, [activeSubTab]);
-
-  const pendingApprovals = [
-    { id: 'APP-99', type: 'Notice', title: 'Payment Reminder: Term 2', status: 'Pending', date: '26 Apr' },
-    { id: 'APP-102', type: 'Expense', title: 'Generator Repair', status: 'Reviewing', date: '25 Apr' },
-  ];
 
   const tabs = [
     { id: 'overview', label: 'Financials', icon: <PieChart size={16} /> },
@@ -282,42 +275,8 @@ export const AccountsDashboard = ({
         )}
 
         {activeSubTab === 'approvals' && (
-          <motion.div 
-            key="approvals"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl mx-auto space-y-6"
-          >
-            <div className="bg-school-gold/5 border-2 border-school-gold/20 rounded-[2.5rem] p-10 text-center relative overflow-hidden group">
-               <ShieldCheck size={60} className="mx-auto text-school-gold mb-6 opacity-20 group-hover:scale-110 transition-transform" />
-               <h3 className="text-2xl font-black text-school-blue uppercase tracking-tight mb-2">Principal Approval Layer</h3>
-               <p className="text-xs text-school-muted font-medium mb-8 max-w-sm mx-auto">Sensitive communications and major expenses must be reviewed by the Principal before system execution.</p>
-               
-               <div className="space-y-4">
-                 {pendingApprovals.map((req, idx) => (
-                   <div key={idx} className="bg-white p-6 rounded-[2rem] border border-school-border shadow-sm flex items-center justify-between">
-                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-school-blue">
-                          {req.type === 'Notice' ? <BellRing size={20} /> : <DollarSign size={20} />}
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{req.title}</p>
-                          <p className="text-[9px] font-bold text-school-muted uppercase">{req.type} • Requested {req.date}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-school-gold bg-amber-50 px-3 py-1.5 rounded-full uppercase tracking-tighter">
-                          {req.status}
-                        </span>
-                        <div className="flex gap-1">
-                           <button className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"><CheckCircle2 size={18} /></button>
-                           <button className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors"><XCircle size={18} /></button>
-                        </div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
+          <motion.div key="approvals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <ApprovalsPanel viewerDepartment="accounts" actorName="Accounts Department" />
           </motion.div>
         )}
       </AnimatePresence>

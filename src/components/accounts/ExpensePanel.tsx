@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, ArrowDownRight } from 'lucide-react';
-import { createExpense, fetchExpenses } from '../../lib/expenses';
+import { createExpense, fetchExpenses, EXPENSE_APPROVAL_THRESHOLD } from '../../lib/expenses';
 import { fetchApprovedCategories } from '../../lib/categories';
 import { fetchAccounts } from '../../lib/ledger';
 import type { Expense, LedgerAccount } from '../../types';
@@ -12,6 +12,7 @@ export function ExpensePanel() {
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
   const [categories, setCategories] = React.useState<string[]>([]);
   const [form, setForm] = React.useState({
     date: new Date().toISOString().slice(0, 10),
@@ -60,8 +61,9 @@ export function ExpensePanel() {
     }
 
     setSubmitting(true);
+    setMessage('');
     try {
-      await createExpense({
+      const created = await createExpense({
         date: form.date,
         category: form.category,
         description: form.description,
@@ -70,6 +72,11 @@ export function ExpensePanel() {
         note: form.note || undefined,
       });
       setForm((prev) => ({ ...prev, description: '', amount: '', note: '' }));
+      if (created.approvalStatus === 'pending') {
+        setMessage(`Expense submitted for Principal approval (≥ ৳ ${EXPENSE_APPROVAL_THRESHOLD.toLocaleString('en-BD')}).`);
+      } else {
+        setMessage('Expense recorded successfully.');
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Expense entry failed.');
@@ -164,6 +171,11 @@ export function ExpensePanel() {
               {error}
             </div>
           )}
+          {message && (
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700">
+              {message}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -204,6 +216,7 @@ export function ExpensePanel() {
                   <th className="pb-3">Category</th>
                   <th className="pb-3">Description</th>
                   <th className="pb-3">Account</th>
+                  <th className="pb-3">Status</th>
                   <th className="pb-3 text-right">Amount</th>
                 </tr>
               </thead>
@@ -215,6 +228,17 @@ export function ExpensePanel() {
                     <td className="py-4 text-slate-500 font-medium">{expense.description}</td>
                     <td className="py-4 text-slate-500 font-medium">
                       {accounts.find((a) => a.id === expense.accountId)?.name || expense.accountId}
+                    </td>
+                    <td className="py-4">
+                      <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${
+                        expense.approvalStatus === 'pending'
+                          ? 'bg-amber-50 text-school-gold'
+                          : expense.approvalStatus === 'rejected'
+                            ? 'bg-red-50 text-red-500'
+                            : 'bg-emerald-50 text-emerald-600'
+                      }`}>
+                        {expense.approvalStatus ?? 'approved'}
+                      </span>
                     </td>
                     <td className="py-4 text-right font-black text-red-500">৳ {expense.amount.toLocaleString()}</td>
                   </tr>

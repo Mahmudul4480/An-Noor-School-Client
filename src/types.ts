@@ -209,6 +209,10 @@ export interface Expense {
   note?: string;
   createdBy?: string;
   createdAt: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
 }
 
 /* ---------------- Bank / MFS Ledger ---------------- */
@@ -233,11 +237,24 @@ export interface LedgerEntry {
   type: LedgerEntryType;
   amount: number;
   reference: string;
-  relatedType?: 'admission' | 'expense' | 'transfer' | 'invoice';
+  relatedType?: 'admission' | 'expense' | 'transfer' | 'invoice' | 'reversal';
   relatedId?: string;
   date: string;
   note?: string;
   createdAt: string;
+  reversed?: boolean;
+  reversalOfEntryId?: string;
+}
+
+export interface StudentCorrectionLog {
+  id: string;
+  studentId: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  correctedBy: string;
+  correctedAt: string;
+  reason?: string;
 }
 
 /* ---------------- Reports ---------------- */
@@ -245,12 +262,16 @@ export interface LedgerEntry {
 export interface FinancialSummary {
   from: string;
   to: string;
+  reportLabel: string;
   totalCollections: number;
+  admissionCollections: number;
+  feeCollections: number;
   totalDiscountsGiven: number;
   totalExpenses: number;
   netCashFlow: number;
   accountBalances: { account: LedgerAccount; balance: number }[];
   admissionsInRange: Admission[];
+  invoicesInRange: StudentInvoice[];
   expensesInRange: Expense[];
 }
 

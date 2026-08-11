@@ -6,12 +6,9 @@ import {
   Users, 
   BookOpen, 
   AlertTriangle, 
-  CheckCircle2, 
-  XCircle, 
   Clock, 
   DollarSign, 
   BarChart3, 
-  MessageSquare,
   LayoutGrid,
   BellRing,
   Award,
@@ -21,7 +18,8 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { cn } from '../lib/utils';
-import { CategoryApprovalPanel } from './accounts/CategoryRequestPanel';
+import { ApprovalsPanel } from './accounts/ApprovalsPanel';
+import { fetchApprovalStats } from '../lib/approvals';
 
 const enrollmentData = [
   { name: 'Grade 1', students: 45, color: '#1E3A8A' },
@@ -40,12 +38,11 @@ const revenueData = [
 
 export const PrincipalDashboard = () => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
+  const [pendingCount, setPendingCount] = React.useState(0);
 
-  const pendingApprovals = [
-    { id: 'REQ-001', from: 'Accounts', type: 'Communication', title: 'Monthly Fee Reminder SMS', priority: 'High', date: '26 Apr' },
-    { id: 'REQ-002', from: 'Teacher', type: 'Leave', title: 'Ustaz Ahmedullah: Sick Leave (2 Days)', priority: 'Medium', date: '25 Apr' },
-    { id: 'REQ-003', from: 'Office', type: 'Expense', title: 'CCTV Maintenance: ৳ 8,500', priority: 'Medium', date: '26 Apr' },
-  ];
+  React.useEffect(() => {
+    fetchApprovalStats('principal').then((stats) => setPendingCount(stats.actionableCount));
+  }, [activeSubTab]);
 
   const staffStatus = [
     { name: 'Ustaz Ahmedullah', role: 'Grade 4 Lead', status: 'Checked In', kpi: 94 },
@@ -114,34 +111,28 @@ export const PrincipalDashboard = () => {
             <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
                <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-8 flex items-center gap-2">
                  <BellRing size={16} className="text-school-gold" />
-                 Urgent Approval Queue
+                 Urgent Approval Queue ({pendingCount})
                </h3>
                <div className="space-y-4">
-                  {pendingApprovals.map((req, idx) => (
-                    <div key={idx} className="bg-slate-50 p-6 rounded-3xl border border-transparent hover:border-school-gold/20 transition-all flex items-center justify-between group">
-                       <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center font-black",
-                            req.priority === 'High' ? "bg-red-100 text-red-500" : "bg-white text-school-blue"
-                          )}>
-                             {req.priority === 'High' ? <AlertTriangle size={20} /> : <Zap size={20} />}
-                          </div>
-                          <div>
-                             <h4 className="text-[11px] font-black text-school-blue uppercase tracking-tight">{req.title}</h4>
-                             <p className="text-[9px] font-bold text-school-muted uppercase mt-1">From: {req.from} Dept • {req.date}</p>
-                          </div>
-                       </div>
-                       <motion.button 
-                         whileHover={{ x: 3 }}
-                         className="p-3 bg-white text-school-blue rounded-xl shadow-sm group-hover:bg-school-blue group-hover:text-white transition-all"
-                       >
-                         <Shield size={18} />
-                       </motion.button>
-                    </div>
-                  ))}
+                  {pendingCount === 0 ? (
+                    <p className="text-sm text-school-muted font-medium py-6 text-center">No pending approvals for Principal.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('approvals')}
+                      className="w-full p-6 bg-amber-50 border border-amber-100 rounded-[2rem] text-left hover:bg-amber-100 transition-colors"
+                    >
+                      <p className="text-sm font-black text-school-blue uppercase">{pendingCount} item(s) need your approval</p>
+                      <p className="text-[10px] text-school-muted font-bold mt-1">Admission final sign-off, categories, major expenses</p>
+                    </button>
+                  )}
                </div>
-               <button className="w-full mt-8 py-4 bg-slate-50 text-school-blue border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors">
-                 View All Requests (14)
+               <button
+                 type="button"
+                 onClick={() => setActiveSubTab('approvals')}
+                 className="w-full mt-8 py-4 bg-slate-50 text-school-blue border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors"
+               >
+                 Open Approval Hub
                </button>
             </div>
 
@@ -180,53 +171,8 @@ export const PrincipalDashboard = () => {
         )}
 
         {activeSubTab === 'approvals' && (
-          <motion.div 
-            key="approvals"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div className="bg-school-blue text-white p-10 rounded-[2.5rem] shadow-xl shadow-blue-900/20 text-center relative overflow-hidden">
-               <Shield className="mx-auto mb-6 opacity-30" size={60} />
-               <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Executive Decision Hub</h3>
-               <p className="text-xs font-bold opacity-60 uppercase tracking-widest max-w-md mx-auto">Authorize fiscal expenses, policy changes, and official communications.</p>
-            </div>
-
-            <div className="space-y-4">
-               {pendingApprovals.map((req, idx) => (
-                 <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-school-border shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                       <div className="p-4 bg-slate-50 text-school-blue rounded-2xl relative">
-                          {req.type === 'Leave' ? <Users size={24} /> : req.type === 'Expense' ? <DollarSign size={24} /> : <MessageSquare size={24} />}
-                          <span className={cn(
-                            "absolute -top-2 -right-2 w-4 h-4 rounded-full border-2 border-white",
-                            req.priority === 'High' ? "bg-red-500" : "bg-school-gold"
-                          )} />
-                       </div>
-                       <div>
-                          <div className="flex items-center gap-3 mb-1">
-                             <span className="text-[10px] font-black text-school-gold bg-amber-50 px-3 py-1 rounded-full uppercase tracking-tighter">{req.from} REQUEST</span>
-                             <span className="text-[9px] font-bold text-school-muted uppercase tracking-widest">{req.date}</span>
-                          </div>
-                          <h4 className="text-sm font-black text-school-blue uppercase tracking-tight">{req.title}</h4>
-                       </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                       <button className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all">
-                          <CheckCircle2 size={16} /> Approve
-                       </button>
-                       <button className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
-                          <XCircle size={16} /> Decline
-                       </button>
-                    </div>
-                 </div>
-               ))}
-            </div>
-
-            <div className="mt-8">
-              <CategoryApprovalPanel />
-            </div>
+          <motion.div key="approvals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <ApprovalsPanel viewerDepartment="principal" actorName="Principal Office" />
           </motion.div>
         )}
 

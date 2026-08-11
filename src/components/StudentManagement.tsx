@@ -5,22 +5,22 @@ import {
   Download,
   Search,
   Plus,
-  Zap,
-  Printer,
   FileSpreadsheet,
   AlertTriangle,
   CheckCircle2,
   X,
   Loader2,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { ParsedStudentRow, Student } from '../types';
+import { CLASS_OPTIONS, GENDER_OPTIONS } from '../lib/schoolConstants';
 import {
   ACCEPTED_STUDENT_FILE_TYPES,
   downloadStudentTemplate,
   parseStudentSpreadsheet,
 } from '../lib/studentImport';
-import { fetchStudents, filterStudents, importStudents } from '../lib/students';
+import { fetchStudents, filterStudents, importStudents, updateStudent } from '../lib/students';
 
 export function StudentManagement() {
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -33,6 +33,22 @@ export function StudentManagement() {
   const [previewRows, setPreviewRows] = React.useState<ParsedStudentRow[]>([]);
   const [showPreview, setShowPreview] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
+  const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
+  const [savingEdit, setSavingEdit] = React.useState(false);
+  const [editForm, setEditForm] = React.useState({
+    name: '',
+    class: '',
+    section: '',
+    roll: '',
+    guardianName: '',
+    guardianContact: '',
+    guardianEmail: '',
+    dob: '',
+    gender: '',
+    fatherName: '',
+    academicYear: '',
+    correctionReason: '',
+  });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const loadStudents = React.useCallback(async () => {
@@ -104,6 +120,63 @@ export function StudentManagement() {
       setError(err instanceof Error ? err.message : 'Import failed.');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const openEdit = (student: Student) => {
+    setEditingStudent(student);
+    setEditForm({
+      name: student.name,
+      class: student.class,
+      section: student.section ?? '',
+      roll: student.roll ?? '',
+      guardianName: student.guardianName ?? '',
+      guardianContact: student.guardianContact,
+      guardianEmail: student.guardianEmail ?? '',
+      dob: student.dob ?? '',
+      gender: student.gender ?? '',
+      fatherName: student.fatherName ?? '',
+      academicYear: student.academicYear ?? '',
+      correctionReason: '',
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    if (!editForm.correctionReason.trim()) {
+      setError('Correction reason লিখুন — কোন তথ্য ভুল ছিল তা উল্লেখ করুন।');
+      return;
+    }
+    setSavingEdit(true);
+    setError('');
+    setSuccess('');
+    try {
+      await updateStudent({
+        studentId: editingStudent.studentId,
+        name: editForm.name,
+        class: editForm.class,
+        section: editForm.section || undefined,
+        roll: editForm.roll || undefined,
+        guardianName: editForm.guardianName || undefined,
+        guardianContact: editForm.guardianContact,
+        guardianEmail: editForm.guardianEmail || undefined,
+        dob: editForm.dob || undefined,
+        gender: editForm.gender || undefined,
+        fatherName: editForm.fatherName || undefined,
+        academicYear: editForm.academicYear || undefined,
+        correctionReason: editForm.correctionReason,
+        correctedBy: 'Accounts Department',
+      });
+      setEditingStudent(null);
+      setSuccess('Student information corrected successfully.');
+      await loadStudents();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -272,11 +345,13 @@ export function StudentManagement() {
                       </td>
                       <td className="py-5 text-right">
                         <div className="flex justify-end gap-2 text-school-blue">
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                            <Zap size={14} className="text-school-gold" />
-                          </button>
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200">
-                            <Printer size={14} />
+                          <button
+                            type="button"
+                            onClick={() => openEdit(student)}
+                            className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                            title="Edit / Correct Info"
+                          >
+                            <Pencil size={14} className="text-school-blue" />
                           </button>
                         </div>
                       </td>
@@ -412,6 +487,110 @@ export function StudentManagement() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {editingStudent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="bg-white rounded-[2rem] border border-school-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6 border-b border-school-border flex items-center justify-between sticky top-0 bg-white z-10">
+                <div>
+                  <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Correct Student Info</h3>
+                  <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
+                    {editingStudent.studentId}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setEditingStudent(null)} className="p-2 rounded-xl hover:bg-slate-100 text-school-muted">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Student Name *" value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
+                  <Field label="Class *" value={editForm.class} onChange={(v) => setEditForm({ ...editForm, class: v })} selectOptions={[...CLASS_OPTIONS]} />
+                  <Field label="Section" value={editForm.section} onChange={(v) => setEditForm({ ...editForm, section: v })} />
+                  <Field label="Roll" value={editForm.roll} onChange={(v) => setEditForm({ ...editForm, roll: v })} />
+                  <Field label="Guardian Name" value={editForm.guardianName} onChange={(v) => setEditForm({ ...editForm, guardianName: v })} />
+                  <Field label="Guardian Contact *" value={editForm.guardianContact} onChange={(v) => setEditForm({ ...editForm, guardianContact: v })} />
+                  <Field label="Guardian Email" value={editForm.guardianEmail} onChange={(v) => setEditForm({ ...editForm, guardianEmail: v })} />
+                  <Field label="Father Name" value={editForm.fatherName} onChange={(v) => setEditForm({ ...editForm, fatherName: v })} />
+                  <Field label="Date of Birth" value={editForm.dob} onChange={(v) => setEditForm({ ...editForm, dob: v })} type="date" />
+                  <Field label="Gender" value={editForm.gender} onChange={(v) => setEditForm({ ...editForm, gender: v })} selectOptions={[...GENDER_OPTIONS]} />
+                  <Field label="Academic Year" value={editForm.academicYear} onChange={(v) => setEditForm({ ...editForm, academicYear: v })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Correction Reason *</label>
+                  <textarea
+                    value={editForm.correctionReason}
+                    onChange={(e) => setEditForm({ ...editForm, correctionReason: e.target.value })}
+                    placeholder="যেমন: Class ভুল entry হয়েছিল, Guardian mobile number update..."
+                    className="mt-1.5 w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none min-h-[80px]"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={() => setEditingStudent(null)} className="px-5 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={savingEdit} className="px-6 py-3 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60 flex items-center gap-2">
+                    {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
+                    Save Correction
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  selectOptions,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  selectOptions?: string[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
+      {selectOptions ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+        >
+          <option value="">Select...</option>
+          {selectOptions.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+        />
+      )}
     </div>
   );
 }

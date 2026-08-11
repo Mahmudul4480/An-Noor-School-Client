@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe } from 'lucide-react';
+import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe, RotateCcw } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, transferBetweenAccounts } from '../../lib/ledger';
+import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, isEntryReversed, reverseLedgerEntry, transferBetweenAccounts } from '../../lib/ledger';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry } from '../../types';
 
 const TYPE_ICON: Record<LedgerAccountType, React.ReactNode> = {
@@ -29,6 +29,9 @@ export function LedgerPanel() {
   const [transfer, setTransfer] = React.useState({ fromAccountId: '', toAccountId: '', amount: '', note: '' });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
+  const [reverseNote, setReverseNote] = React.useState<Record<string, string>>({});
+  const [reversingId, setReversingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -51,7 +54,27 @@ export function LedgerPanel() {
   }, [load]);
 
   const balances = computeAllBalances(accounts, entries);
-  const recentEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
+  const recentEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
+
+  const handleReverse = async (entry: LedgerEntry) => {
+    const reason = reverseNote[entry.id]?.trim();
+    if (!reason) {
+      setError('Reverse entry-র জন্য reason লিখুন।');
+      return;
+    }
+    setReversingId(entry.id);
+    setError('');
+    setMessage('');
+    try {
+      await reverseLedgerEntry({ entry, reason, actorName: 'Accounts Department' });
+      setMessage('Reverse entry recorded successfully.');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reverse entry failed.');
+    } finally {
+      setReversingId(null);
+    }
+  };
 
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +152,11 @@ export function LedgerPanel() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
             {error}
+          </div>
+        )}
+        {message && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700">
+            {message}
           </div>
         )}
 
@@ -248,7 +276,10 @@ export function LedgerPanel() {
       </div>
 
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
-        <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-6">Recent Debit / Credit Entries</h3>
+        <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-2">Recent Debit / Credit Entries</h3>
+        <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mb-6">
+          ভুল entry হলে Reverse Entry দিয়ে correction করুন
+        </p>
         {recentEntries.length === 0 ? (
           <p className="text-school-muted text-sm font-medium text-center py-8">কোনো entry নেই।</p>
         ) : (
@@ -261,24 +292,33 @@ export function LedgerPanel() {
                   <th className="pb-3">Reference</th>
                   <th className="pb-3">Type</th>
                   <th className="pb-3 text-right">Amount</th>
+                  <th className="pb-3 text-right">Reverse</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {recentEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                {recentEntries.map((entry) => {
+                  const reversed = isEntryReversed(entry, entries);
+                  return (
+                  <tr key={entry.id} className={cn('hover:bg-slate-50 transition-colors', reversed && 'opacity-60')}>
                     <td className="py-3 font-bold text-school-blue">{entry.date.slice(0, 10)}</td>
                     <td className="py-3 text-slate-500 font-medium">
                       {accounts.find((a) => a.id === entry.accountId)?.name || entry.accountId}
                     </td>
-                    <td className="py-3 text-slate-500 font-medium">{entry.reference}</td>
+                    <td className="py-3 text-slate-500 font-medium">
+                      {entry.reference}
+                      {entry.reversalOfEntryId && (
+                        <span className="block text-[9px] text-amber-700 font-bold uppercase">Reversal Entry</span>
+                      )}
+                    </td>
                     <td className="py-3">
                       <span
                         className={cn(
                           'px-2 py-1 rounded-lg text-[8px] font-black uppercase',
                           entry.type === 'credit' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500',
+                          reversed && 'bg-slate-100 text-slate-500',
                         )}
                       >
-                        {entry.type}
+                        {reversed ? 'reversed' : entry.type}
                       </span>
                     </td>
                     <td
@@ -289,8 +329,32 @@ export function LedgerPanel() {
                     >
                       {entry.type === 'credit' ? '+' : '−'} ৳ {entry.amount.toLocaleString()}
                     </td>
+                    <td className="py-3 text-right">
+                      {!reversed && !entry.reference.startsWith('REVERSAL —') ? (
+                        <div className="flex flex-col items-end gap-2 min-w-[160px]">
+                          <input
+                            type="text"
+                            value={reverseNote[entry.id] ?? ''}
+                            onChange={(e) => setReverseNote((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+                            placeholder="Reverse reason..."
+                            className="w-full px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={reversingId === entry.id}
+                            onClick={() => handleReverse(entry)}
+                            className="px-3 py-1.5 bg-amber-50 text-school-gold rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 disabled:opacity-60"
+                          >
+                            {reversingId === entry.id ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                            Reverse
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[9px] font-bold text-school-muted uppercase">—</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>

@@ -38,14 +38,14 @@ export function DirectorReportPanel() {
     setLoading(true);
     setError('');
     try {
-      const result = await getFinancialSummary(range.from, range.to);
+      const result = await getFinancialSummary(range.from, range.to, filterMode);
       setSummary(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Report generate করতে সমস্যা হয়েছে।');
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [range, filterMode]);
 
   React.useEffect(() => {
     runReport();
@@ -65,9 +65,11 @@ export function DirectorReportPanel() {
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Director Financial Report</h3>
+            <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">
+              {summary?.reportLabel ?? 'Financial Report'}
+            </h3>
             <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
-              Filter by date, month or year — export as PDF
+              Masik / Batsorik report — filter করে PDF export করুন
             </p>
           </div>
           <button
@@ -92,7 +94,7 @@ export function DirectorReportPanel() {
                   filterMode === mode ? 'bg-school-blue text-white shadow' : 'text-school-muted hover:text-school-blue',
                 )}
               >
-                {mode}
+                {mode === 'month' ? 'Masik' : mode === 'year' ? 'Batsorik' : 'Custom'}
               </button>
             ))}
           </div>
@@ -165,12 +167,47 @@ export function DirectorReportPanel() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <StatCard label="Total Collections" value={summary.totalCollections} icon={<DollarSign size={20} />} color="text-emerald-500" bg="bg-emerald-50" />
-              <StatCard label="Discounts Given" value={summary.totalDiscountsGiven} icon={<Percent size={20} />} color="text-school-gold" bg="bg-amber-50" />
-              <StatCard label="Total Expenses" value={summary.totalExpenses} icon={<ArrowDownRight size={20} />} color="text-red-500" bg="bg-red-50" />
+              <StatCard label="Admission Income" value={summary.admissionCollections} icon={<DollarSign size={20} />} color="text-emerald-600" bg="bg-emerald-50" />
+              <StatCard label="Fee Income" value={summary.feeCollections} icon={<DollarSign size={20} />} color="text-teal-600" bg="bg-teal-50" />
               <StatCard label="Net Cash Flow" value={summary.netCashFlow} icon={<TrendingUp size={20} />} color="text-school-blue" bg="bg-blue-50" />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <StatCard label="Discounts Given" value={summary.totalDiscountsGiven} icon={<Percent size={20} />} color="text-school-gold" bg="bg-amber-50" />
+              <StatCard label="Total Expenses" value={summary.totalExpenses} icon={<ArrowDownRight size={20} />} color="text-red-500" bg="bg-red-50" />
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div>
+                <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
+                  Fee Collections ({summary.invoicesInRange.length})
+                </h4>
+                <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-64 overflow-y-auto">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="sticky top-0">
+                      <tr className="bg-slate-50 text-school-muted font-black uppercase tracking-widest">
+                        <th className="p-3">Invoice</th>
+                        <th className="p-3">Student</th>
+                        <th className="p-3 text-right">Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {summary.invoicesInRange.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="p-4 text-center text-school-muted">No fee payments</td>
+                        </tr>
+                      ) : (
+                        summary.invoicesInRange.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td className="p-3 font-bold text-school-blue">{invoice.invoiceNumber}</td>
+                            <td className="p-3">{invoice.studentName}</td>
+                            <td className="p-3 text-right font-black text-emerald-600">৳ {invoice.paidAmount.toLocaleString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <div>
                 <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
                   Admissions in Period ({summary.admissionsInRange.length})

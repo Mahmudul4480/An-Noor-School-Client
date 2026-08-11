@@ -6,6 +6,7 @@ import {
   serverTimestamp,
   setDoc,
   addDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
@@ -252,4 +253,65 @@ export function computeBalance(account: LedgerAccount, entries: LedgerEntry[]): 
 
 export function computeAllBalances(accounts: LedgerAccount[], entries: LedgerEntry[]): { account: LedgerAccount; balance: number }[] {
   return accounts.map((account) => ({ account, balance: computeBalance(account, entries) }));
+}
+
+function normalizeEntry(entry: LedgerEntry): LedgerEntry {
+  return {
+    ...entry,
+    reversed: Boolean(entry.reversed),
+  };
+}
+
+export function isEntryReversed(entry: LedgerEntry, allEntries: LedgerEntry[]): boolean {
+  return Boolean(entry.reversed) || allEntries.some((item) => item.reversalOfEntryId === entry.id);
+}
+
+export async function reverseLedgerEntry(params: {
+  entry: LedgerEntry;
+  reason: string;
+  actorName?: string;
+}): Promise<LedgerEntry> {
+  const reason = params.reason.trim();
+  if (!reason) throw new Error('Reverse entry-র জন্য reason লিখুন।');
+
+  const entries = await fetchEntries();
+  if (isEntryReversed(params.entry, entries)) {
+    throw new Error('এই entry ইতিমধ্যে reverse করা হয়েছে।');
+  }
+  if (params.entry.reference.startsWith('REVERSAL —')) {
+    throw new Error('Reversal entry আবার reverse করা যাবে না।');
+  }
+
+  const reversal = await addEntry({
+    accountId: params.entry.accountId,
+    type: params.entry.type === 'credit' ? 'debit' : 'credit',
+    amount: params.entry.amount,
+    reference: `REVERSAL — ${params.entry.reference}`,
+    relatedType: 'reversal',
+    relatedId: params.entry.id,
+    date: new Date().toISOString(),
+    note: `${reason}${params.actorName ? ` • by ${params.actorName}` : ''}`,
+    reversalOfEntryId: params.entry.id,
+  });
+
+  if (isDemoLoginEnabled) {
+    const updated = entries.map((item) =>
+      item.id === params.entry.id ? { ...item, reversed: true } : item,
+    );
+    writeLocal(LOCAL_ENTRIES_KEY, updated);
+  } else {
+    await updateDoc(doc(db, ENTRIES_COLLECTION, params.entry.id), {
+      reversed: true,
+    });
+  }
+
+  return reversal;
+}
+
+export async function fetchEntriesForAccount(accountId: string): Promise<LedgerEntry[]> {
+  const entries = await fetchEntries();
+  return entries
+    .filter((entry) => entry.accountId === accountId)
+    .map(normalizeEntry)
+    .sort((a, b) => b.date.localeCompare(a.date));
 }

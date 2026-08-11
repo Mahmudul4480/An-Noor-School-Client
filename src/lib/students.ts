@@ -174,6 +174,70 @@ export async function addStudent(student: Student): Promise<void> {
   await setDoc(ref, { ...student, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
 }
 
+export interface UpdateStudentInput {
+  studentId: string;
+  name: string;
+  class: string;
+  section?: string;
+  roll?: string;
+  guardianName?: string;
+  guardianContact: string;
+  guardianEmail?: string;
+  dob?: string;
+  gender?: string;
+  fatherName?: string;
+  academicYear?: string;
+  correctionReason?: string;
+  correctedBy?: string;
+}
+
+export async function updateStudent(input: UpdateStudentInput): Promise<Student> {
+  const students = await fetchStudents();
+  const existing = students.find((student) => student.studentId === input.studentId);
+  if (!existing) throw new Error('Student not found.');
+
+  const updated: Student = {
+    ...existing,
+    name: input.name.trim(),
+    class: input.class,
+    section: input.section?.trim() || undefined,
+    roll: input.roll?.trim() || undefined,
+    guardianName: input.guardianName?.trim() || undefined,
+    guardianContact: input.guardianContact.trim(),
+    guardianEmail: input.guardianEmail?.trim() || undefined,
+    dob: input.dob || undefined,
+    gender: input.gender || undefined,
+    fatherName: input.fatherName?.trim() || undefined,
+    academicYear: input.academicYear?.trim() || existing.academicYear,
+  };
+
+  if (!updated.name || !updated.guardianContact) {
+    throw new Error('Name এবং Guardian Contact আবশ্যক।');
+  }
+
+  if (isDemoLoginEnabled) {
+    writeLocalStudents(
+      students.map((student) => (student.studentId === updated.studentId ? updated : student)),
+    );
+    return updated;
+  }
+
+  const ref = doc(db, STUDENTS_COLLECTION, updated.studentId);
+  await setDoc(
+    ref,
+    {
+      ...updated,
+      correctionReason: input.correctionReason?.trim() || null,
+      correctedBy: input.correctedBy ?? null,
+      correctedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return updated;
+}
+
 export async function updateStudentStatus(
   studentId: string,
   status: Student['status'],
