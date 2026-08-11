@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, ArrowDownRight } from 'lucide-react';
-import { createExpense, fetchExpenses, EXPENSE_APPROVAL_THRESHOLD } from '../../lib/expenses';
+import { createExpense, fetchExpenses } from '../../lib/expenses';
 import { fetchApprovedCategories } from '../../lib/categories';
 import { fetchAccounts } from '../../lib/ledger';
 import type { Expense, LedgerAccount } from '../../types';
@@ -63,7 +63,7 @@ export function ExpensePanel() {
     setSubmitting(true);
     setMessage('');
     try {
-      const created = await createExpense({
+      await createExpense({
         date: form.date,
         category: form.category,
         description: form.description,
@@ -72,11 +72,7 @@ export function ExpensePanel() {
         note: form.note || undefined,
       });
       setForm((prev) => ({ ...prev, description: '', amount: '', note: '' }));
-      if (created.approvalStatus === 'pending') {
-        setMessage(`Expense submitted for Principal approval (≥ ৳ ${EXPENSE_APPROVAL_THRESHOLD.toLocaleString('en-BD')}).`);
-      } else {
-        setMessage('Expense recorded successfully.');
-      }
+      setMessage('Expense Principal approval-এর জন্য submit হয়েছে।');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Expense entry failed.');
@@ -92,9 +88,12 @@ export function ExpensePanel() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm lg:col-span-1"
       >
-        <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-6 flex items-center gap-2">
+        <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-2 flex items-center gap-2">
           <ArrowDownRight size={16} className="text-red-500" /> New Expense Entry
         </h3>
+        <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mb-6">
+          সব expense Principal approve করার পর ledger-এ record হবে
+        </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Date</label>

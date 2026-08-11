@@ -1,14 +1,102 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchAdmissions } from './admissions';
+import { fetchAssets } from './assets';
 import { fetchExpenses } from './expenses';
 import { fetchInvoices } from './invoices';
 import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
-import type { Admission, Expense, FinancialSummary, StudentInvoice } from '../types';
+import type { Admission, Expense, FinancialOverview, FinancialSummary, StudentInvoice } from '../types';
 
 function inRange(dateIso: string, from: string, to: string): boolean {
   const date = dateIso.slice(0, 10);
   return date >= from && date <= to;
+}
+
+function monthRange(year: number, month: number): { from: string; to: string } {
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
+}
+
+export async function getFinancialOverview(): Promise<FinancialOverview> {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const { from: monthFrom, to: monthTo } = monthRange(currentYear, currentMonth);
+
+  const [admissions, expenses, invoices, accounts, entries, assets] = await Promise.all([
+    fetchAdmissions(),
+    fetchExpenses(),
+    fetchInvoices(),
+    fetchAccounts(),
+    fetchEntries(),
+    fetchAssets(),
+  ]);
+
+  const accountBalances = computeAllBalances(accounts, entries);
+  const netLiquidity = accountBalances.reduce((sum, { balance }) => sum + balance, 0);
+
+  const monthlyExpense = expenses
+    .filter(
+      (expense) =>
+        inRange(expense.date, monthFrom, monthTo) &&
+        (expense.approvalStatus === 'approved' || expense.approvalStatus === undefined),
+    )
+    .reduce((sum, expense) => sum + expense.amount, 0);
+
+  const uncollectedDues = invoices
+    .filter((invoice) => invoice.status !== 'cancelled' && invoice.status !== 'paid')
+    .reduce((sum, invoice) => sum + Math.max(0, invoice.totalAmount - invoice.paidAmount), 0);
+
+  const assetValue = assets
+    .filter((asset) => asset.condition !== 'disposed')
+    .reduce((sum, asset) => sum + (asset.purchaseValue || 0), 0);
+
+  const monthlyFlow: FinancialOverview['monthlyFlow'] = [];
+  for (let offset = 5; offset >= 0; offset -= 1) {
+    const date = new Date(currentYear, currentMonth - 1 - offset, 1);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const { from, to } = monthRange(year, month);
+    const name = date.toLocaleDateString('en-BD', { month: 'short' });
+
+    const admissionRevenue = admissions
+      .filter((admission) => admission.status === 'approved' && inRange(admission.updatedAt, from, to))
+      .reduce((sum, admission) => sum + admission.grandTotal, 0);
+
+    const feeRevenue = invoices
+      .filter(
+        (invoice) =>
+          invoice.status === 'paid' &&
+          invoice.paidAmount > 0 &&
+          inRange(invoice.paidAt ?? invoice.generatedAt, from, to),
+      )
+      .reduce((sum, invoice) => sum + invoice.paidAmount, 0);
+
+    const monthExpense = expenses
+      .filter(
+        (expense) =>
+          inRange(expense.date, from, to) &&
+          (expense.approvalStatus === 'approved' || expense.approvalStatus === undefined),
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+
+    monthlyFlow.push({
+      name,
+      revenue: admissionRevenue + feeRevenue,
+      expense: monthExpense,
+    });
+  }
+
+  return {
+    netLiquidity,
+    monthlyExpense,
+    uncollectedDues,
+    assetValue,
+    monthlyFlow,
+    accountBalances,
+  };
 }
 
 export function buildReportLabel(from: string, to: string, mode: 'month' | 'year' | 'custom'): string {

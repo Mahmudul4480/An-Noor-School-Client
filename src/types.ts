@@ -71,7 +71,7 @@ export interface AdmissionDiscount {
   reason: string;
 }
 
-export type ApprovalDepartment = 'teacher' | 'accounts' | 'principal';
+export type ApprovalDepartment = 'accounts' | 'principal';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
@@ -273,6 +273,15 @@ export interface FinancialSummary {
   admissionsInRange: Admission[];
   invoicesInRange: StudentInvoice[];
   expensesInRange: Expense[];
+}
+
+export interface FinancialOverview {
+  netLiquidity: number;
+  monthlyExpense: number;
+  uncollectedDues: number;
+  assetValue: number;
+  monthlyFlow: { name: string; revenue: number; expense: number }[];
+  accountBalances: { account: LedgerAccount; balance: number }[];
 }
 
 /* ---------------- Asset Registry ---------------- */

@@ -8,8 +8,6 @@ import type { Expense } from '../types';
 const EXPENSES_COLLECTION = 'expenses';
 const LOCAL_EXPENSES_KEY = 'an-noor-expenses';
 
-export const EXPENSE_APPROVAL_THRESHOLD = 5000;
-
 export const EXPENSE_CATEGORIES = [
   'Utility Bill',
   'Salary',
@@ -83,7 +81,6 @@ async function persistExpense(expense: Expense): Promise<void> {
 }
 
 export async function createExpense(input: CreateExpenseInput): Promise<Expense> {
-  const needsApproval = input.amount >= EXPENSE_APPROVAL_THRESHOLD;
   const expense: Expense = {
     id: generateId('exp'),
     date: input.date,
@@ -94,22 +91,10 @@ export async function createExpense(input: CreateExpenseInput): Promise<Expense>
     note: input.note,
     createdBy: input.createdBy ?? 'Accounts Department',
     createdAt: new Date().toISOString(),
-    approvalStatus: needsApproval ? 'pending' : 'approved',
+    approvalStatus: 'pending',
   };
 
   await persistExpense(expense);
-
-  if (!needsApproval) {
-    await recordExpense({
-      accountId: expense.accountId,
-      amount: expense.amount,
-      reference: `Expense — ${expense.category}: ${expense.description}`,
-      relatedId: expense.id,
-      date: expense.date,
-      note: expense.note,
-    });
-  }
-
   return expense;
 }
 

@@ -52,10 +52,46 @@ const DEFAULT_FEE_STRUCTURE: FeeStructure = {
 };
 
 export const APPROVAL_FLOW: { department: ApprovalDepartment; label: string }[] = [
-  { department: 'teacher', label: 'Class Teacher / Coordinator' },
-  { department: 'accounts', label: 'Accounts Department' },
   { department: 'principal', label: 'Principal' },
 ];
+
+function normalizeApprovals(raw: ApprovalStep[] | undefined, status: Admission['status']): ApprovalStep[] {
+  const steps = Array.isArray(raw) ? raw : [];
+  const principal = steps.find((step) => step.department === 'principal');
+
+  if (principal) {
+    return [
+      {
+        department: 'principal',
+        label: 'Principal',
+        status: principal.status,
+        actionedBy: principal.actionedBy,
+        note: principal.note,
+        actionedAt: principal.actionedAt,
+      },
+    ];
+  }
+
+  const rejected = steps.find((step) => step.status === 'rejected');
+  if (rejected) {
+    return [
+      {
+        department: 'principal',
+        label: 'Principal',
+        status: 'rejected',
+        actionedBy: rejected.actionedBy,
+        note: rejected.note,
+        actionedAt: rejected.actionedAt,
+      },
+    ];
+  }
+
+  if (status === 'approved') {
+    return [{ department: 'principal', label: 'Principal', status: 'approved' }];
+  }
+
+  return [{ department: 'principal', label: 'Principal', status: 'pending' }];
+}
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -140,7 +176,10 @@ function normalizeAdmission(id: string, data: Record<string, unknown>): Admissio
     idCardIssued: Boolean(data.idCardIssued),
     guardianLoginMobile: data.guardianLoginMobile ? String(data.guardianLoginMobile) : undefined,
     guardianTempPassword: data.guardianTempPassword ? String(data.guardianTempPassword) : undefined,
-    approvals: Array.isArray(data.approvals) ? (data.approvals as ApprovalStep[]) : defaultApprovals(),
+    approvals: normalizeApprovals(
+      Array.isArray(data.approvals) ? (data.approvals as ApprovalStep[]) : undefined,
+      (data.status as Admission['status']) || 'pending_approval',
+    ),
     status: (data.status as Admission['status']) || 'pending_approval',
     cancelReason: data.cancelReason ? String(data.cancelReason) : undefined,
     studentId: data.studentId ? String(data.studentId) : undefined,
@@ -363,17 +402,6 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     updatedAt: now,
   };
 
-  if (input.receivedInAccountId && admission.grandTotal > 0) {
-    await recordCollection({
-      accountId: input.receivedInAccountId,
-      amount: admission.grandTotal,
-      reference: `Admission Fee — ${admission.studentName} (${admission.formSerial})`,
-      relatedId: admission.id,
-      date: now.slice(0, 10),
-    });
-    admission.paymentRecorded = true;
-  }
-
   if (isDemoLoginEnabled) {
     const existing = readLocalAdmissions();
     writeLocalAdmissions([...existing, admission]);
@@ -433,13 +461,20 @@ export async function actOnApproval(params: {
     return updated;
   }
 
-  if (params.department === 'accounts' && params.receivedInAccountId) {
-    updated.receivedInAccountId = params.receivedInAccountId;
-  }
-
   const allApproved = updatedApprovals.every((step) => step.status === 'approved');
 
   if (allApproved) {
+    if (updated.receivedInAccountId && updated.grandTotal > 0 && !updated.paymentRecorded) {
+      await recordCollection({
+        accountId: updated.receivedInAccountId,
+        amount: updated.grandTotal,
+        reference: `Admission Fee — ${updated.studentName} (${updated.formSerial})`,
+        relatedId: updated.id,
+        date: new Date().toISOString().slice(0, 10),
+      });
+      updated.paymentRecorded = true;
+    }
+
     const studentId = await getNextStudentId(admission.academicYear);
     const student: Student = {
       studentId,

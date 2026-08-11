@@ -13,12 +13,12 @@ import {
   Settings,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { actOnApproval, cancelAdmission, fetchAdmissions } from '../../lib/admissions';
+import { cancelAdmission, fetchAdmissions } from '../../lib/admissions';
 import { fetchAccounts } from '../../lib/ledger';
 import { NewAdmissionModal } from './NewAdmissionModal';
 import { FeeStructureModal } from './FeeStructureModal';
 import { AdmissionReceiptModal, IdCardModal } from './AdmissionReceiptModal';
-import type { Admission, ApprovalDepartment, LedgerAccount } from '../../types';
+import type { Admission, LedgerAccount } from '../../types';
 
 const STATUS_STYLES: Record<Admission['status'], string> = {
   pending_approval: 'bg-amber-50 text-school-gold',
@@ -64,7 +64,7 @@ export function AdmissionsPanel() {
           <div>
             <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Admissions</h3>
             <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
-              Physical Form Entry → Fee & Discount → Multi-Department Approval
+              Physical Form Entry → Fee & Discount → Principal Approval
             </p>
           </div>
           <div className="flex gap-3">
@@ -165,63 +165,10 @@ function AdmissionRow({
   onRefresh: () => void;
   onShowIdCard: (admission: Admission) => void;
 }) {
-  const [selectedAccountId, setSelectedAccountId] = React.useState(accounts[0]?.id ?? '');
   const [showCancelForm, setShowCancelForm] = React.useState(false);
   const [cancelReason, setCancelReason] = React.useState('');
-  const [approvalNote, setApprovalNote] = React.useState('');
-  const [activeDept, setActiveDept] = React.useState<ApprovalDepartment | null>(null);
 
   const nextPendingStep = (admission.approvals ?? []).find((step) => step.status === 'pending');
-
-  const handleApprove = async (department: ApprovalDepartment) => {
-    if (department === 'accounts' && !selectedAccountId) {
-      alert('Fee কোন account-এ collect হয়েছে সেটা select করুন।');
-      return;
-    }
-
-    setActing(true);
-    try {
-      await actOnApproval({
-        admission,
-        department,
-        action: 'approved',
-        actorName: 'Accounts Dept.',
-        note: approvalNote || undefined,
-        receivedInAccountId: department === 'accounts' ? selectedAccountId : undefined,
-      });
-      setApprovalNote('');
-      setActiveDept(null);
-      onRefresh();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Approval failed.');
-    } finally {
-      setActing(false);
-    }
-  };
-
-  const handleReject = async (department: ApprovalDepartment) => {
-    if (!approvalNote.trim()) {
-      alert('Reject করার আগে reason লিখুন।');
-      return;
-    }
-    setActing(true);
-    try {
-      await actOnApproval({
-        admission,
-        department,
-        action: 'rejected',
-        actorName: 'Accounts Dept.',
-        note: approvalNote,
-      });
-      setApprovalNote('');
-      setActiveDept(null);
-      onRefresh();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Rejection failed.');
-    } finally {
-      setActing(false);
-    }
-  };
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -362,7 +309,7 @@ function AdmissionRow({
               {/* Approval steps */}
               <div>
                 <p className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
-                  Department Approval Flow
+                  Principal Approval
                 </p>
                 <div className="space-y-3">
                   {(admission.approvals ?? []).map((step) => (
@@ -380,92 +327,30 @@ function AdmissionRow({
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {step.status === 'pending' && admission.status === 'pending_approval' ? (
-                          activeDept === step.department ? (
-                            <div className="flex flex-col gap-2 min-w-[220px]">
-                              {step.department === 'accounts' && (
-                                <select
-                                  value={selectedAccountId}
-                                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                                  className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none"
-                                >
-                                  <option value="">Select receiving account...</option>
-                                  {accounts.map((account) => (
-                                    <option key={account.id} value={account.id}>
-                                      {account.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                              <input
-                                type="text"
-                                placeholder="Note (optional for approve, required for reject)"
-                                value={approvalNote}
-                                onChange={(e) => setApprovalNote(e.target.value)}
-                                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-medium outline-none"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={acting}
-                                  onClick={() => handleApprove(step.department)}
-                                  className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 disabled:opacity-60"
-                                >
-                                  Confirm Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={acting}
-                                  onClick={() => handleReject(step.department)}
-                                  className="flex-1 py-2 bg-red-50 text-red-500 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-100 disabled:opacity-60"
-                                >
-                                  Confirm Reject
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveDept(null)}
-                                  className="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setActiveDept(step.department)}
-                              className="px-4 py-2 bg-school-blue text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-900"
-                            >
-                              Act as {step.label}
-                            </button>
-                          )
-                        ) : (
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest',
-                              step.status === 'approved'
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : step.status === 'rejected'
-                                  ? 'bg-red-50 text-red-500'
-                                  : 'bg-slate-100 text-slate-400',
-                            )}
-                          >
-                            {step.status === 'approved' ? (
-                              <CheckCircle2 size={12} />
-                            ) : step.status === 'rejected' ? (
-                              <XCircle size={12} />
-                            ) : null}
-                            {step.status}
-                          </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest',
+                          step.status === 'approved'
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : step.status === 'rejected'
+                              ? 'bg-red-50 text-red-500'
+                              : 'bg-amber-50 text-school-gold',
                         )}
-                      </div>
+                      >
+                        {step.status === 'approved' ? (
+                          <CheckCircle2 size={12} />
+                        ) : step.status === 'rejected' ? (
+                          <XCircle size={12} />
+                        ) : null}
+                        {step.status}
+                      </span>
                     </div>
                   ))}
                 </div>
                 {nextPendingStep && admission.status === 'pending_approval' && (
                   <p className="text-[9px] text-school-muted font-bold uppercase tracking-widest mt-3">
-                    Waiting on: {nextPendingStep.label}
+                    Principal Approval Hub-এ approve হবে • Fee account:{' '}
+                    {accounts.find((account) => account.id === admission.receivedInAccountId)?.name ?? 'Not selected'}
                   </p>
                 )}
               </div>

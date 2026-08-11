@@ -78,26 +78,13 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
     setMessage('');
     try {
       if (item.kind === 'admission' && item.admission && item.department) {
-        if (item.department === 'accounts') {
-          const accountId = accountSelections[item.id];
-          if (!accountId) throw new Error('Fee collection account select করুন।');
-          await actOnApproval({
-            admission: item.admission,
-            department: item.department,
-            action: 'approved',
-            actorName,
-            note: notes[item.id] || undefined,
-            receivedInAccountId: accountId,
-          });
-        } else {
-          await actOnApproval({
-            admission: item.admission,
-            department: item.department,
-            action: 'approved',
-            actorName,
-            note: notes[item.id] || undefined,
-          });
-        }
+        await actOnApproval({
+          admission: item.admission,
+          department: item.department,
+          action: 'approved',
+          actorName,
+          note: notes[item.id] || undefined,
+        });
       } else if (item.kind === 'category' && item.categoryRequest) {
         await reviewCategoryRequest({
           request: item.categoryRequest,
@@ -166,11 +153,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
   };
 
   const departmentLabel =
-    viewerDepartment === 'accounts'
-      ? 'Accounts Department'
-      : viewerDepartment === 'principal'
-        ? 'Principal Office'
-        : 'Class Teacher';
+    viewerDepartment === 'accounts' ? 'Accounts Department' : 'Principal Office';
 
   return (
     <div className="space-y-6">
@@ -178,11 +161,16 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         <ShieldCheck size={48} className="absolute right-8 top-8 opacity-20" />
         <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Approval Hub</h3>
         <p className="text-xs font-bold opacity-80 uppercase tracking-widest max-w-xl">
-          {departmentLabel} — Admission, category, এবং major expense approval এক জায়গায়
+          {viewerDepartment === 'principal'
+            ? 'Accounts থেকে আসা admission, expense, category request approve/reject করুন'
+            : 'Accounts থেকে submit করা entry Principal approval-এর জন্য অপেক্ষা করছে'}
         </p>
         <div className="flex flex-wrap gap-4 mt-6">
-          <StatPill label="Your Action Needed" value={actionable.length} />
-          <StatPill label="In Pipeline" value={watching.length} />
+          <StatPill
+            label={viewerDepartment === 'principal' ? 'Action Required' : 'Pending Approval'}
+            value={viewerDepartment === 'principal' ? actionable.length : watching.length}
+          />
+          {viewerDepartment === 'principal' && <StatPill label="Submitted Queue" value={watching.length} />}
         </div>
       </div>
 
@@ -198,6 +186,21 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           <Loader2 size={28} className="animate-spin mx-auto text-school-blue mb-3" />
           <p className="text-xs font-black text-school-muted uppercase tracking-widest">Loading approval queue...</p>
         </div>
+      ) : viewerDepartment === 'accounts' ? (
+        <ApprovalSection
+          title="Pending Principal Approval"
+          emptyText="Principal approval-এর জন্য কোনো pending submission নেই।"
+          items={watching}
+          accounts={accounts}
+          notes={notes}
+          accountSelections={accountSelections}
+          actingId={actingId}
+          onNoteChange={(id, value) => setNotes((prev) => ({ ...prev, [id]: value }))}
+          onAccountChange={(id, value) => setAccountSelections((prev) => ({ ...prev, [id]: value }))}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          actionable={false}
+        />
       ) : (
         <>
           <ApprovalSection
@@ -216,8 +219,8 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           />
 
           <ApprovalSection
-            title="Waiting in Pipeline"
-            emptyText="অন্য department-এর approval-এর জন্য waiting কোনো item নেই।"
+            title="Submitted by Accounts"
+            emptyText="কোনো pending submission নেই।"
             items={watching}
             accounts={accounts}
             notes={notes}
@@ -322,19 +325,6 @@ function ApprovalSection({
 
                   {actionable && (
                     <div className="flex flex-col gap-3 min-w-[240px]">
-                      {item.kind === 'admission' && item.department === 'accounts' && (
-                        <select
-                          value={accountSelections[item.id] ?? ''}
-                          onChange={(e) => onAccountChange(item.id, e.target.value)}
-                          className="px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-xs font-bold outline-none"
-                        >
-                          {accounts.map((account) => (
-                            <option key={account.id} value={account.id}>
-                              Collect in: {account.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
                       <input
                         type="text"
                         value={notes[item.id] ?? ''}

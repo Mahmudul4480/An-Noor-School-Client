@@ -1,6 +1,6 @@
 import { fetchAdmissions } from './admissions';
 import { fetchCategoryRequests } from './categories';
-import { fetchExpenses, EXPENSE_APPROVAL_THRESHOLD } from './expenses';
+import { fetchExpenses } from './expenses';
 import type {
   Admission,
   ApprovalDepartment,
@@ -58,10 +58,10 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       kind: 'admission',
       title: `Admission — ${admission.studentName}`,
       subtitle: `${admission.formSerial} • ${admission.classApplied} • ৳ ${admission.grandTotal.toLocaleString('en-BD')}`,
-      requestedBy: admission.guardianName,
+      requestedBy: 'Accounts Department',
       requestedAt: admission.createdAt,
       priority: 'high',
-      actionable: next.department === department,
+      actionable: department === 'principal' && next.department === 'principal',
       admission,
       department: next.department,
     };
@@ -91,11 +91,11 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
     const item: ApprovalQueueItem = {
       id: `exp-${expense.id}`,
       kind: 'expense',
-      title: `Major Expense — ${expense.description}`,
-      subtitle: `${expense.category} • ৳ ${expense.amount.toLocaleString('en-BD')} (≥ ৳ ${EXPENSE_APPROVAL_THRESHOLD.toLocaleString('en-BD')})`,
+      title: `Expense — ${expense.description}`,
+      subtitle: `${expense.category} • ৳ ${expense.amount.toLocaleString('en-BD')}`,
       requestedBy: expense.createdBy ?? 'Accounts Department',
       requestedAt: expense.createdAt,
-      priority: expense.amount >= EXPENSE_APPROVAL_THRESHOLD * 2 ? 'high' : 'medium',
+      priority: expense.amount >= 10000 ? 'high' : 'medium',
       actionable: department === 'principal',
       expense,
     };

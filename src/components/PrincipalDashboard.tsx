@@ -123,7 +123,7 @@ export const PrincipalDashboard = () => {
                       className="w-full p-6 bg-amber-50 border border-amber-100 rounded-[2rem] text-left hover:bg-amber-100 transition-colors"
                     >
                       <p className="text-sm font-black text-school-blue uppercase">{pendingCount} item(s) need your approval</p>
-                      <p className="text-[10px] text-school-muted font-bold mt-1">Admission final sign-off, categories, major expenses</p>
+                      <p className="text-[10px] text-school-muted font-bold mt-1">Admission, expense, category — Accounts থেকে Principal approve</p>
                     </button>
                   )}
                </div>

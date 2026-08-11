@@ -18,10 +18,8 @@ import {
   MessageSquare,
   Sparkles,
   School,
-  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { ApprovalsPanel } from './accounts/ApprovalsPanel';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const TeacherDashboard = () => {
@@ -58,7 +56,6 @@ export const TeacherDashboard = () => {
     { id: 'attendance', label: 'Attendance', icon: <Users size={16} /> },
     { id: 'input', label: 'Daily Lessons', icon: <BookOpen size={16} /> },
     { id: 'leave', label: 'Leave Portal', icon: <FileText size={16} /> },
-    { id: 'approvals', label: 'Approvals', icon: <ShieldCheck size={16} /> },
     { id: 'coordinator', label: 'Coordinator Hub', icon: <School size={16} /> },
   ];
 
@@ -410,12 +407,6 @@ export const TeacherDashboard = () => {
                   <span className="px-3 py-1 bg-amber-50 text-school-gold text-[8px] font-black rounded-lg uppercase tracking-widest">Pending</span>
                </div>
             </div>
-          </motion.div>
-        )}
-
-        {activeSubTab === 'approvals' && (
-          <motion.div key="approvals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <ApprovalsPanel viewerDepartment="teacher" actorName="Class Teacher / Coordinator" />
           </motion.div>
         )}
 
