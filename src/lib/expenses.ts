@@ -1,8 +1,8 @@
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { isDemoLoginEnabled } from './auth';
+import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { recordExpense } from './ledger';
-import { omitUndefined } from './utils';
+import { omitUndefined, toIsoString } from './utils';
 import type { Expense } from '../types';
 
 const EXPENSES_COLLECTION = 'expenses';
@@ -37,21 +37,25 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function normalizeExpense(expense: Expense): Expense {
+function normalizeExpense(expense: Expense, documentId?: string): Expense {
   return {
     ...expense,
+    id: expense.id || documentId || generateId('exp'),
+    createdAt: toIsoString(expense.createdAt),
+    date: toIsoString(expense.date, new Date().toISOString()).slice(0, 10),
     approvalStatus: expense.approvalStatus ?? 'approved',
   };
 }
 
 export async function fetchExpenses(): Promise<Expense[]> {
   if (isDemoLoginEnabled) {
-    return readLocal<Expense[]>(LOCAL_EXPENSES_KEY, []).map(normalizeExpense).sort((a, b) => b.date.localeCompare(a.date));
+    return readLocal<Expense[]>(LOCAL_EXPENSES_KEY, []).map((item) => normalizeExpense(item)).sort((a, b) => b.date.localeCompare(a.date));
   }
 
+  await waitForAuthUser();
   const snapshot = await getDocs(query(collection(db, EXPENSES_COLLECTION)));
   return snapshot.docs
-    .map((document) => normalizeExpense(document.data() as Expense))
+    .map((document) => normalizeExpense(document.data() as Expense, document.id))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
@@ -75,6 +79,7 @@ async function persistExpense(expense: Expense): Promise<void> {
     return;
   }
 
+  await waitForAuthUser();
   await setDoc(doc(db, EXPENSES_COLLECTION, expense.id), omitUndefined({ ...expense, createdAt: serverTimestamp() }), {
     merge: true,
   });

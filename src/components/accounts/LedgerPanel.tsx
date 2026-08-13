@@ -2,8 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe, RotateCcw } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, isEntryReversed, reverseLedgerEntry, transferBetweenAccounts } from '../../lib/ledger';
-import type { LedgerAccount, LedgerAccountType, LedgerEntry } from '../../types';
+import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, fetchReverseRequests, hasPendingReverseRequest, isEntryReversed, requestReverseEntry, transferBetweenAccounts } from '../../lib/ledger';
+import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../../types';
 
 const TYPE_ICON: Record<LedgerAccountType, React.ReactNode> = {
   cash: <Wallet size={18} />,
@@ -22,6 +22,7 @@ const TYPE_STYLE: Record<LedgerAccountType, string> = {
 export function LedgerPanel() {
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [entries, setEntries] = React.useState<LedgerEntry[]>([]);
+  const [reverseRequests, setReverseRequests] = React.useState<ReverseRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showAddAccount, setShowAddAccount] = React.useState(false);
   const [showTransfer, setShowTransfer] = React.useState(false);
@@ -32,13 +33,20 @@ export function LedgerPanel() {
   const [message, setMessage] = React.useState('');
   const [reverseNote, setReverseNote] = React.useState<Record<string, string>>({});
   const [reversingId, setReversingId] = React.useState<string | null>(null);
+  const [confirmEntry, setConfirmEntry] = React.useState<LedgerEntry | null>(null);
+  const confirmBannerRef = React.useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [accountData, entryData] = await Promise.all([fetchAccounts(), fetchEntries()]);
+      const [accountData, entryData, reverseData] = await Promise.all([
+        fetchAccounts(),
+        fetchEntries(),
+        fetchReverseRequests(),
+      ]);
       setAccounts(accountData);
       setEntries(entryData);
+      setReverseRequests(reverseData);
       setTransfer((prev) => ({
         ...prev,
         fromAccountId: prev.fromAccountId || accountData[0]?.id || '',
@@ -56,21 +64,43 @@ export function LedgerPanel() {
   const balances = computeAllBalances(accounts, entries);
   const recentEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
 
-  const handleReverse = async (entry: LedgerEntry) => {
+  const handleReverse = (entry: LedgerEntry) => {
     const reason = reverseNote[entry.id]?.trim();
+    if (!reason) {
+      setError('Reverse entry-র জন্য reason লিখুন।');
+      setMessage('');
+      return;
+    }
+    setError('');
+    setConfirmEntry(entry);
+  };
+
+  const handleConfirmReverse = async () => {
+    if (!confirmEntry) return;
+    const reason = reverseNote[confirmEntry.id]?.trim();
     if (!reason) {
       setError('Reverse entry-র জন্য reason লিখুন।');
       return;
     }
-    setReversingId(entry.id);
+    setReversingId(confirmEntry.id);
     setError('');
     setMessage('');
     try {
-      await reverseLedgerEntry({ entry, reason, actorName: 'Accounts Department' });
-      setMessage('Reverse entry recorded successfully.');
+      await requestReverseEntry({
+        entry: confirmEntry,
+        reason,
+        accountName: accounts.find((account) => account.id === confirmEntry.accountId)?.name,
+        actorName: 'Accounts Department',
+      });
+      setMessage(
+        `Reverse request Principal-এর কাছে পাঠানো হয়েছে। ৳ ${confirmEntry.amount.toLocaleString('en-BD')} — ${confirmEntry.reference}. Accounts → Approvals ট্যাবে pending দেখাবে; Principal approve করলে reverse হবে।`,
+      );
+      setReverseNote((prev) => ({ ...prev, [confirmEntry.id]: '' }));
+      setConfirmEntry(null);
       await load();
+      window.setTimeout(() => confirmBannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reverse entry failed.');
+      setError(err instanceof Error ? err.message : 'Reverse request failed.');
     } finally {
       setReversingId(null);
     }
@@ -155,7 +185,10 @@ export function LedgerPanel() {
           </div>
         )}
         {message && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700">
+          <div
+            ref={confirmBannerRef}
+            className="mb-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700"
+          >
             {message}
           </div>
         )}
@@ -278,8 +311,18 @@ export function LedgerPanel() {
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
         <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-2">Recent Debit / Credit Entries</h3>
         <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mb-6">
-          ভুল entry হলে Reverse Entry দিয়ে correction করুন
+          Reverse করলে Principal approve করার পর ledger update হবে
         </p>
+        {message && (
+          <div className="mb-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700">
+            {message}
+          </div>
+        )}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
+            {error}
+          </div>
+        )}
         {recentEntries.length === 0 ? (
           <p className="text-school-muted text-sm font-medium text-center py-8">কোনো entry নেই।</p>
         ) : (
@@ -298,6 +341,7 @@ export function LedgerPanel() {
               <tbody className="divide-y divide-slate-50">
                 {recentEntries.map((entry) => {
                   const reversed = isEntryReversed(entry, entries);
+                  const pendingReverse = hasPendingReverseRequest(entry.id, reverseRequests);
                   return (
                   <tr key={entry.id} className={cn('hover:bg-slate-50 transition-colors', reversed && 'opacity-60')}>
                     <td className="py-3 font-bold text-school-blue">{entry.date.slice(0, 10)}</td>
@@ -316,9 +360,10 @@ export function LedgerPanel() {
                           'px-2 py-1 rounded-lg text-[8px] font-black uppercase',
                           entry.type === 'credit' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500',
                           reversed && 'bg-slate-100 text-slate-500',
+                          pendingReverse && 'bg-amber-50 text-school-gold',
                         )}
                       >
-                        {reversed ? 'reversed' : entry.type}
+                        {reversed ? 'reversed' : pendingReverse ? 'pending reverse' : entry.type}
                       </span>
                     </td>
                     <td
@@ -330,7 +375,13 @@ export function LedgerPanel() {
                       {entry.type === 'credit' ? '+' : '−'} ৳ {entry.amount.toLocaleString()}
                     </td>
                     <td className="py-3 text-right">
-                      {!reversed && !entry.reference.startsWith('REVERSAL —') ? (
+                      {reversed || entry.reference.startsWith('REVERSAL —') ? (
+                        <span className="text-[9px] font-bold text-school-muted uppercase">—</span>
+                      ) : pendingReverse ? (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-school-gold">
+                          Waiting Principal
+                        </span>
+                      ) : (
                         <div className="flex flex-col items-end gap-2 min-w-[160px]">
                           <input
                             type="text"
@@ -349,8 +400,6 @@ export function LedgerPanel() {
                             Reverse
                           </button>
                         </div>
-                      ) : (
-                        <span className="text-[9px] font-bold text-school-muted uppercase">—</span>
                       )}
                     </td>
                   </tr>
@@ -360,6 +409,42 @@ export function LedgerPanel() {
           </div>
         )}
       </div>
+
+      {confirmEntry && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] border border-school-border shadow-2xl w-full max-w-md p-8">
+            <h3 className="text-lg font-black text-school-blue uppercase tracking-tight mb-2">Confirm Reverse Entry</h3>
+            <p className="text-[11px] text-school-muted font-medium mb-5">
+              এই reverse Principal approve না করা পর্যন্ত ledger change হবে না। Request Accounts → Approvals-এ pending থাকবে।
+            </p>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] font-bold space-y-1 mb-6">
+              <p className="text-school-blue uppercase">{confirmEntry.reference}</p>
+              <p className="text-school-muted">
+                {accounts.find((account) => account.id === confirmEntry.accountId)?.name} • {confirmEntry.type.toUpperCase()} • ৳ {confirmEntry.amount.toLocaleString('en-BD')}
+              </p>
+              <p className="text-amber-700">Reason: {reverseNote[confirmEntry.id]}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmEntry(null)}
+                className="flex-1 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={reversingId === confirmEntry.id}
+                onClick={handleConfirmReverse}
+                className="flex-1 py-3 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {reversingId === confirmEntry.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Send to Principal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

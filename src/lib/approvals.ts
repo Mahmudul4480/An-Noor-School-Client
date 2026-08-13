@@ -1,14 +1,17 @@
 import { fetchAdmissions } from './admissions';
 import { fetchCategoryRequests } from './categories';
 import { fetchExpenses } from './expenses';
+import { fetchReverseRequests } from './ledger';
+import { toIsoString } from './utils';
 import type {
   Admission,
   ApprovalDepartment,
   CategoryRequest,
   Expense,
+  ReverseRequest,
 } from '../types';
 
-export type ApprovalItemKind = 'admission' | 'category' | 'expense';
+export type ApprovalItemKind = 'admission' | 'category' | 'expense' | 'reversal';
 
 export interface ApprovalQueueItem {
   id: string;
@@ -22,6 +25,7 @@ export interface ApprovalQueueItem {
   admission?: Admission;
   categoryRequest?: CategoryRequest;
   expense?: Expense;
+  reverseRequest?: ReverseRequest;
   department?: ApprovalDepartment;
 }
 
@@ -31,83 +35,103 @@ export function getNextPendingAdmissionStep(admission: Admission) {
 
 export function canDepartmentActOnAdmission(admission: Admission, department: ApprovalDepartment): boolean {
   if (admission.status !== 'pending_approval') return false;
-  const next = getNextPendingAdmissionStep(admission);
-  return next?.department === department;
+  return department === 'principal';
 }
 
 export async function fetchApprovalQueue(department: ApprovalDepartment): Promise<{
   actionable: ApprovalQueueItem[];
   watching: ApprovalQueueItem[];
+  pending: ApprovalQueueItem[];
 }> {
-  const [admissions, categories, expenses] = await Promise.all([
+  const results = await Promise.allSettled([
     fetchAdmissions(),
     fetchCategoryRequests(),
     fetchExpenses(),
+    fetchReverseRequests(),
   ]);
 
-  const actionable: ApprovalQueueItem[] = [];
-  const watching: ApprovalQueueItem[] = [];
+  const admissions = results[0].status === 'fulfilled' ? results[0].value : [];
+  const categories = results[1].status === 'fulfilled' ? results[1].value : [];
+  const expenses = results[2].status === 'fulfilled' ? results[2].value : [];
+  const reverseRequests = results[3].status === 'fulfilled' ? results[3].value : [];
+
+  const pending: ApprovalQueueItem[] = [];
 
   for (const admission of admissions) {
-    if (admission.status !== 'pending_approval') continue;
-    const next = getNextPendingAdmissionStep(admission);
-    if (!next) continue;
+    const waitingOnPrincipal =
+      admission.status === 'pending_approval' ||
+      (admission.approvals ?? []).some((step) => step.status === 'pending');
+    if (!waitingOnPrincipal || admission.status === 'approved' || admission.status === 'rejected' || admission.status === 'cancelled') {
+      continue;
+    }
 
-    const item: ApprovalQueueItem = {
-      id: `adm-${admission.id}-${next.department}`,
+    pending.push({
+      id: `adm-${admission.id}`,
       kind: 'admission',
       title: `Admission — ${admission.studentName}`,
       subtitle: `${admission.formSerial} • ${admission.classApplied} • ৳ ${admission.grandTotal.toLocaleString('en-BD')}`,
       requestedBy: 'Accounts Department',
-      requestedAt: admission.createdAt,
+      requestedAt: toIsoString(admission.createdAt),
       priority: 'high',
-      actionable: department === 'principal' && next.department === 'principal',
+      actionable: department === 'principal',
       admission,
-      department: next.department,
-    };
-
-    if (item.actionable) actionable.push(item);
-    else watching.push(item);
+      department: 'principal',
+    });
   }
 
   for (const request of categories.filter((item) => item.status === 'pending')) {
-    const item: ApprovalQueueItem = {
+    pending.push({
       id: `cat-${request.id}`,
       kind: 'category',
       title: `${request.type === 'income' ? 'Income' : 'Expense'} Category — ${request.name}`,
       subtitle: `New ${request.type} category request`,
       requestedBy: request.requestedBy,
-      requestedAt: request.createdAt,
+      requestedAt: toIsoString(request.createdAt),
       priority: 'medium',
       actionable: department === 'principal',
       categoryRequest: request,
-    };
-
-    if (item.actionable) actionable.push(item);
-    else watching.push(item);
+      department: 'principal',
+    });
   }
 
   for (const expense of expenses.filter((item) => item.approvalStatus === 'pending')) {
-    const item: ApprovalQueueItem = {
+    pending.push({
       id: `exp-${expense.id}`,
       kind: 'expense',
       title: `Expense — ${expense.description}`,
       subtitle: `${expense.category} • ৳ ${expense.amount.toLocaleString('en-BD')}`,
       requestedBy: expense.createdBy ?? 'Accounts Department',
-      requestedAt: expense.createdAt,
+      requestedAt: toIsoString(expense.createdAt || expense.date),
       priority: expense.amount >= 10000 ? 'high' : 'medium',
       actionable: department === 'principal',
       expense,
-    };
-
-    if (item.actionable) actionable.push(item);
-    else watching.push(item);
+      department: 'principal',
+    });
   }
 
-  const byDate = (a: ApprovalQueueItem, b: ApprovalQueueItem) => b.requestedAt.localeCompare(a.requestedAt);
+  for (const reverseRequest of reverseRequests.filter((item) => item.approvalStatus === 'pending')) {
+    pending.push({
+      id: `rev-${reverseRequest.id}`,
+      kind: 'reversal',
+      title: `Reverse Entry — ${reverseRequest.reference}`,
+      subtitle: `${reverseRequest.accountName ?? reverseRequest.accountId} • ${reverseRequest.entryType.toUpperCase()} ৳ ${reverseRequest.amount.toLocaleString('en-BD')} • ${reverseRequest.reason}`,
+      requestedBy: reverseRequest.requestedBy,
+      requestedAt: toIsoString(reverseRequest.createdAt),
+      priority: 'high',
+      actionable: department === 'principal',
+      reverseRequest,
+      department: 'principal',
+    });
+  }
+
+  const byDate = (a: ApprovalQueueItem, b: ApprovalQueueItem) =>
+    toIsoString(b.requestedAt).localeCompare(toIsoString(a.requestedAt));
+  const sorted = pending.sort(byDate);
+
   return {
-    actionable: actionable.sort(byDate),
-    watching: watching.sort(byDate),
+    actionable: sorted.filter((item) => item.actionable),
+    watching: sorted.filter((item) => !item.actionable),
+    pending: sorted,
   };
 }
 
@@ -116,6 +140,6 @@ export async function fetchApprovalStats(department: ApprovalDepartment) {
   return {
     actionableCount: queue.actionable.length,
     watchingCount: queue.watching.length,
-    totalPending: queue.actionable.length + queue.watching.length,
+    totalPending: queue.pending.length,
   };
 }

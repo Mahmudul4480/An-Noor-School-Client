@@ -10,13 +10,15 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
-import { omitUndefined } from './utils';
-import type { LedgerAccount, LedgerAccountType, LedgerEntry } from '../types';
+import { omitUndefined, toIsoString } from './utils';
+import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../types';
 
 const ACCOUNTS_COLLECTION = 'ledgerAccounts';
 const ENTRIES_COLLECTION = 'ledgerEntries';
+const REVERSE_REQUESTS_COLLECTION = 'reverseRequests';
 const LOCAL_ACCOUNTS_KEY = 'an-noor-ledger-accounts';
 const LOCAL_ENTRIES_KEY = 'an-noor-ledger-entries';
+const LOCAL_REVERSE_REQUESTS_KEY = 'an-noor-reverse-requests';
 
 export const ONLINE_PAYMENT_ACCOUNT_ID = 'online-payment';
 
@@ -266,6 +268,122 @@ export function isEntryReversed(entry: LedgerEntry, allEntries: LedgerEntry[]): 
   return Boolean(entry.reversed) || allEntries.some((item) => item.reversalOfEntryId === entry.id);
 }
 
+export async function fetchReverseRequests(): Promise<ReverseRequest[]> {
+  if (isDemoLoginEnabled) {
+    return readLocal<ReverseRequest[]>(LOCAL_REVERSE_REQUESTS_KEY, [])
+      .map(normalizeReverseRequest)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  await waitForAuthUser();
+  const snapshot = await getDocs(query(collection(db, REVERSE_REQUESTS_COLLECTION)));
+  return snapshot.docs
+    .map((document) =>
+      normalizeReverseRequest({
+        ...(document.data() as ReverseRequest),
+        id: (document.data() as ReverseRequest).id || document.id,
+      }),
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function normalizeReverseRequest(request: ReverseRequest): ReverseRequest {
+  return {
+    ...request,
+    createdAt: toIsoString(request.createdAt),
+    approvalStatus: request.approvalStatus ?? 'pending',
+  };
+}
+
+async function persistReverseRequest(request: ReverseRequest): Promise<void> {
+  if (isDemoLoginEnabled) {
+    const existing = readLocal<ReverseRequest[]>(LOCAL_REVERSE_REQUESTS_KEY, []);
+    const index = existing.findIndex((item) => item.id === request.id);
+    if (index >= 0) existing[index] = request;
+    else existing.push(request);
+    writeLocal(LOCAL_REVERSE_REQUESTS_KEY, existing);
+    return;
+  }
+
+  await waitForAuthUser();
+  await setDoc(doc(db, REVERSE_REQUESTS_COLLECTION, request.id), omitUndefined({ ...request }), { merge: true });
+}
+
+export function hasPendingReverseRequest(entryId: string, requests: ReverseRequest[]): boolean {
+  return requests.some((request) => request.entryId === entryId && request.approvalStatus === 'pending');
+}
+
+export async function requestReverseEntry(params: {
+  entry: LedgerEntry;
+  reason: string;
+  accountName?: string;
+  actorName?: string;
+}): Promise<ReverseRequest> {
+  const reason = params.reason.trim();
+  if (!reason) throw new Error('Reverse entry-র জন্য reason লিখুন।');
+  if (params.entry.reference.startsWith('REVERSAL —') || params.entry.relatedType === 'reversal') {
+    throw new Error('Reversal entry আবার reverse করা যাবে না।');
+  }
+
+  const [entries, requests] = await Promise.all([fetchEntries(), fetchReverseRequests()]);
+  if (isEntryReversed(params.entry, entries)) {
+    throw new Error('এই entry ইতিমধ্যে reverse করা হয়েছে।');
+  }
+  if (hasPendingReverseRequest(params.entry.id, requests)) {
+    throw new Error('এই entry-র reverse request ইতিমধ্যে Principal-এর কাছে pending আছে।');
+  }
+
+  const request: ReverseRequest = {
+    id: generateId('rev'),
+    entryId: params.entry.id,
+    accountId: params.entry.accountId,
+    accountName: params.accountName,
+    reference: params.entry.reference,
+    entryType: params.entry.type,
+    amount: params.entry.amount,
+    reason,
+    requestedBy: params.actorName ?? 'Accounts Department',
+    createdAt: new Date().toISOString(),
+    approvalStatus: 'pending',
+  };
+
+  await persistReverseRequest(request);
+  return request;
+}
+
+export async function reviewReverseRequest(params: {
+  request: ReverseRequest;
+  action: 'approved' | 'rejected';
+  reviewedBy: string;
+  note?: string;
+}): Promise<ReverseRequest> {
+  if (params.request.approvalStatus !== 'pending') {
+    throw new Error('This reverse request is not pending approval.');
+  }
+
+  const updated: ReverseRequest = {
+    ...params.request,
+    approvalStatus: params.action,
+    reviewedBy: params.reviewedBy,
+    reviewedAt: new Date().toISOString(),
+    reviewNote: params.note,
+  };
+
+  if (params.action === 'approved') {
+    const entries = await fetchEntries();
+    const entry = entries.find((item) => item.id === params.request.entryId);
+    if (!entry) throw new Error('Original ledger entry পাওয়া যায়নি।');
+    await reverseLedgerEntry({
+      entry,
+      reason: params.request.reason,
+      actorName: params.reviewedBy,
+    });
+  }
+
+  await persistReverseRequest(updated);
+  return updated;
+}
+
 export async function reverseLedgerEntry(params: {
   entry: LedgerEntry;
   reason: string;
@@ -295,10 +413,11 @@ export async function reverseLedgerEntry(params: {
   });
 
   if (isDemoLoginEnabled) {
-    const updated = entries.map((item) =>
-      item.id === params.entry.id ? { ...item, reversed: true } : item,
+    const latest = readLocal<LedgerEntry[]>(LOCAL_ENTRIES_KEY, []);
+    writeLocal(
+      LOCAL_ENTRIES_KEY,
+      latest.map((item) => (item.id === params.entry.id ? { ...item, reversed: true } : item)),
     );
-    writeLocal(LOCAL_ENTRIES_KEY, updated);
   } else {
     await updateDoc(doc(db, ENTRIES_COLLECTION, params.entry.id), {
       reversed: true,

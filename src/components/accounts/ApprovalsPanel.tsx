@@ -10,19 +10,22 @@ import {
   Receipt,
   Clock,
   Eye,
+  RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { fetchApprovalQueue, type ApprovalQueueItem } from '../../lib/approvals';
 import { actOnApproval } from '../../lib/admissions';
 import { reviewCategoryRequest } from '../../lib/categories';
 import { reviewExpense } from '../../lib/expenses';
-import { fetchAccounts } from '../../lib/ledger';
+import { fetchAccounts, reviewReverseRequest } from '../../lib/ledger';
 import type { ApprovalDepartment, LedgerAccount } from '../../types';
 
 const KIND_ICON = {
   admission: ClipboardCheck,
   category: Tag,
   expense: Receipt,
+  reversal: RotateCcw,
 };
 
 interface ApprovalsPanelProps {
@@ -31,8 +34,7 @@ interface ApprovalsPanelProps {
 }
 
 export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelProps) {
-  const [actionable, setActionable] = React.useState<ApprovalQueueItem[]>([]);
-  const [watching, setWatching] = React.useState<ApprovalQueueItem[]>([]);
+  const [pending, setPending] = React.useState<ApprovalQueueItem[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [actingId, setActingId] = React.useState<string | null>(null);
@@ -49,8 +51,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         fetchApprovalQueue(viewerDepartment),
         fetchAccounts(),
       ]);
-      setActionable(queue.actionable);
-      setWatching(queue.watching);
+      setPending(queue.pending);
       setAccounts(accountData);
       setAccountSelections((prev) => {
         const next = { ...prev };
@@ -99,6 +100,13 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           reviewedBy: actorName,
           note: notes[item.id],
         });
+      } else if (item.kind === 'reversal' && item.reverseRequest) {
+        await reviewReverseRequest({
+          request: item.reverseRequest,
+          action: 'approved',
+          reviewedBy: actorName,
+          note: notes[item.id],
+        });
       }
       setMessage(`Approved: ${item.title}`);
       await load();
@@ -142,6 +150,13 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           reviewedBy: actorName,
           note,
         });
+      } else if (item.kind === 'reversal' && item.reverseRequest) {
+        await reviewReverseRequest({
+          request: item.reverseRequest,
+          action: 'rejected',
+          reviewedBy: actorName,
+          note,
+        });
       }
       setMessage(`Rejected: ${item.title}`);
       await load();
@@ -162,15 +177,21 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Approval Hub</h3>
         <p className="text-xs font-bold opacity-80 uppercase tracking-widest max-w-xl">
           {viewerDepartment === 'principal'
-            ? 'Accounts থেকে আসা admission, expense, category request approve/reject করুন'
-            : 'Accounts থেকে submit করা entry Principal approval-এর জন্য অপেক্ষা করছে'}
+            ? 'Accounts থেকে আসা admission, expense, reverse entry ও category request approve/reject করুন'
+            : 'Principal approve না করা পর্যন্ত প্রতিটি pending entry এখানে থাকবে — monitor করুন'}
         </p>
-        <div className="flex flex-wrap gap-4 mt-6">
+        <div className="flex flex-wrap items-center gap-4 mt-6">
           <StatPill
-            label={viewerDepartment === 'principal' ? 'Action Required' : 'Pending Approval'}
-            value={viewerDepartment === 'principal' ? actionable.length : watching.length}
+            label={viewerDepartment === 'principal' ? 'Action Required' : 'Waiting for Principal'}
+            value={pending.length}
           />
-          {viewerDepartment === 'principal' && <StatPill label="Submitted Queue" value={watching.length} />}
+          <button
+            type="button"
+            onClick={load}
+            className="px-4 py-3 bg-white/10 border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
         </div>
       </div>
 
@@ -188,9 +209,9 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         </div>
       ) : viewerDepartment === 'accounts' ? (
         <ApprovalSection
-          title="Pending Principal Approval"
-          emptyText="Principal approval-এর জন্য কোনো pending submission নেই।"
-          items={watching}
+          title="Pending until Principal Approves"
+          emptyText="এখন কোনো pending entry নেই। Admission, Expense, Reverse বা Category submit করলে Principal approve না হওয়া পর্যন্ত এখানে দেখাবে।"
+          items={pending}
           accounts={accounts}
           notes={notes}
           accountSelections={accountSelections}
@@ -202,37 +223,20 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           actionable={false}
         />
       ) : (
-        <>
-          <ApprovalSection
-            title="Action Required"
-            emptyText="আপনার action-এর জন্য কোনো pending approval নেই।"
-            items={actionable}
-            accounts={accounts}
-            notes={notes}
-            accountSelections={accountSelections}
-            actingId={actingId}
-            onNoteChange={(id, value) => setNotes((prev) => ({ ...prev, [id]: value }))}
-            onAccountChange={(id, value) => setAccountSelections((prev) => ({ ...prev, [id]: value }))}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            actionable
-          />
-
-          <ApprovalSection
-            title="Submitted by Accounts"
-            emptyText="কোনো pending submission নেই।"
-            items={watching}
-            accounts={accounts}
-            notes={notes}
-            accountSelections={accountSelections}
-            actingId={actingId}
-            onNoteChange={(id, value) => setNotes((prev) => ({ ...prev, [id]: value }))}
-            onAccountChange={(id, value) => setAccountSelections((prev) => ({ ...prev, [id]: value }))}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            actionable={false}
-          />
-        </>
+        <ApprovalSection
+          title="Action Required"
+          emptyText="আপনার action-এর জন্য কোনো pending approval নেই।"
+          items={pending}
+          accounts={accounts}
+          notes={notes}
+          accountSelections={accountSelections}
+          actingId={actingId}
+          onNoteChange={(id, value) => setNotes((prev) => ({ ...prev, [id]: value }))}
+          onAccountChange={(id, value) => setAccountSelections((prev) => ({ ...prev, [id]: value }))}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          actionable
+        />
       )}
     </div>
   );
@@ -309,9 +313,9 @@ function ApprovalSection({
                         >
                           {item.kind}
                         </span>
-                        {!actionable && item.department && (
-                          <span className="text-[9px] font-bold text-school-muted uppercase">
-                            Waiting: {item.department}
+                        {!actionable && (
+                          <span className="text-[9px] font-bold text-amber-600 uppercase">
+                            Waiting: Principal
                           </span>
                         )}
                       </div>

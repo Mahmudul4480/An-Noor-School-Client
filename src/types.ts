@@ -246,6 +246,23 @@ export interface LedgerEntry {
   reversalOfEntryId?: string;
 }
 
+export interface ReverseRequest {
+  id: string;
+  entryId: string;
+  accountId: string;
+  accountName?: string;
+  reference: string;
+  entryType: LedgerEntryType;
+  amount: number;
+  reason: string;
+  requestedBy: string;
+  createdAt: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+}
+
 export interface StudentCorrectionLog {
   id: string;
   studentId: string;
