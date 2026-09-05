@@ -7,6 +7,7 @@ import {
   computeTotals,
   createAdmission,
   fetchFeeStructure,
+  maxDiscountableAmount,
   uploadScannedForm,
   uploadStudentPhoto,
   uploadBirthRegDocument,
@@ -16,7 +17,7 @@ import { getFirebaseOperationErrorMessage } from '../../lib/auth';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
 import { fetchAccounts } from '../../lib/ledger';
 import { CLASS_OPTIONS, GENDER_OPTIONS } from '../../lib/schoolConstants';
-import type { Admission, AdmissionDiscount, FeeItemKey, FeeStructureItem, LedgerAccount } from '../../types';
+import type { Admission, AdmissionDiscount, FeeStructureItem, LedgerAccount } from '../../types';
 
 const DISCOUNT_REASON_PRESETS = [
   'Sibling Discount',
@@ -34,9 +35,8 @@ interface NewAdmissionModalProps {
 
 export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps) {
   const [feeItems, setFeeItems] = React.useState<FeeStructureItem[]>(DEFAULT_FEE_ITEMS);
-  const [discounts, setDiscounts] = React.useState<Record<FeeItemKey, { amount: string; reason: string }>>(
-    {} as Record<FeeItemKey, { amount: string; reason: string }>,
-  );
+  const [concessionAmount, setConcessionAmount] = React.useState('');
+  const [concessionReason, setConcessionReason] = React.useState('');
   const [form, setForm] = React.useState({
     studentName: '',
     fatherName: '',
@@ -65,26 +65,44 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const [loadingStructure, setLoadingStructure] = React.useState(true);
 
   React.useEffect(() => {
-    Promise.all([fetchFeeStructure(), fetchAccounts()])
-      .then(([structure, accountData]) => {
-        setFeeItems(structure.items);
+    fetchAccounts()
+      .then((accountData) => {
         setAccounts(accountData);
-        setReceivedInAccountId(accountData[0]?.id ?? '');
+        setReceivedInAccountId((prev) => prev || accountData[0]?.id || '');
       })
-      .finally(() => setLoadingStructure(false));
+      .catch(() => setAccounts([]));
   }, []);
 
-  const activeDiscounts: AdmissionDiscount[] = (
-    Object.entries(discounts) as [FeeItemKey, { amount: string; reason: string }][]
-  )
-    .map(([key, value]) => ({
-      itemKey: key,
-      amount: parseFloat(value.amount) || 0,
-      reason: value.reason,
-    }))
-    .filter((discount) => discount.amount > 0);
+  React.useEffect(() => {
+    if (!form.classApplied) {
+      setFeeItems(DEFAULT_FEE_ITEMS);
+      setLoadingStructure(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingStructure(true);
+    fetchFeeStructure(form.classApplied)
+      .then((structure) => {
+        if (!cancelled) setFeeItems(structure.items);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStructure(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.classApplied]);
+
+  const concessionAmountNum = parseFloat(concessionAmount) || 0;
+
+  const activeDiscounts: AdmissionDiscount[] = concessionAmountNum > 0
+    ? [{ itemKey: 'overall', amount: concessionAmountNum, reason: concessionReason }]
+    : [];
 
   const totals = computeTotals(feeItems, activeDiscounts);
+  const maxConcession = maxDiscountableAmount(feeItems);
 
   const handlePhotoSelect = async (selected: File | null) => {
     if (!selected) {
@@ -108,13 +126,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     }
   };
 
-  const handleDiscountChange = (key: FeeItemKey, field: 'amount' | 'reason', value: string) => {
-    setDiscounts((prev) => ({
-      ...prev,
-      [key]: { amount: prev[key]?.amount ?? '', reason: prev[key]?.reason ?? '', [field]: value },
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -130,14 +141,14 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       return;
     }
 
-    for (const discount of activeDiscounts) {
-      const validationError = validateDiscount(discount.itemKey, discount.amount, feeItems);
+    if (concessionAmountNum > 0) {
+      const validationError = validateDiscount('overall', concessionAmountNum, feeItems);
       if (validationError) {
         setError(validationError);
         return;
       }
-      if (!discount.reason.trim()) {
-        setError('Discount দিলে reason/note লেখা আবশ্যক।');
+      if (!concessionReason.trim()) {
+        setError('Concession/Discount দিলে reason/note লেখা আবশ্যক।');
         return;
       }
     }
@@ -392,11 +403,16 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               </div>
             </section>
 
-            {/* Fee Breakdown + Discount */}
+            {/* Fee Breakdown */}
             <section className="space-y-3">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">
-                Fee Breakdown & Concession/Discount
+                Fee Breakdown {form.classApplied ? `— ${form.classApplied}` : ''}
               </h4>
+              {!form.classApplied && (
+                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                  Class select করুন — সেই class-এর Admission Fee ও Tuition Fee আসবে
+                </p>
+              )}
               {loadingStructure ? (
                 <div className="py-8 text-center text-school-muted text-xs font-bold uppercase">
                   Loading fee structure...
@@ -408,8 +424,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                       <tr className="text-school-muted font-black bg-slate-50 uppercase tracking-widest">
                         <th className="p-3">Fee Item</th>
                         <th className="p-3 text-right">Amount</th>
-                        <th className="p-3 text-right">Discount</th>
-                        <th className="p-3">Discount Note / Reason</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -418,60 +432,70 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                           <td className="p-3 font-black text-school-blue uppercase">
                             {item.label}
                             {!item.discountable && (
-                              <span className="ml-2 text-[8px] font-black text-red-400 uppercase">No Discount</span>
+                              <span className="ml-2 text-[8px] font-black text-red-400 uppercase">Fixed</span>
                             )}
                           </td>
                           <td className="p-3 text-right font-bold text-school-blue">
                             ৳ {item.amount.toLocaleString()}
                           </td>
-                          <td className="p-3 text-right">
-                            <input
-                              type="number"
-                              min={0}
-                              max={item.amount}
-                              disabled={!item.discountable}
-                              value={discounts[item.key]?.amount ?? ''}
-                              onChange={(e) => handleDiscountChange(item.key, 'amount', e.target.value)}
-                              placeholder="0"
-                              className={cn(
-                                'w-24 text-right px-3 py-1.5 rounded-lg border text-xs font-bold outline-none',
-                                item.discountable
-                                  ? 'bg-white border-slate-200 focus:ring-2 ring-school-gold/30'
-                                  : 'bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed',
-                              )}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <input
-                              type="text"
-                              disabled={!item.discountable}
-                              list="discount-reason-presets"
-                              value={discounts[item.key]?.reason ?? ''}
-                              onChange={(e) => handleDiscountChange(item.key, 'reason', e.target.value)}
-                              placeholder={item.discountable ? 'e.g. Sibling Discount' : '—'}
-                              className={cn(
-                                'w-full px-3 py-1.5 rounded-lg border text-xs font-medium outline-none',
-                                item.discountable
-                                  ? 'bg-white border-slate-200 focus:ring-2 ring-school-gold/30'
-                                  : 'bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed',
-                              )}
-                            />
-                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <datalist id="discount-reason-presets">
-                    {DISCOUNT_REASON_PRESETS.map((preset) => (
-                      <option key={preset} value={preset} />
-                    ))}
-                  </datalist>
                 </div>
               )}
 
+              {/* Gross Total */}
               <div className="flex flex-wrap gap-4 justify-end pt-2">
                 <TotalCard label="Gross Total" value={totals.grossTotal} />
-                <TotalCard label="Total Discount" value={totals.totalDiscount} accent="text-red-500" />
+              </div>
+
+              {/* Concession / Discount — applied after gross total */}
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <h5 className="text-xs font-black text-school-blue uppercase tracking-widest flex items-center gap-2">
+                  <Tag size={14} className="text-school-gold" />
+                  Concession / Discount
+                  <span className="text-[9px] font-bold text-school-muted normal-case tracking-normal">
+                    (Tuition Fee বাদে সর্বোচ্চ ৳ {maxConcession.toLocaleString()})
+                  </span>
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Discount Amount (৳)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxConcession}
+                      value={concessionAmount}
+                      onChange={(e) => setConcessionAmount(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Reason / Note *</label>
+                    <input
+                      type="text"
+                      list="discount-reason-presets"
+                      value={concessionReason}
+                      onChange={(e) => setConcessionReason(e.target.value)}
+                      placeholder="e.g. Sibling Discount, Merit Scholarship..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+                    />
+                    <datalist id="discount-reason-presets">
+                      {DISCOUNT_REASON_PRESETS.map((preset) => (
+                        <option key={preset} value={preset} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+              </div>
+
+              {/* Final Totals */}
+              <div className="flex flex-wrap gap-4 justify-end pt-2">
+                {concessionAmountNum > 0 && (
+                  <TotalCard label="Concession" value={concessionAmountNum} accent="text-red-500" />
+                )}
                 <TotalCard label="Grand Total" value={totals.grandTotal} accent="text-emerald-600" emphasize />
               </div>
             </section>

@@ -24,17 +24,26 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { logout } from './lib/auth';
+import { getCurrentActor } from './lib/actor';
+import { fetchSchoolSettings, getCachedSchoolSettings } from './lib/schoolSettings';
 import { UserRole } from './types';
 import { GuardianDashboard } from './components/GuardianDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AccountsDashboard } from './components/AccountsDashboard';
 import { PrincipalDashboard } from './components/PrincipalDashboard';
+import { SettingsPanel } from './components/SettingsPanel';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState('overview');
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const role = (localStorage.getItem('userRole') as UserRole) || 'guardian';
+  const actor = getCurrentActor();
+  const [school, setSchool] = React.useState(getCachedSchoolSettings);
+
+  React.useEffect(() => {
+    fetchSchoolSettings().then(setSchool).catch(() => undefined);
+  }, []);
   
   // Super Admin view switching logic
   const [currentView, setCurrentView] = React.useState<UserRole | null>(() => {
@@ -173,6 +182,10 @@ const DashboardPage = () => {
       return renderAdminPortal();
     }
 
+    if (activeTab === 'settings') {
+      return <SettingsPanel portal={currentView} />;
+    }
+
     if (activeTab !== 'overview' && !isAccountsSidebarTab) {
       return (
         <div className="h-[60vh] flex flex-col items-center justify-center text-center p-8">
@@ -275,12 +288,32 @@ const DashboardPage = () => {
         </div>
 
         <div className="p-6 border-t border-school-border space-y-4">
-          <div className={cn("flex items-center gap-3", !sidebarOpen && "justify-center")}>
-            <div className="w-10 h-10 rounded-xl bg-school-gold/10 border border-school-gold/20 flex items-center justify-center text-school-blue">
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-xl transition-all",
+              !sidebarOpen && "justify-center",
+              activeTab === 'settings'
+                ? "bg-school-blue text-white px-3 py-2 shadow-lg shadow-blue-900/10"
+                : "hover:bg-school-light-gray px-1 py-1"
+            )}
+          >
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              activeTab === 'settings'
+                ? "bg-white/10 text-school-gold"
+                : "bg-school-gold/10 border border-school-gold/20 text-school-blue"
+            )}>
                <Settings size={20} />
             </div>
-            {sidebarOpen && <span className="font-bold text-xs text-school-muted uppercase tracking-widest">Settings</span>}
-          </div>
+            {sidebarOpen && (
+              <span className={cn(
+                "font-bold text-xs uppercase tracking-widest",
+                activeTab === 'settings' ? "text-white" : "text-school-muted"
+              )}>Settings</span>
+            )}
+          </button>
           <button 
             onClick={async () => {
                 await logout();
@@ -302,7 +335,9 @@ const DashboardPage = () => {
         <header className="h-20 flex items-center justify-between px-8 sticky top-0 bg-white/80 backdrop-blur-md z-25 border-b-2 border-school-gold shadow-sm">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-black uppercase text-school-blue tracking-tight">
-              {currentView === 'accounts'
+              {activeTab === 'settings'
+                ? 'Settings'
+                : currentView === 'accounts'
                 ? ({
                     overview: 'Accounts Dashboard',
                     collections: 'Collections',
@@ -324,8 +359,12 @@ const DashboardPage = () => {
             </div>
             <div className="flex items-center gap-3 pl-6 border-l-2 border-school-border">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-black text-school-blue leading-none underline decoration-school-gold decoration-2 underline-offset-4">{activeConfig?.name}</p>
-                <p className="text-[10px] text-school-muted font-bold uppercase mt-2 tracking-wider">Session 2024-25</p>
+                <p className="text-sm font-black text-school-blue leading-none underline decoration-school-gold decoration-2 underline-offset-4">
+                  {actor.name || activeConfig?.name}
+                </p>
+                <p className="text-[10px] text-school-muted font-bold uppercase mt-2 tracking-wider">
+                  {actor.email || school.sessionLabel || school.academicYear}
+                </p>
               </div>
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white border-2 border-school-gold shadow-sm", activeConfig?.color)}>
                  {currentView === 'principal' ? <Shield size={20} /> : <User size={20} />}

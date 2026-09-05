@@ -6,7 +6,9 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { clearActor, persistActor } from './actor';
 import { fetchGuardianByAuthEmail, isGuardianAuthEmail, isMobileNumber, mobileToAuthEmail, normalizeMobile } from './guardians';
+import { peekStaffAccessByEmail } from './staffAccess';
 import type { UserRole } from '../types';
 
 export const isDemoLoginEnabled = import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true';
@@ -25,8 +27,42 @@ function persistSession(role: UserRole, extra?: { guardianMobile?: string }) {
   }
 }
 
+function persistLoginIdentity(input: { email?: string; name?: string; uid?: string }) {
+  persistActor({
+    email: input.email,
+    name: input.name,
+    uid: input.uid,
+  });
+}
+
 export function demoLogin(userId: string, selectedRole: UserRole): UserRole {
-  const finalRole = SUPER_ADMIN_EMAILS.includes(userId.trim().toLowerCase()) ? 'super_admin' : selectedRole;
+  const trimmed = userId.trim();
+  const email = trimmed.includes('@') ? trimmed.toLowerCase() : '';
+  persistLoginIdentity({
+    email: email || trimmed,
+    name: trimmed,
+    uid: `demo-${trimmed.toLowerCase()}`,
+  });
+
+  if (email && SUPER_ADMIN_EMAILS.includes(email)) {
+    persistSession('super_admin');
+    persistLoginIdentity({ name: 'Master Admin', email });
+    return 'super_admin';
+  }
+
+  if (email) {
+    const grant = peekStaffAccessByEmail(email);
+    if (grant?.status === 'active') {
+      persistSession(grant.role);
+      persistLoginIdentity({ email: grant.email, name: grant.name });
+      return grant.role;
+    }
+    if (grant?.status === 'revoked' && selectedRole === 'accounts') {
+      throw new Error('Your Accounts access has been revoked. Contact the Principal Office.');
+    }
+  }
+
+  const finalRole = selectedRole;
   if (finalRole === 'guardian' && isMobileNumber(userId)) {
     persistSession(finalRole, { guardianMobile: normalizeMobile(userId) });
   } else {
@@ -36,7 +72,14 @@ export function demoLogin(userId: string, selectedRole: UserRole): UserRole {
 }
 
 async function resolveUserRole(user: User): Promise<UserRole> {
+  persistLoginIdentity({
+    email: user.email ?? '',
+    name: user.displayName ?? '',
+    uid: user.uid,
+  });
+
   if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    persistLoginIdentity({ name: 'Master Admin', email: user.email });
     return 'super_admin';
   }
 
@@ -44,17 +87,36 @@ async function resolveUserRole(user: User): Promise<UserRole> {
     const guardian = await fetchGuardianByAuthEmail(user.email);
     if (guardian) {
       persistSession('guardian', { guardianMobile: guardian.mobile });
+      persistLoginIdentity({ name: guardian.guardianName, email: user.email });
       return 'guardian';
+    }
+  }
+
+  if (user.email) {
+    const { fetchStaffAccessByEmail } = await import('./staffAccess');
+    const grant = await fetchStaffAccessByEmail(user.email);
+    if (grant?.status === 'active') {
+      persistLoginIdentity({ email: grant.email, name: grant.name, uid: user.uid });
+      return grant.role;
+    }
+    if (grant?.status === 'revoked') {
+      throw new Error('Your Accounts access has been revoked. Contact the Principal Office.');
     }
   }
 
   const userDoc = await getDoc(doc(db, 'users', user.uid));
   if (userDoc.exists() && userDoc.data().role) {
-    return userDoc.data().role as UserRole;
+    const data = userDoc.data();
+    persistLoginIdentity({
+      email: user.email ?? data.email,
+      name: data.name || user.displayName || '',
+      uid: user.uid,
+    });
+    return data.role as UserRole;
   }
 
   throw new Error(
-    'Your account is not configured yet. Please contact the administrator.',
+    'Your account is not configured yet. Ask the Principal Office to grant access.',
   );
 }
 
@@ -71,6 +133,11 @@ export async function firebaseLogin(email: string, password: string): Promise<Us
   const credential = await signInWithEmailAndPassword(auth, loginEmail, password);
   const role = await resolveUserRole(credential.user);
   persistSession(role);
+  persistLoginIdentity({
+    email: credential.user.email ?? loginEmail,
+    uid: credential.user.uid,
+    name: credential.user.displayName ?? undefined,
+  });
   return role;
 }
 
@@ -78,6 +145,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem('userRole');
   localStorage.removeItem('adminCurrentView');
   localStorage.removeItem('guardianMobile');
+  clearActor();
 
   if (!isDemoLoginEnabled && auth.currentUser) {
     await signOut(auth);
@@ -157,6 +225,11 @@ export function getFirebaseAuthErrorMessage(error: unknown): string {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Incorrect email or password.';
+    case 'auth/unauthorized-domain':
+      return 'This site address is not allowed in Firebase. Open http://localhost:3000 — not the 192.168.x.x network URL.';
+    case 'auth/api-key-not-valid':
+    case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
+      return 'Firebase API key is blocked for this address. Allow localhost in Google Cloud API key restrictions.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please try again later.';
     default:

@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Lock, Loader2, Wallet, ArrowDownRight, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { getCurrentActorLabel } from '../../lib/actor';
 import { closeDay, getDailySummary, isDayClosed } from '../../lib/dayClose';
-import { cn } from '../../lib/utils';
+import { cn, formatSignedBdt } from '../../lib/utils';
 
 export function DayClosePanel() {
   const today = new Date().toISOString().slice(0, 10);
@@ -36,7 +37,7 @@ export function DayClosePanel() {
     setClosing(true);
     setError('');
     try {
-      await closeDay({ date, closedBy: 'Accounts Dept.', note: note || undefined });
+      await closeDay({ date, closedBy: getCurrentActorLabel('Accounts Department'), note: note || undefined });
       setClosed(true);
       await load();
     } catch (err) {
@@ -110,7 +111,9 @@ export function DayClosePanel() {
                       <td className="p-3 uppercase text-school-muted">{row.accountType}</td>
                       <td className="p-3 text-right text-emerald-600 font-bold">৳ {row.todayIncome.toLocaleString()}</td>
                       <td className="p-3 text-right text-red-500 font-bold">৳ {row.todayExpense.toLocaleString()}</td>
-                      <td className="p-3 text-right font-black text-school-blue">৳ {row.balance.toLocaleString()}</td>
+                      <td className={cn('p-3 text-right font-black', row.balance < 0 ? 'text-red-600' : 'text-school-blue')}>
+                        {formatSignedBdt(row.balance)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

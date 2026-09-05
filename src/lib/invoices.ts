@@ -9,13 +9,13 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
-import { fetchFeeStructure } from './admissions';
+import { fetchAllFeeStructures, resolveClassFeeItems, tuitionFromItems } from './admissions';
 import { ONLINE_PAYMENT_ACCOUNT_ID, recordCollection } from './ledger';
 import { fetchStudents } from './students';
-import { omitUndefined } from './utils';
+import { omitUndefined, toIsoString } from './utils';
 import type {
-  InvoiceFeeType,
   InvoiceLineItem,
   InvoiceStatus,
   PaymentMethod,
@@ -25,14 +25,6 @@ import type {
 
 const INVOICES_COLLECTION = 'studentInvoices';
 const LOCAL_INVOICES_KEY = 'an-noor-student-invoices';
-
-export const OPTIONAL_FEE_TYPES: { key: InvoiceFeeType; label: string; defaultAmount: number }[] = [
-  { key: 'examFee', label: 'Exam Fee', defaultAmount: 1200 },
-  { key: 'busFee', label: 'Bus / Transport Fee', defaultAmount: 1500 },
-  { key: 'sportsFee', label: 'Sports Charge', defaultAmount: 800 },
-  { key: 'utilityBill', label: 'Utility Bill Share', defaultAmount: 500 },
-  { key: 'other', label: 'Other Fee', defaultAmount: 0 },
-];
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -83,13 +75,14 @@ function normalizeInvoice(data: StudentInvoice): StudentInvoice {
     paidAmount,
     status,
     lineItems: Array.isArray(data.lineItems) ? data.lineItems : [],
+    paymentApprovalStatus: data.paymentApprovalStatus,
+    pendingPaymentAmount: Number(data.pendingPaymentAmount) || 0,
+    generatedAt: toIsoString(data.generatedAt),
+    paidAt: data.paidAt ? toIsoString(data.paidAt) : undefined,
+    paymentRequestedAt: data.paymentRequestedAt ? toIsoString(data.paymentRequestedAt) : undefined,
+    dueDate: typeof data.dueDate === 'string' ? data.dueDate : toIsoString(data.dueDate).slice(0, 10),
+    billingMonth: String(data.billingMonth ?? ''),
   };
-}
-
-async function getTuitionAmount(): Promise<number> {
-  const structure = await fetchFeeStructure();
-  const tuition = structure.items.find((item) => item.key === 'tuitionFee');
-  return tuition?.amount ?? 4500;
 }
 
 function buildTuitionLineItem(amount: number, billingMonth: string): InvoiceLineItem {
@@ -129,7 +122,11 @@ export async function fetchInvoices(filters?: {
     invoices = invoices.filter((invoice) => invoice.status === filters.status);
   }
 
-  return invoices.sort((a, b) => b.billingMonth.localeCompare(a.billingMonth) || b.generatedAt.localeCompare(a.generatedAt));
+  return invoices.sort((a, b) => {
+    const monthCmp = String(b.billingMonth ?? '').localeCompare(String(a.billingMonth ?? ''));
+    if (monthCmp !== 0) return monthCmp;
+    return toIsoString(b.generatedAt).localeCompare(toIsoString(a.generatedAt));
+  });
 }
 
 async function generateInvoiceNumber(billingMonth: string): Promise<string> {
@@ -166,9 +163,10 @@ async function saveInvoice(invoice: StudentInvoice, options?: { isNew?: boolean 
   }
 
   await waitForAuthUser();
-  const payload = options?.isNew
-    ? omitUndefined({ ...normalized, generatedAt: serverTimestamp() })
-    : omitUndefined(normalized);
+  const payload = omitUndefined({
+    ...normalized,
+    generatedAt: options?.isNew ? serverTimestamp() : normalized.generatedAt,
+  } as Record<string, unknown>);
   await setDoc(doc(db, INVOICES_COLLECTION, normalized.id), payload, { merge: true });
   return normalized;
 }
@@ -207,23 +205,48 @@ export interface GenerateMonthlyTuitionResult {
   billingMonth: string;
   created: number;
   skipped: number;
+  updated: number;
   invoices: StudentInvoice[];
 }
 
 export async function ensureMonthlyTuitionInvoices(billingMonth = formatBillingMonth()): Promise<GenerateMonthlyTuitionResult> {
-  const [students, existingInvoices, tuitionAmount] = await Promise.all([
+  const [students, existingInvoices, structures] = await Promise.all([
     fetchStudents(),
     fetchInvoices({ billingMonth }),
-    getTuitionAmount(),
+    fetchAllFeeStructures(),
   ]);
 
   const activeStudents = students.filter((student) => student.status === 'Active');
   const createdInvoices: StudentInvoice[] = [];
   let skipped = 0;
+  let updated = 0;
 
   for (const student of activeStudents) {
-    if (existingInvoices.some((invoice) => invoiceHasTuition(invoice, billingMonth) && invoice.studentId === student.studentId)) {
-      skipped += 1;
+    const tuitionAmount = tuitionFromItems(resolveClassFeeItems(structures, student.class));
+    const existing = existingInvoices.find(
+      (invoice) => invoiceHasTuition(invoice, billingMonth) && invoice.studentId === student.studentId,
+    );
+
+    if (existing) {
+      if (existing.paidAmount > 0 || existing.status === 'cancelled' || existing.status === 'paid' || existing.paymentApprovalStatus === 'pending') {
+        skipped += 1;
+        continue;
+      }
+
+      const currentTuition = existing.lineItems.find((item) => item.key === 'tuitionFee')?.amount ?? 0;
+      if (currentTuition === tuitionAmount) {
+        skipped += 1;
+        continue;
+      }
+
+      const lineItems = existing.lineItems.map((item) =>
+        item.key === 'tuitionFee'
+          ? { ...item, amount: tuitionAmount, label: `Tuition Fee — ${formatBillingMonthLabel(billingMonth)}` }
+          : item,
+      );
+      const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0);
+      await saveInvoice(normalizeInvoice({ ...existing, lineItems, totalAmount }));
+      updated += 1;
       continue;
     }
 
@@ -243,22 +266,99 @@ export async function ensureMonthlyTuitionInvoices(billingMonth = formatBillingM
     billingMonth,
     created: createdInvoices.length,
     skipped,
+    updated,
     invoices: createdInvoices,
   };
 }
 
-export interface CreateOptionalInvoiceInput {
+export async function syncClassTuitionInvoices(params: {
+  className: string;
+  tuitionAmount: number;
+  billingMonth?: string;
+}): Promise<{ created: number; updated: number; skippedPaid: number }> {
+  const billingMonth = params.billingMonth ?? formatBillingMonth();
+  const [students, existingInvoices] = await Promise.all([
+    fetchStudents(),
+    fetchInvoices({ billingMonth }),
+  ]);
+
+  const classStudents = students.filter(
+    (student) => student.status === 'Active' && student.class === params.className,
+  );
+
+  let created = 0;
+  let updated = 0;
+  let skippedPaid = 0;
+
+  for (const student of classStudents) {
+    const existing = existingInvoices.find(
+      (invoice) => invoiceHasTuition(invoice, billingMonth) && invoice.studentId === student.studentId,
+    );
+
+    if (!existing) {
+      const invoiceNumber = await generateInvoiceNumber(billingMonth);
+      const invoice = buildInvoiceForStudent({
+        student,
+        billingMonth,
+        tuitionAmount: params.tuitionAmount,
+        invoiceNumber,
+        academicYear: student.academicYear,
+      });
+      await saveInvoice(invoice, { isNew: true });
+      created += 1;
+      continue;
+    }
+
+    if (existing.paidAmount > 0 || existing.status === 'paid' || existing.status === 'cancelled' || existing.paymentApprovalStatus === 'pending') {
+      skippedPaid += 1;
+      continue;
+    }
+
+    const currentTuition = existing.lineItems.find((item) => item.key === 'tuitionFee')?.amount ?? 0;
+    if (currentTuition === params.tuitionAmount) continue;
+
+    const lineItems = existing.lineItems.map((item) =>
+      item.key === 'tuitionFee'
+        ? { ...item, amount: params.tuitionAmount, label: `Tuition Fee — ${formatBillingMonthLabel(billingMonth)}` }
+        : item,
+    );
+    const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0);
+    await saveInvoice(normalizeInvoice({ ...existing, lineItems, totalAmount }));
+    updated += 1;
+  }
+
+  return { created, updated, skippedPaid };
+}
+
+export interface CreateManualInvoiceInput {
   studentId: string;
   billingMonth: string;
   lineItems: InvoiceLineItem[];
+  /** Defaults to the 15th of the billing month */
+  dueDate?: string;
+  note?: string;
 }
 
-export async function createOptionalInvoice(input: CreateOptionalInvoiceInput): Promise<StudentInvoice> {
+/**
+ * Builds a one-off invoice for anything outside monthly tuition — exam fee, books,
+ * khata, dress and so on. Each line can carry a quantity (e.g. 3 khata × ৳60).
+ */
+export async function createManualInvoice(input: CreateManualInvoiceInput): Promise<StudentInvoice> {
   const students = await fetchStudents();
   const student = students.find((item) => item.studentId === input.studentId);
   if (!student) throw new Error('Student not found.');
 
-  const totalAmount = input.lineItems.reduce((sum, item) => sum + item.amount, 0);
+  const lineItems = input.lineItems
+    .filter((item) => item.label.trim() && item.amount > 0)
+    .map((item) => ({
+      ...item,
+      label: item.label.trim(),
+      amount: Math.round(item.amount * 100) / 100,
+    }));
+
+  if (lineItems.length === 0) throw new Error('অন্তত একটি item ও amount দিন।');
+
+  const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0);
   if (totalAmount <= 0) throw new Error('Invoice amount must be greater than zero.');
 
   const invoiceNumber = await generateInvoiceNumber(input.billingMonth);
@@ -272,13 +372,15 @@ export async function createOptionalInvoice(input: CreateOptionalInvoiceInput): 
     guardianContact: student.guardianContact,
     billingMonth: input.billingMonth,
     academicYear: student.academicYear ?? input.billingMonth.slice(0, 4),
-    lineItems: input.lineItems,
+    lineItems,
     totalAmount,
     paidAmount: 0,
     status: 'pending',
-    dueDate: computeDueDate(input.billingMonth),
+    dueDate: input.dueDate || computeDueDate(input.billingMonth),
     generatedAt: new Date().toISOString(),
     autoGenerated: false,
+    note: input.note?.trim() || undefined,
+    createdBy: getCurrentActorLabel('Accounts Department'),
   });
 
   return saveInvoice(invoice, { isNew: true });
@@ -289,6 +391,8 @@ export async function recordInvoicePayment(params: {
   amount: number;
   accountId: string;
   paymentMethod: PaymentMethod;
+  /** Deposit slip / transaction number for bank & mobile payments */
+  reference?: string;
   gatewayRef?: string;
   gatewayProvider?: StudentInvoice['gatewayProvider'];
 }): Promise<StudentInvoice> {
@@ -312,9 +416,21 @@ export async function recordInvoicePayment(params: {
     paidAt: paidAmount >= invoice.totalAmount ? new Date().toISOString() : invoice.paidAt,
     paymentMethod: params.paymentMethod,
     paymentAccountId: params.accountId,
+    paymentReference: params.reference ?? invoice.paymentReference,
     gatewayRef: params.gatewayRef ?? invoice.gatewayRef,
     gatewayProvider: params.gatewayProvider ?? invoice.gatewayProvider,
+    paymentApprovalStatus: 'approved',
+    pendingPaymentAmount: 0,
+    pendingPaymentAccountId: '',
+    pendingPaymentMethod: undefined,
+    pendingPaymentReference: '',
   });
+
+  const ledgerNote = params.gatewayRef
+    ? `Gateway ref: ${params.gatewayRef}`
+    : params.reference
+      ? `Ref: ${params.reference}`
+      : undefined;
 
   await recordCollection({
     accountId: params.accountId,
@@ -322,7 +438,7 @@ export async function recordInvoicePayment(params: {
     reference: `Fee Payment — ${invoice.invoiceNumber} (${invoice.studentName})`,
     relatedId: invoice.id,
     relatedType: 'invoice',
-    note: params.gatewayRef ? `Gateway ref: ${params.gatewayRef}` : undefined,
+    note: ledgerNote,
   });
 
   return saveInvoice(updated);
@@ -332,16 +448,71 @@ export async function markInvoicePaidAtSchool(params: {
   invoiceId: string;
   accountId: string;
   paymentMethod: Exclude<PaymentMethod, 'gateway' | 'online'>;
+  /** Deposit slip / transaction number when the money went into a bank or MFS account */
+  reference?: string;
+  requestedBy?: string;
 }): Promise<StudentInvoice> {
   const invoices = await fetchInvoices();
   const invoice = invoices.find((item) => item.id === params.invoiceId);
   if (!invoice) throw new Error('Invoice not found.');
+  if (invoice.status === 'paid') throw new Error('Invoice already paid.');
+  if (invoice.status === 'cancelled') throw new Error('Cancelled invoice cannot be paid.');
+  if (invoice.paymentApprovalStatus === 'pending') {
+    throw new Error('This payment is already waiting for Principal approval.');
+  }
+  if (!params.accountId) throw new Error('Receiving account select করুন।');
+
+  const amount = invoice.totalAmount - invoice.paidAmount;
+  if (amount <= 0) throw new Error('This invoice is already paid.');
+
+  return saveInvoice(
+    normalizeInvoice({
+      ...invoice,
+      paymentApprovalStatus: 'pending',
+      pendingPaymentAmount: amount,
+      pendingPaymentAccountId: params.accountId,
+      pendingPaymentMethod: params.paymentMethod,
+      pendingPaymentReference: params.reference?.trim() || undefined,
+      paymentRequestedAt: new Date().toISOString(),
+      paymentRequestedBy: params.requestedBy ?? getCurrentActorLabel('Accounts Department'),
+    }),
+  );
+}
+
+export async function reviewInvoicePayment(params: {
+  invoice: StudentInvoice;
+  action: 'approved' | 'rejected';
+  reviewedBy: string;
+  note?: string;
+}): Promise<StudentInvoice> {
+  if (params.invoice.paymentApprovalStatus !== 'pending') {
+    throw new Error('This invoice payment is not pending Principal approval.');
+  }
+
+  if (params.action === 'rejected') {
+    return saveInvoice(
+      normalizeInvoice({
+        ...params.invoice,
+        paymentApprovalStatus: 'rejected',
+        pendingPaymentAmount: 0,
+        pendingPaymentAccountId: '',
+        pendingPaymentMethod: undefined,
+        pendingPaymentReference: '',
+      }),
+    );
+  }
+
+  const amount = params.invoice.pendingPaymentAmount || params.invoice.totalAmount - params.invoice.paidAmount;
+  const accountId = params.invoice.pendingPaymentAccountId;
+  const paymentMethod = params.invoice.pendingPaymentMethod ?? 'cash';
+  if (!accountId) throw new Error('Payment account missing on this invoice request.');
 
   return recordInvoicePayment({
-    invoiceId: params.invoiceId,
-    amount: invoice.totalAmount - invoice.paidAmount,
-    accountId: params.accountId,
-    paymentMethod: params.paymentMethod,
+    invoiceId: params.invoice.id,
+    amount,
+    accountId,
+    paymentMethod: paymentMethod === 'gateway' || paymentMethod === 'online' ? 'cash' : paymentMethod,
+    reference: params.invoice.pendingPaymentReference,
   });
 }
 

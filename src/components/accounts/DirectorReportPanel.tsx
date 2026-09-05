@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { FileDown, DollarSign, ArrowDownRight, TrendingUp, Percent, Loader2, CalendarRange } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, formatSignedBdt } from '../../lib/utils';
 import { exportSummaryToPdf, getFinancialSummary } from '../../lib/reports';
 import type { FinancialSummary } from '../../types';
 
@@ -283,7 +283,9 @@ export function DirectorReportPanel() {
                 {summary.accountBalances.map(({ account, balance }) => (
                   <div key={account.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <p className="text-[9px] font-black text-school-muted uppercase tracking-widest">{account.name}</p>
-                    <p className="text-sm font-black text-school-blue mt-1">৳ {balance.toLocaleString()}</p>
+                    <p className={cn('text-sm font-black mt-1', balance < 0 ? 'text-red-600' : 'text-school-blue')}>
+                      {formatSignedBdt(balance)}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchAdmissions } from './admissions';
-import { fetchAssets } from './assets';
+import { bookValue, fetchAssets, isAssetActive } from './assets';
 import { fetchExpenses } from './expenses';
 import { fetchInvoices } from './invoices';
 import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
@@ -49,9 +49,7 @@ export async function getFinancialOverview(): Promise<FinancialOverview> {
     .filter((invoice) => invoice.status !== 'cancelled' && invoice.status !== 'paid')
     .reduce((sum, invoice) => sum + Math.max(0, invoice.totalAmount - invoice.paidAmount), 0);
 
-  const assetValue = assets
-    .filter((asset) => asset.condition !== 'disposed')
-    .reduce((sum, asset) => sum + (asset.purchaseValue || 0), 0);
+  const assetValue = assets.filter(isAssetActive).reduce((sum, asset) => sum + bookValue(asset), 0);
 
   const monthlyFlow: FinancialOverview['monthlyFlow'] = [];
   for (let offset = 5; offset >= 0; offset -= 1) {
@@ -165,7 +163,8 @@ export async function getFinancialSummary(
 }
 
 function formatCurrency(amount: number): string {
-  return `Tk ${amount.toLocaleString('en-BD')}`;
+  const abs = Math.abs(amount).toLocaleString('en-BD');
+  return amount < 0 ? `-Tk ${abs}` : `Tk ${abs}`;
 }
 
 export function exportSummaryToPdf(summary: FinancialSummary) {

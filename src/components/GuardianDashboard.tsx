@@ -5,17 +5,19 @@ import {
   Bell,
   BarChart3,
   CreditCard,
-  Shield,
   User,
   Star,
   CreditCard as IdIcon,
-  Loader2
+  Loader2,
+  FileText,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchStudentsForGuardian } from '../lib/students';
 import { fetchInvoices } from '../lib/invoices';
+import { fetchAccounts } from '../lib/ledger';
 import { initiateOnlinePayment, isPaymentGatewayConfigured, simulateOnlinePayment } from '../lib/payments';
-import type { Student, StudentInvoice } from '../types';
+import { InvoiceReceiptModal } from './InvoiceReceiptModal';
+import type { LedgerAccount, Student, StudentInvoice } from '../types';
 
 export const GuardianDashboard = () => {
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -24,12 +26,18 @@ export const GuardianDashboard = () => {
   const [payingId, setPayingId] = React.useState<string | null>(null);
   const [payMessage, setPayMessage] = React.useState('');
   const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [receiptInvoice, setReceiptInvoice] = React.useState<StudentInvoice | null>(null);
+  const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
 
   React.useEffect(() => {
     const mobile = localStorage.getItem('guardianMobile') ?? '';
     fetchStudentsForGuardian(mobile)
       .then((data) => setStudents(data))
       .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    fetchAccounts().then(setAccounts).catch(() => setAccounts([]));
   }, []);
 
   const student = students[selectedIndex];
@@ -91,9 +99,11 @@ export const GuardianDashboard = () => {
       }
 
       await simulateOnlinePayment(invoice);
-      setPayMessage('Online payment recorded successfully.');
+      setPayMessage('Payment recorded. Receipt is ready to download.');
       const refreshed = await fetchInvoices({ studentId: student!.studentId });
       setInvoices(refreshed);
+      const paid = refreshed.find((item) => item.id === invoice.id);
+      if (paid) setReceiptInvoice(paid);
     } catch (err) {
       setPayMessage(err instanceof Error ? err.message : 'Payment failed.');
     } finally {
@@ -303,9 +313,13 @@ export const GuardianDashboard = () => {
                             {payingId === invoice.id ? 'Processing...' : 'Pay Now'}
                           </motion.button>
                         ) : (
-                          <div className="flex justify-end pr-5 text-emerald-500">
-                             <Shield size={18} />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setReceiptInvoice(invoice)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-100"
+                          >
+                            <FileText size={14} /> Download Receipt
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -356,6 +370,15 @@ export const GuardianDashboard = () => {
         </div>
       </div>
       </>
+      )}
+
+      {receiptInvoice && (
+        <InvoiceReceiptModal
+          invoice={receiptInvoice}
+          account={accounts.find((account) => account.id === receiptInvoice.paymentAccountId)}
+          guardianName={student?.guardianName}
+          onClose={() => setReceiptInvoice(null)}
+        />
       )}
     </motion.div>
   );

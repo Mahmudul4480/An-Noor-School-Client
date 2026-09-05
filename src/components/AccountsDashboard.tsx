@@ -18,9 +18,12 @@ import {
   Lock,
   Tags,
   ClipboardCheck,
+  TrendingUp,
+  Boxes,
+  Briefcase,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { cn } from '../lib/utils';
+import { cn, formatSignedBdt } from '../lib/utils';
 import { StudentManagement } from './StudentManagement';
 import { AdmissionsPanel } from './accounts/AdmissionsPanel';
 import { ExpensePanel } from './accounts/ExpensePanel';
@@ -30,7 +33,10 @@ import { DayClosePanel } from './accounts/DayClosePanel';
 import { CategoryRequestPanel } from './accounts/CategoryRequestPanel';
 import { AssetRegistryPanel } from './accounts/AssetRegistryPanel';
 import { InvoicingPanel } from './accounts/InvoicingPanel';
+import { IncomePanel } from './accounts/IncomePanel';
+import { InventoryPanel } from './accounts/InventoryPanel';
 import { ApprovalsPanel } from './accounts/ApprovalsPanel';
+import { StaffHrPanel } from './staff/StaffHrPanel';
 import { getFinancialOverview } from '../lib/reports';
 import type { FinancialOverview } from '../types';
 
@@ -92,9 +98,12 @@ export const AccountsDashboard = ({
   const tabs = [
     { id: 'overview', label: 'Financials', icon: <PieChart size={16} /> },
     { id: 'students', label: 'Student Management', icon: <Users size={16} /> },
+    { id: 'hr', label: 'Staff & Teachers', icon: <Briefcase size={16} /> },
     { id: 'admissions', label: 'Admissions', icon: <ClipboardCheck size={16} /> },
     { id: 'billing', label: 'Invoicing', icon: <FileText size={16} /> },
+    { id: 'income', label: 'Income', icon: <TrendingUp size={16} /> },
     { id: 'expenses', label: 'Expenses', icon: <Receipt size={16} /> },
+    { id: 'inventory', label: 'Inventory', icon: <Boxes size={16} /> },
     { id: 'ledger', label: 'Bank & MFS Ledger', icon: <Landmark size={16} /> },
     { id: 'assets', label: 'Asset Registry', icon: <Building2 size={16} /> },
     { id: 'report', label: 'Director Report', icon: <FileBarChart size={16} /> },
@@ -221,11 +230,15 @@ export const AccountsDashboard = ({
                             </div>
                             <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{account.name}</p>
                           </div>
-                          <p className="text-xs font-black text-school-blue">৳ {balance.toLocaleString()}</p>
+                          <p className={cn('text-xs font-black', balance < 0 ? 'text-red-600' : 'text-school-blue')}>
+                            {formatSignedBdt(balance)}
+                          </p>
                         </div>
                         <div className="flex justify-between items-center text-[9px] font-bold text-school-muted uppercase tracking-tighter">
                           <span>{account.type.toUpperCase()}</span>
-                          <span className="text-emerald-500">Active</span>
+                          <span className={balance < 0 ? 'text-red-500' : 'text-emerald-500'}>
+                            {balance < 0 ? 'Overdrawn' : 'Active'}
+                          </span>
                         </div>
                       </div>
                     ))
@@ -252,6 +265,12 @@ export const AccountsDashboard = ({
           </motion.div>
         )}
 
+        {activeSubTab === 'hr' && (
+          <motion.div key="hr" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <StaffHrPanel />
+          </motion.div>
+        )}
+
         {activeSubTab === 'admissions' && (
           <motion.div
             key="admissions"
@@ -268,6 +287,12 @@ export const AccountsDashboard = ({
           </motion.div>
         )}
 
+        {activeSubTab === 'income' && (
+          <motion.div key="income" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <IncomePanel />
+          </motion.div>
+        )}
+
         {activeSubTab === 'expenses' && (
           <motion.div
             key="expenses"
@@ -275,6 +300,12 @@ export const AccountsDashboard = ({
             animate={{ opacity: 1, y: 0 }}
           >
             <ExpensePanel />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'inventory' && (
+          <motion.div key="inventory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <InventoryPanel />
           </motion.div>
         )}
 
@@ -318,7 +349,7 @@ export const AccountsDashboard = ({
 
         {activeSubTab === 'approvals' && (
           <motion.div key="approvals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <ApprovalsPanel viewerDepartment="accounts" actorName="Accounts Department" />
+            <ApprovalsPanel viewerDepartment="accounts" />
           </motion.div>
         )}
       </AnimatePresence>

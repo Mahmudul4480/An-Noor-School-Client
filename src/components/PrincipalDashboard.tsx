@@ -19,7 +19,11 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { cn } from '../lib/utils';
 import { ApprovalsPanel } from './accounts/ApprovalsPanel';
+import { AccessControlPanel } from './AccessControlPanel';
+import { StaffDirectoryPanel } from './staff/StaffDirectoryPanel';
+import { LowStockAlertCard } from './LowStockAlertCard';
 import { fetchApprovalStats } from '../lib/approvals';
+import { getCurrentActorLabel } from '../lib/actor';
 
 const enrollmentData = [
   { name: 'Grade 1', students: 45, color: '#1E3A8A' },
@@ -44,15 +48,10 @@ export const PrincipalDashboard = () => {
     fetchApprovalStats('principal').then((stats) => setPendingCount(stats.actionableCount));
   }, [activeSubTab]);
 
-  const staffStatus = [
-    { name: 'Ustaz Ahmedullah', role: 'Grade 4 Lead', status: 'Checked In', kpi: 94 },
-    { name: 'Ms. Rabeya', role: 'Grade 2 Teacher', status: 'On Leave', kpi: 88 },
-    { name: 'Ustaz Karim', role: 'Arabic Dept Head', status: 'Checked In', kpi: 92 },
-  ];
-
   const tabs = [
     { id: 'overview', label: 'Command Center', icon: <LayoutGrid size={16} /> },
     { id: 'approvals', label: 'Approval Hub', icon: <Shield size={16} /> },
+    { id: 'access', label: 'Accounts Access', icon: <UserCheck size={16} /> },
     { id: 'staff', label: 'Staff Directory', icon: <Users size={16} /> },
     { id: 'analytics', label: 'Oversight', icon: <TrendingUp size={16} /> },
   ];
@@ -108,6 +107,10 @@ export const PrincipalDashboard = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           >
+            <div className="lg:col-span-2">
+              <LowStockAlertCard />
+            </div>
+
             <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
                <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-8 flex items-center gap-2">
                  <BellRing size={16} className="text-school-gold" />
@@ -172,66 +175,19 @@ export const PrincipalDashboard = () => {
 
         {activeSubTab === 'approvals' && (
           <motion.div key="approvals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <ApprovalsPanel viewerDepartment="principal" actorName="Principal Office" />
+            <ApprovalsPanel viewerDepartment="principal" actorName={getCurrentActorLabel('Principal Office')} />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'access' && (
+          <motion.div key="access" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <AccessControlPanel />
           </motion.div>
         )}
 
         {activeSubTab === 'staff' && (
-          <motion.div 
-            key="staff"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-8">
-               <div>
-                  <h3 className="text-xl font-black text-school-blue uppercase tracking-tight">Staff Oversight Directory</h3>
-                  <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">Total Academic Staff: 20 Active</p>
-               </div>
-               <button className="px-6 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20">
-                  Broadcast Staff Notice
-               </button>
-            </div>
-
-            <div className="overflow-x-auto">
-               <table className="w-full text-left text-[11px]">
-                 <thead>
-                   <tr className="text-school-muted font-black border-b border-school-border uppercase tracking-widest">
-                     <th className="pb-4">Name & Designation</th>
-                     <th className="pb-4">Status Today</th>
-                     <th className="pb-4">KPI Performance</th>
-                     <th className="pb-4 text-right">Oversight</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-50">
-                    {staffStatus.map((staff, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                         <td className="py-6">
-                            <p className="font-black text-school-blue tracking-tight uppercase leading-tight">{staff.name}</p>
-                            <p className="text-[9px] font-bold text-school-muted uppercase mt-0.5">{staff.role}</p>
-                         </td>
-                         <td className="py-6">
-                            <span className={cn(
-                              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tighter",
-                              staff.status === 'Checked In' ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-school-gold"
-                            )}>
-                               {staff.status}
-                            </span>
-                         </td>
-                         <td className="py-6">
-                            <div className="flex items-center gap-3">
-                               <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-school-blue" style={{ width: `${staff.kpi}%` }} />
-                               </div>
-                               <span className="font-black text-school-blue">{staff.kpi}%</span>
-                            </div>
-                         </td>
-                         <td className="py-6 text-right font-black text-school-blue uppercase underline underline-offset-4 cursor-pointer hover:text-school-gold">Details</td>
-                      </tr>
-                    ))}
-                 </tbody>
-               </table>
-            </div>
+          <motion.div key="staff" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <StaffDirectoryPanel viewer="principal" />
           </motion.div>
         )}
 

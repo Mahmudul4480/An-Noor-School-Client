@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { omitUndefined, toIsoString } from './utils';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../types';
@@ -21,10 +22,18 @@ const LOCAL_ENTRIES_KEY = 'an-noor-ledger-entries';
 const LOCAL_REVERSE_REQUESTS_KEY = 'an-noor-reverse-requests';
 
 export const ONLINE_PAYMENT_ACCOUNT_ID = 'online-payment';
+export const PETTY_CASH_ACCOUNT_ID = 'petty-cash';
 
 const DEFAULT_ACCOUNTS: LedgerAccount[] = [
   { id: 'main-cash', name: 'Main Cash', type: 'cash', openingBalance: 125400, createdAt: new Date().toISOString() },
-  { id: 'petty-cash', name: 'Petty Cash', type: 'cash', openingBalance: 12500, createdAt: new Date().toISOString() },
+  {
+    id: PETTY_CASH_ACCOUNT_ID,
+    name: 'Petty Cash',
+    type: 'cash',
+    openingBalance: 0,
+    allowsOverdraft: true,
+    createdAt: new Date().toISOString(),
+  },
   { id: 'city-bank', name: 'City Bank', type: 'bank', openingBalance: 1250000, createdAt: new Date().toISOString() },
   { id: 'bkash-merchant', name: 'bKash Merchant', type: 'mobile', openingBalance: 45600, createdAt: new Date().toISOString() },
   { id: 'nagad-business', name: 'Nagad Business', type: 'mobile', openingBalance: 28900, createdAt: new Date().toISOString() },
@@ -97,14 +106,26 @@ export async function fetchAccounts(): Promise<LedgerAccount[]> {
   if (isDemoLoginEnabled) {
     const accounts = mergeDefaultAccounts(readLocal<LedgerAccount[]>(LOCAL_ACCOUNTS_KEY, DEFAULT_ACCOUNTS));
     writeLocal(LOCAL_ACCOUNTS_KEY, accounts);
-    return accounts;
+    return withPettyCashOverdraft(accounts);
   }
 
-  return ensureDefaultAccountsInFirestore();
+  return withPettyCashOverdraft(await ensureDefaultAccountsInFirestore());
 }
 
 export function getOnlinePaymentAccount(accounts: LedgerAccount[]): LedgerAccount | undefined {
   return accounts.find((account) => account.id === ONLINE_PAYMENT_ACCOUNT_ID);
+}
+
+export function isPettyCashAccount(account: Pick<LedgerAccount, 'id' | 'name' | 'allowsOverdraft'>): boolean {
+  if (account.allowsOverdraft) return true;
+  if (account.id === PETTY_CASH_ACCOUNT_ID) return true;
+  return /petty\s*cash/i.test(account.name);
+}
+
+function withPettyCashOverdraft(accounts: LedgerAccount[]): LedgerAccount[] {
+  return accounts.map((account) =>
+    isPettyCashAccount(account) ? { ...account, allowsOverdraft: true } : account,
+  );
 }
 
 export async function addAccount(input: { name: string; type: LedgerAccountType; openingBalance: number }): Promise<LedgerAccount> {
@@ -216,38 +237,74 @@ export async function transferBetweenAccounts(params: {
   fromAccountId: string;
   toAccountId: string;
   amount: number;
+  /** Cashout / bank charge, deducted from the source account and posted as an expense */
+  charge?: number;
   note?: string;
-}): Promise<{ debit: LedgerEntry; credit: LedgerEntry }> {
+}): Promise<{ debit: LedgerEntry; credit: LedgerEntry; transferId: string }> {
+  if (params.fromAccountId === params.toAccountId) {
+    throw new Error('From এবং To account আলাদা হতে হবে।');
+  }
+  if (!params.amount || params.amount <= 0) {
+    throw new Error('Valid transfer amount দিন।');
+  }
+  const charge = Number(params.charge) || 0;
+  if (charge < 0) {
+    throw new Error('Charge negative হতে পারে না।');
+  }
+
+  const accounts = await fetchAccounts();
+  const fromAccount = accounts.find((account) => account.id === params.fromAccountId);
+  const toAccount = accounts.find((account) => account.id === params.toAccountId);
+  if (!fromAccount || !toAccount) {
+    throw new Error('Account not found.');
+  }
+
   const transferId = generateId('xfer');
   const date = new Date().toISOString();
+  const noteParts = [params.note?.trim(), charge > 0 ? `Charge ৳ ${charge.toLocaleString('en-BD')}` : '']
+    .filter(Boolean)
+    .join(' • ');
 
   const debit = await addEntry({
     accountId: params.fromAccountId,
     type: 'debit',
     amount: params.amount,
-    reference: `Internal Transfer (Out) → ${params.toAccountId}`,
+    reference: `Internal Transfer (Out) → ${toAccount.name}`,
     relatedType: 'transfer',
     relatedId: transferId,
     date,
-    note: params.note,
+    note: noteParts || undefined,
   });
 
   const credit = await addEntry({
     accountId: params.toAccountId,
     type: 'credit',
     amount: params.amount,
-    reference: `Internal Transfer (In) ← ${params.fromAccountId}`,
+    reference: `Internal Transfer (In) ← ${fromAccount.name}`,
     relatedType: 'transfer',
     relatedId: transferId,
     date,
-    note: params.note,
+    note: noteParts || undefined,
   });
 
-  return { debit, credit };
+  if (charge > 0) {
+    const { postTransferChargeExpense } = await import('./expenses');
+    await postTransferChargeExpense({
+      date: date.slice(0, 10),
+      amount: charge,
+      accountId: params.fromAccountId,
+      fromAccountName: fromAccount.name,
+      toAccountName: toAccount.name,
+      transferId,
+      note: params.note,
+    });
+  }
+
+  return { debit, credit, transferId };
 }
 
 export function computeBalance(account: LedgerAccount, entries: LedgerEntry[]): number {
-  const accountEntries = entries.filter((entry) => entry.accountId === account.id);
+  const accountEntries = entries.filter((entry) => entry.accountId === account.id && !entry.reversed);
   const credits = accountEntries.filter((entry) => entry.type === 'credit').reduce((sum, entry) => sum + entry.amount, 0);
   const debits = accountEntries.filter((entry) => entry.type === 'debit').reduce((sum, entry) => sum + entry.amount, 0);
   return account.openingBalance + credits - debits;
@@ -342,7 +399,7 @@ export async function requestReverseEntry(params: {
     entryType: params.entry.type,
     amount: params.entry.amount,
     reason,
-    requestedBy: params.actorName ?? 'Accounts Department',
+    requestedBy: params.actorName ?? getCurrentActorLabel('Accounts Department'),
     createdAt: new Date().toISOString(),
     approvalStatus: 'pending',
   };

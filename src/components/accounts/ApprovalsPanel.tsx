@@ -12,13 +12,21 @@ import {
   Eye,
   RotateCcw,
   RefreshCw,
+  CreditCard,
+  TrendingUp,
+  UserPlus,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { fetchApprovalQueue, type ApprovalQueueItem } from '../../lib/approvals';
 import { actOnApproval } from '../../lib/admissions';
 import { reviewCategoryRequest } from '../../lib/categories';
 import { reviewExpense } from '../../lib/expenses';
+import { reviewIncomeEntry } from '../../lib/income';
+import { reviewInvoicePayment } from '../../lib/invoices';
 import { fetchAccounts, reviewReverseRequest } from '../../lib/ledger';
+import { reviewDutyAssignment, reviewStaffHire } from '../../lib/staff';
+import { getCurrentActorLabel } from '../../lib/actor';
 import type { ApprovalDepartment, LedgerAccount } from '../../types';
 
 const KIND_ICON = {
@@ -26,14 +34,21 @@ const KIND_ICON = {
   category: Tag,
   expense: Receipt,
   reversal: RotateCcw,
+  invoice: CreditCard,
+  income: TrendingUp,
+  hire: UserPlus,
+  duty: Briefcase,
 };
 
 interface ApprovalsPanelProps {
   viewerDepartment: ApprovalDepartment;
-  actorName: string;
+  actorName?: string;
 }
 
 export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelProps) {
+  const actingAs = actorName ?? getCurrentActorLabel(
+    viewerDepartment === 'principal' ? 'Principal Office' : 'Accounts Department',
+  );
   const [pending, setPending] = React.useState<ApprovalQueueItem[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -83,28 +98,57 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           admission: item.admission,
           department: item.department,
           action: 'approved',
-          actorName,
+          actorName: actingAs,
           note: notes[item.id] || undefined,
         });
       } else if (item.kind === 'category' && item.categoryRequest) {
         await reviewCategoryRequest({
           request: item.categoryRequest,
           action: 'approved',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
           note: notes[item.id],
         });
       } else if (item.kind === 'expense' && item.expense) {
         await reviewExpense({
           expense: item.expense,
           action: 'approved',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
           note: notes[item.id],
         });
       } else if (item.kind === 'reversal' && item.reverseRequest) {
         await reviewReverseRequest({
           request: item.reverseRequest,
           action: 'approved',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
+          note: notes[item.id],
+        });
+      } else if (item.kind === 'invoice' && item.invoice) {
+        await reviewInvoicePayment({
+          invoice: item.invoice,
+          action: 'approved',
+          reviewedBy: actingAs,
+          note: notes[item.id],
+        });
+      } else if (item.kind === 'income' && item.incomeEntry) {
+        await reviewIncomeEntry({
+          entry: item.incomeEntry,
+          action: 'approved',
+          reviewedBy: actingAs,
+          note: notes[item.id],
+        });
+      } else if (item.kind === 'hire' && item.staffMember) {
+        await reviewStaffHire({
+          person: item.staffMember,
+          action: 'approved',
+          reviewedBy: actingAs,
+          note: notes[item.id],
+        });
+      } else if (item.kind === 'duty' && item.staffMember && item.duty) {
+        await reviewDutyAssignment({
+          person: item.staffMember,
+          dutyId: item.duty.id,
+          action: 'approved',
+          reviewedBy: actingAs,
           note: notes[item.id],
         });
       }
@@ -133,28 +177,57 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           admission: item.admission,
           department: item.department,
           action: 'rejected',
-          actorName,
+          actorName: actingAs,
           note,
         });
       } else if (item.kind === 'category' && item.categoryRequest) {
         await reviewCategoryRequest({
           request: item.categoryRequest,
           action: 'rejected',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
           note,
         });
       } else if (item.kind === 'expense' && item.expense) {
         await reviewExpense({
           expense: item.expense,
           action: 'rejected',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
           note,
         });
       } else if (item.kind === 'reversal' && item.reverseRequest) {
         await reviewReverseRequest({
           request: item.reverseRequest,
           action: 'rejected',
-          reviewedBy: actorName,
+          reviewedBy: actingAs,
+          note,
+        });
+      } else if (item.kind === 'invoice' && item.invoice) {
+        await reviewInvoicePayment({
+          invoice: item.invoice,
+          action: 'rejected',
+          reviewedBy: actingAs,
+          note,
+        });
+      } else if (item.kind === 'income' && item.incomeEntry) {
+        await reviewIncomeEntry({
+          entry: item.incomeEntry,
+          action: 'rejected',
+          reviewedBy: actingAs,
+          note,
+        });
+      } else if (item.kind === 'hire' && item.staffMember) {
+        await reviewStaffHire({
+          person: item.staffMember,
+          action: 'rejected',
+          reviewedBy: actingAs,
+          note,
+        });
+      } else if (item.kind === 'duty' && item.staffMember && item.duty) {
+        await reviewDutyAssignment({
+          person: item.staffMember,
+          dutyId: item.duty.id,
+          action: 'rejected',
+          reviewedBy: actingAs,
           note,
         });
       }
@@ -177,7 +250,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Approval Hub</h3>
         <p className="text-xs font-bold opacity-80 uppercase tracking-widest max-w-xl">
           {viewerDepartment === 'principal'
-            ? 'Accounts থেকে আসা admission, expense, reverse entry ও category request approve/reject করুন'
+            ? 'Accounts থেকে আসা admission, hire, duty, invoice, income, expense, reverse ও category request approve/reject করুন'
             : 'Principal approve না করা পর্যন্ত প্রতিটি pending entry এখানে থাকবে — monitor করুন'}
         </p>
         <div className="flex flex-wrap items-center gap-4 mt-6">
@@ -210,7 +283,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
       ) : viewerDepartment === 'accounts' ? (
         <ApprovalSection
           title="Pending until Principal Approves"
-          emptyText="এখন কোনো pending entry নেই। Admission, Expense, Reverse বা Category submit করলে Principal approve না হওয়া পর্যন্ত এখানে দেখাবে।"
+          emptyText="এখন কোনো pending entry নেই। Admission, Invoice payment, Expense, Reverse বা Category submit করলে Principal approve না হওয়া পর্যন্ত এখানে দেখাবে।"
           items={pending}
           accounts={accounts}
           notes={notes}

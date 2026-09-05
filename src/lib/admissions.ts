@@ -10,10 +10,12 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
+import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { addStudent, getNextStudentId, updateStudentStatus } from './students';
 import { recordCollection, recordReversal } from './ledger';
 import { generateReceiptNumber } from './receipts';
+import { omitUndefined } from './utils';
 import { normalizeMobile, provisionGuardianLogin } from './guardians';
 import type {
   Admission,
@@ -183,6 +185,7 @@ function normalizeAdmission(id: string, data: Record<string, unknown>): Admissio
     status: (data.status as Admission['status']) || 'pending_approval',
     cancelReason: data.cancelReason ? String(data.cancelReason) : undefined,
     studentId: data.studentId ? String(data.studentId) : undefined,
+    createdBy: data.createdBy ? String(data.createdBy) : undefined,
     createdAt: toIsoString(data.createdAt),
     updatedAt: toIsoString(data.updatedAt),
   };
@@ -190,31 +193,121 @@ function normalizeAdmission(id: string, data: Record<string, unknown>): Admissio
 
 /* ---------------- Fee Structure ---------------- */
 
-export async function fetchFeeStructure(): Promise<FeeStructure> {
+export function classStructureId(className: string): string {
+  return className.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+export function cloneFeeItems(items: FeeStructureItem[] = DEFAULT_FEE_ITEMS): FeeStructureItem[] {
+  return items.map((item) => ({ ...item }));
+}
+
+export function buildClassFeeStructure(className: string, items?: FeeStructureItem[]): FeeStructure {
+  return {
+    id: classStructureId(className),
+    className,
+    academicYear: String(new Date().getFullYear()),
+    items: cloneFeeItems(items),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function tuitionFromItems(items: FeeStructureItem[]): number {
+  return items.find((item) => item.key === 'tuitionFee')?.amount ?? 4500;
+}
+
+export function admissionFeeFromItems(items: FeeStructureItem[]): number {
+  return items.find((item) => item.key === 'admissionFee')?.amount ?? 0;
+}
+
+function isFeeStructureRecord(value: unknown): value is FeeStructure {
+  return Boolean(value && typeof value === 'object' && Array.isArray((value as FeeStructure).items));
+}
+
+function readLocalFeeMap(): Record<string, FeeStructure> {
+  try {
+    const raw = localStorage.getItem(LOCAL_FEE_STRUCTURES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (isFeeStructureRecord(parsed)) {
+      const id = parsed.id && parsed.id !== 'default' ? parsed.id : 'default';
+      return { [id]: parsed };
+    }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, FeeStructure>;
+    }
+  } catch {
+    /* ignore corrupt local cache */
+  }
+  return {};
+}
+
+function writeLocalFeeMap(map: Record<string, FeeStructure>) {
+  writeLocal(LOCAL_FEE_STRUCTURES_KEY, map);
+}
+
+function normalizeFeeStructure(data: Partial<FeeStructure>, fallbackClass: string): FeeStructure {
+  const className = data.className || fallbackClass;
+  return {
+    id: data.id || classStructureId(className),
+    className,
+    academicYear: data.academicYear || String(new Date().getFullYear()),
+    items: Array.isArray(data.items) && data.items.length > 0 ? data.items : cloneFeeItems(),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
+export async function fetchAllFeeStructures(): Promise<FeeStructure[]> {
   if (isDemoLoginEnabled) {
-    return readLocal<FeeStructure>(LOCAL_FEE_STRUCTURES_KEY, DEFAULT_FEE_STRUCTURE);
+    return Object.values(readLocalFeeMap()).map((structure) =>
+      normalizeFeeStructure(structure, structure.className || 'All Classes'),
+    );
   }
 
   await ensureFirebaseSession();
   const snapshot = await getDocs(query(collection(db, FEE_STRUCTURES_COLLECTION)));
-  const defaultDoc = snapshot.docs.find((document) => document.id === 'default');
-  return defaultDoc ? (defaultDoc.data() as FeeStructure) : DEFAULT_FEE_STRUCTURE;
+  return snapshot.docs.map((document) =>
+    normalizeFeeStructure({ ...(document.data() as FeeStructure), id: document.id }, document.id),
+  );
 }
 
-export async function saveFeeStructure(items: FeeStructureItem[]): Promise<FeeStructure> {
-  const structure: FeeStructure = {
-    ...DEFAULT_FEE_STRUCTURE,
-    items,
-    updatedAt: new Date().toISOString(),
-  };
+export function resolveClassFeeItems(structures: FeeStructure[], className: string): FeeStructureItem[] {
+  const id = classStructureId(className);
+  const match = structures.find((structure) => structure.id === id || structure.className === className);
+  if (match) return cloneFeeItems(match.items);
+  const fallback = structures.find((structure) => structure.id === 'default');
+  return cloneFeeItems(fallback?.items);
+}
+
+export async function fetchFeeStructure(className?: string): Promise<FeeStructure> {
+  const all = await fetchAllFeeStructures();
+  if (!className) {
+    const fallback = all.find((structure) => structure.id === 'default') ?? DEFAULT_FEE_STRUCTURE;
+    return normalizeFeeStructure(fallback, 'All Classes');
+  }
+
+  const existing = all.find(
+    (structure) => structure.id === classStructureId(className) || structure.className === className,
+  );
+  return existing
+    ? normalizeFeeStructure(existing, className)
+    : buildClassFeeStructure(className, resolveClassFeeItems(all, className));
+}
+
+export async function saveFeeStructure(className: string, items: FeeStructureItem[]): Promise<FeeStructure> {
+  const structure = buildClassFeeStructure(className, items);
 
   if (isDemoLoginEnabled) {
-    writeLocal(LOCAL_FEE_STRUCTURES_KEY, structure);
+    const map = readLocalFeeMap();
+    map[structure.id] = structure;
+    writeLocalFeeMap(map);
     return structure;
   }
 
   await ensureFirebaseSession();
-  await setDoc(doc(db, FEE_STRUCTURES_COLLECTION, 'default'), { ...structure, updatedAt: serverTimestamp() });
+  await setDoc(
+    doc(db, FEE_STRUCTURES_COLLECTION, structure.id),
+    omitUndefined({ ...structure, updatedAt: serverTimestamp() } as Record<string, unknown>),
+  );
   return structure;
 }
 
@@ -222,20 +315,41 @@ export async function saveFeeStructure(items: FeeStructureItem[]): Promise<FeeSt
 
 export function computeTotals(feeItems: FeeStructureItem[], discounts: AdmissionDiscount[]) {
   const grossTotal = feeItems.reduce((sum, item) => sum + item.amount, 0);
-  const totalDiscount = discounts.reduce((sum, discount) => sum + discount.amount, 0);
+
+  // Overall concession applied after gross total
+  const overallDiscount = discounts.filter((d) => d.itemKey === 'overall').reduce((sum, d) => sum + d.amount, 0);
+  // Legacy per-item discounts
+  const perItemDiscount = discounts
+    .filter((d) => d.itemKey !== 'overall')
+    .reduce((sum, discount) => sum + discount.amount, 0);
+
+  const totalDiscount = overallDiscount + perItemDiscount;
   const grandTotal = Math.max(0, grossTotal - totalDiscount);
   return { grossTotal, totalDiscount, grandTotal };
 }
 
+export function maxDiscountableAmount(feeItems: FeeStructureItem[]): number {
+  return feeItems.filter((item) => item.discountable).reduce((sum, item) => sum + item.amount, 0);
+}
+
 export function validateDiscount(
-  itemKey: FeeItemKey,
+  itemKey: FeeItemKey | 'overall',
   amount: number,
   feeItems: FeeStructureItem[],
 ): string | null {
+  if (amount < 0) return 'Discount amount negative হতে পারে না।';
+
+  if (itemKey === 'overall') {
+    const max = maxDiscountableAmount(feeItems);
+    if (amount > max) {
+      return `Concession ৳ ${max.toLocaleString('en-BD')} পর্যন্ত দেওয়া যাবে (Tuition Fee বাদে)।`;
+    }
+    return null;
+  }
+
   const item = feeItems.find((fee) => fee.key === itemKey);
   if (!item) return 'Unknown fee item.';
   if (!item.discountable) return 'Tuition Fee-এ discount দেওয়া যায় না।';
-  if (amount < 0) return 'Discount amount negative হতে পারে না।';
   if (amount > item.amount) return 'Discount amount fee-এর চেয়ে বেশি হতে পারে না।';
   return null;
 }
@@ -398,6 +512,7 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
       status: 'pending',
     })),
     status: 'pending_approval',
+    createdBy: getCurrentActorLabel('Accounts Department'),
     createdAt: now,
     updatedAt: now,
   };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, Tag } from 'lucide-react';
+import { getCurrentActorLabel } from '../../lib/actor';
 import { fetchApprovedCategories, fetchCategoryRequests, requestCategory } from '../../lib/categories';
 import type { CategoryType } from '../../types';
 
@@ -41,7 +42,7 @@ export function CategoryRequestPanel() {
     setError('');
     setMessage('');
     try {
-      await requestCategory({ type, name, requestedBy: 'Accounts Dept.' });
+      await requestCategory({ type, name, requestedBy: getCurrentActorLabel('Accounts Department') });
       setName('');
       setMessage('Category request sent to Principal for approval.');
       await load();

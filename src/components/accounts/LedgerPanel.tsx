@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe, RotateCcw } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, fetchReverseRequests, hasPendingReverseRequest, isEntryReversed, requestReverseEntry, transferBetweenAccounts } from '../../lib/ledger';
+import { getCurrentActorLabel } from '../../lib/actor';
+import { cn, formatSignedBdt } from '../../lib/utils';
+import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, fetchReverseRequests, hasPendingReverseRequest, isEntryReversed, isPettyCashAccount, requestReverseEntry, transferBetweenAccounts } from '../../lib/ledger';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../../types';
 
 const TYPE_ICON: Record<LedgerAccountType, React.ReactNode> = {
@@ -27,7 +28,13 @@ export function LedgerPanel() {
   const [showAddAccount, setShowAddAccount] = React.useState(false);
   const [showTransfer, setShowTransfer] = React.useState(false);
   const [newAccount, setNewAccount] = React.useState({ name: '', type: 'bank' as LedgerAccountType, openingBalance: '' });
-  const [transfer, setTransfer] = React.useState({ fromAccountId: '', toAccountId: '', amount: '', note: '' });
+  const [transfer, setTransfer] = React.useState({
+    fromAccountId: '',
+    toAccountId: '',
+    amount: '',
+    charge: '',
+    note: '',
+  });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
@@ -63,6 +70,10 @@ export function LedgerPanel() {
 
   const balances = computeAllBalances(accounts, entries);
   const recentEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25);
+  const transferAmount = parseFloat(transfer.amount) || 0;
+  const transferCharge = parseFloat(transfer.charge) || 0;
+  const transferFromName = accounts.find((account) => account.id === transfer.fromAccountId)?.name ?? 'Source';
+  const transferToName = accounts.find((account) => account.id === transfer.toAccountId)?.name ?? 'Destination';
 
   const handleReverse = (entry: LedgerEntry) => {
     const reason = reverseNote[entry.id]?.trim();
@@ -90,7 +101,7 @@ export function LedgerPanel() {
         entry: confirmEntry,
         reason,
         accountName: accounts.find((account) => account.id === confirmEntry.accountId)?.name,
-        actorName: 'Accounts Department',
+        actorName: getCurrentActorLabel('Accounts Department'),
       });
       setMessage(
         `Reverse request Principal-এর কাছে পাঠানো হয়েছে। ৳ ${confirmEntry.amount.toLocaleString('en-BD')} — ${confirmEntry.reference}. Accounts → Approvals ট্যাবে pending দেখাবে; Principal approve করলে reverse হবে।`,
@@ -133,21 +144,35 @@ export function LedgerPanel() {
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     const amount = parseFloat(transfer.amount);
+    const charge = parseFloat(transfer.charge) || 0;
     if (!transfer.fromAccountId || !transfer.toAccountId || transfer.fromAccountId === transfer.toAccountId || !amount || amount <= 0) {
       setError('From/To account আলাদা হতে হবে এবং valid amount দিতে হবে।');
       return;
     }
+    if (charge < 0) {
+      setError('Cashout / bank charge negative হতে পারে না।');
+      return;
+    }
     setBusy(true);
     try {
+      const fromName = accounts.find((account) => account.id === transfer.fromAccountId)?.name ?? 'Source';
+      const toName = accounts.find((account) => account.id === transfer.toAccountId)?.name ?? 'Destination';
       await transferBetweenAccounts({
         fromAccountId: transfer.fromAccountId,
         toAccountId: transfer.toAccountId,
         amount,
+        charge,
         note: transfer.note || undefined,
       });
-      setTransfer((prev) => ({ ...prev, amount: '', note: '' }));
+      setTransfer((prev) => ({ ...prev, amount: '', charge: '', note: '' }));
       setShowTransfer(false);
+      setMessage(
+        charge > 0
+          ? `৳ ${amount.toLocaleString('en-BD')} ${fromName} থেকে ${toName}-এ transfer হয়েছে। Cashout charge ৳ ${charge.toLocaleString('en-BD')} ${fromName} থেকে debit হয়ে Expenses-এ "Bank / MFS Charge" হিসেবে যোগ হয়েছে।`
+          : `৳ ${amount.toLocaleString('en-BD')} ${fromName} থেকে ${toName}-এ transfer হয়েছে।`,
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Transfer failed.');
@@ -238,51 +263,75 @@ export function LedgerPanel() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             onSubmit={handleTransfer}
-            className="mb-6 p-5 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-5 gap-3"
+            className="mb-6 p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4"
           >
-            <select
-              value={transfer.fromAccountId}
-              onChange={(e) => setTransfer({ ...transfer, fromAccountId: e.target.value })}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  From: {account.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={transfer.toAccountId}
-              onChange={(e) => setTransfer({ ...transfer, toAccountId: e.target.value })}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  To: {account.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Amount"
-              value={transfer.amount}
-              onChange={(e) => setTransfer({ ...transfer, amount: e.target.value })}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Note (optional)"
-              value={transfer.note}
-              onChange={(e) => setTransfer({ ...transfer, note: e.target.value })}
-              className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
-            />
-            <button
-              type="submit"
-              disabled={busy}
-              className="px-4 py-2.5 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
-            >
-              Transfer
-            </button>
+            <p className="text-[10px] font-bold text-school-muted uppercase tracking-widest">
+              Bank → Bank, bKash → Bank, Nagad cashout — charge থাকলে source account থেকে কাটা হবে এবং Expenses-এ যোগ হবে
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+              <select
+                value={transfer.fromAccountId}
+                onChange={(e) => setTransfer({ ...transfer, fromAccountId: e.target.value })}
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    From: {account.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={transfer.toAccountId}
+                onChange={(e) => setTransfer({ ...transfer, toAccountId: e.target.value })}
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    To: {account.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={0}
+                placeholder="Amount ৳"
+                value={transfer.amount}
+                onChange={(e) => setTransfer({ ...transfer, amount: e.target.value })}
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
+              />
+              <input
+                type="number"
+                min={0}
+                placeholder="Charge / Cashout ৳"
+                value={transfer.charge}
+                onChange={(e) => setTransfer({ ...transfer, charge: e.target.value })}
+                className="px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-xs font-bold outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Note (optional)"
+                value={transfer.note}
+                onChange={(e) => setTransfer({ ...transfer, note: e.target.value })}
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="px-4 py-2.5 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+              >
+                {busy ? 'Transferring...' : 'Transfer'}
+              </button>
+            </div>
+            {transferAmount > 0 && (
+              <p className="text-[11px] font-bold text-school-blue">
+                {transferFromName} থেকে ৳ {(transferAmount + transferCharge).toLocaleString('en-BD')} যাবে
+                {transferCharge > 0
+                  ? ` (৳ ${transferAmount.toLocaleString('en-BD')} transfer + ৳ ${transferCharge.toLocaleString('en-BD')} charge)`
+                  : ''}
+                . {transferToName} পাবে ৳ {transferAmount.toLocaleString('en-BD')}
+                {transferCharge > 0 ? '. Charge Expenses → Bank / MFS Charge-এ যোগ হবে।' : '.'}
+              </p>
+            )}
           </motion.form>
         )}
 
@@ -293,14 +342,29 @@ export function LedgerPanel() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {balances.map(({ account, balance }) => (
-              <div key={account.id} className="p-5 rounded-2xl border border-slate-100 hover:border-school-gold/30 hover:bg-slate-50 transition-all">
+              <div
+                key={account.id}
+                className={cn(
+                  'p-5 rounded-2xl border hover:border-school-gold/30 hover:bg-slate-50 transition-all',
+                  balance < 0 ? 'border-red-200 bg-red-50/60' : 'border-slate-100',
+                )}
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', TYPE_STYLE[account.type])}>
                     {TYPE_ICON[account.type]}
                   </div>
-                  <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{account.name}</p>
+                  <div>
+                    <p className="text-[11px] font-black text-school-blue uppercase tracking-tight">{account.name}</p>
+                    {isPettyCashAccount(account) && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-school-muted">
+                        {balance < 0 ? 'Overdrawn — transfer in to cover' : 'Minus allowed'}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xl font-black text-school-blue">৳ {balance.toLocaleString()}</p>
+                <p className={cn('text-xl font-black', balance < 0 ? 'text-red-600' : 'text-school-blue')}>
+                  {formatSignedBdt(balance)}
+                </p>
                 <p className="text-[9px] font-bold text-school-muted uppercase tracking-widest mt-1">{account.type}</p>
               </div>
             ))}

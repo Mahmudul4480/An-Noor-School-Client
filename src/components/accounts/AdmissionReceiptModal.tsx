@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, CreditCard, Download, Loader2, ArrowLeft } from 'lucide-react';
 import {
-  SCHOOL_LOGO_URL,
-  SCHOOL_NAME,
-  SCHOOL_ADDRESS,
+  getSchoolName,
+  getSchoolAddress,
   buildAdmissionReceipt,
   printAdmissionReceipt,
   downloadAdmissionReceiptPdf,
   formatCurrency,
   formatReceiptDate,
 } from '../../lib/receipts';
+import { ReceiptLogo } from '../ReceiptLogo';
 import type { Admission, LedgerAccount } from '../../types';
 
 interface AdmissionReceiptModalProps {
@@ -68,13 +68,9 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
           <div className="p-6 max-h-[70vh] overflow-y-auto">
             <div className="rounded-2xl border-[3px] border-[#26338B] overflow-hidden shadow-lg">
               <div className="bg-gradient-to-br from-[#26338B] to-[#1a2560] text-white text-center px-6 py-5 border-b-4 border-[#F8A41C]">
-                <img
-                  src={SCHOOL_LOGO_URL}
-                  alt={`${SCHOOL_NAME} Logo`}
-                  className="w-20 h-20 object-contain rounded-full bg-white p-1 mx-auto mb-3"
-                />
-                <h4 className="text-base font-black uppercase tracking-wide">{SCHOOL_NAME}</h4>
-                <p className="text-xs font-bold text-[#F8A41C] mt-1">{SCHOOL_ADDRESS}</p>
+                <ReceiptLogo />
+                <h4 className="text-base font-black uppercase tracking-wide">{getSchoolName()}</h4>
+                <p className="text-xs font-bold text-[#F8A41C] mt-1">{getSchoolAddress()}</p>
                 <p className="text-[10px] uppercase tracking-[0.2em] opacity-90 mt-3">Admission Fee Receipt</p>
               </div>
 
@@ -112,29 +108,30 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
                       <tr className="bg-[#26338B] text-white text-[10px] uppercase tracking-wider">
                         <th className="p-3 text-left font-black">Fee Item</th>
                         <th className="p-3 text-right font-black">Amount</th>
-                        <th className="p-3 text-right font-black">Discount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {receipt.feeItems.map((item) => {
-                        const discount = receipt.discounts.find((d) => d.itemKey === item.key);
-                        return (
-                          <tr key={item.key} className="even:bg-slate-50">
-                            <td className="p-3 font-bold">{item.label}</td>
-                            <td className="p-3 text-right">{formatCurrency(item.amount)}</td>
-                            <td className="p-3 text-right text-red-600 font-bold">
-                              {discount ? `− ${formatCurrency(discount.amount)}` : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {receipt.feeItems.map((item) => (
+                        <tr key={item.key} className="even:bg-slate-50">
+                          <td className="p-3 font-bold">{item.label}</td>
+                          <td className="p-3 text-right">{formatCurrency(item.amount)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
 
                 <div className="text-right space-y-1 p-4 rounded-xl border-2 border-[#F8A41C] bg-gradient-to-r from-amber-50 to-white">
                   <p className="text-[10px] text-school-muted uppercase font-bold">Gross: {formatCurrency(receipt.grossTotal)}</p>
-                  <p className="text-[10px] text-red-500 uppercase font-bold">Discount: {formatCurrency(receipt.totalDiscount)}</p>
+                  {receipt.totalDiscount > 0 && (() => {
+                    const overall = receipt.discounts.find((d) => d.itemKey === 'overall');
+                    return (
+                      <p className="text-[10px] text-red-500 uppercase font-bold">
+                        Concession: − {formatCurrency(receipt.totalDiscount)}
+                        {overall?.reason ? ` (${overall.reason})` : ''}
+                      </p>
+                    );
+                  })()}
                   <p className="text-lg font-black text-[#26338B]">Grand Total: {formatCurrency(receipt.grandTotal)}</p>
                 </div>
 
@@ -144,7 +141,7 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
               </div>
 
               <div className="bg-[#26338B] text-white text-center py-3 text-[10px] uppercase tracking-widest font-bold">
-                Thank you — {SCHOOL_NAME}
+                Thank you — {getSchoolName()}
               </div>
             </div>
           </div>

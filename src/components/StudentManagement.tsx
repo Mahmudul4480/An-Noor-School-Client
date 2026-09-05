@@ -12,6 +12,7 @@ import {
   Loader2,
   Pencil,
 } from 'lucide-react';
+import { getCurrentActorLabel } from '../lib/actor';
 import { cn } from '../lib/utils';
 import type { ParsedStudentRow, Student } from '../types';
 import { CLASS_OPTIONS, GENDER_OPTIONS } from '../lib/schoolConstants';
@@ -168,7 +169,7 @@ export function StudentManagement() {
         fatherName: editForm.fatherName || undefined,
         academicYear: editForm.academicYear || undefined,
         correctionReason: editForm.correctionReason,
-        correctedBy: 'Accounts Department',
+        correctedBy: getCurrentActorLabel('Accounts Department'),
       });
       setEditingStudent(null);
       setSuccess('Student information corrected successfully.');

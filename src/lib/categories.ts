@@ -13,6 +13,7 @@ export const DEFAULT_INCOME_CATEGORIES = [
   'Transport Fee',
   'Book & Stationery',
   'Digital Fee',
+  'Asset Sale',
   'Other Income',
 ];
 
@@ -24,6 +25,7 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   'Transport',
   'Marketing',
   'Event',
+  'Bank / MFS Charge',
   'Other',
 ];
 

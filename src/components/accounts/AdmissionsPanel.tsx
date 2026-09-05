@@ -12,6 +12,7 @@ import {
   Loader2,
   Settings,
 } from 'lucide-react';
+import { getCurrentActorLabel } from '../../lib/actor';
 import { cn } from '../../lib/utils';
 import { cancelAdmission, fetchAdmissions } from '../../lib/admissions';
 import { fetchAccounts } from '../../lib/ledger';
@@ -73,7 +74,7 @@ export function AdmissionsPanel() {
               onClick={() => setShowFeeSettings(true)}
               className="px-5 py-2.5 bg-slate-50 border border-slate-100 text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 flex items-center gap-2 w-fit"
             >
-              <Settings size={14} /> Fee Structure
+              <Settings size={14} /> Class Fees
             </button>
             <button
               type="button"
@@ -177,7 +178,7 @@ function AdmissionRow({
     }
     setActing(true);
     try {
-      await cancelAdmission(admission, cancelReason, 'Accounts Dept.');
+      await cancelAdmission(admission, cancelReason, getCurrentActorLabel('Accounts Department'));
       setShowCancelForm(false);
       setCancelReason('');
       onRefresh();
@@ -209,6 +210,7 @@ function AdmissionRow({
               {admission.classApplied} {admission.section ? `• ${admission.section}` : ''} • ৳{' '}
               {(admission.grandTotal ?? 0).toLocaleString()}
               {admission.studentId ? ` • Student ID: ${admission.studentId}` : ''}
+              {admission.createdBy ? ` • By ${admission.createdBy}` : ''}
             </p>
           </div>
         </div>
@@ -243,30 +245,34 @@ function AdmissionRow({
                       <tr className="bg-slate-50 text-school-muted font-black uppercase tracking-widest">
                         <th className="p-3">Item</th>
                         <th className="p-3 text-right">Amount</th>
-                        <th className="p-3 text-right">Discount</th>
-                        <th className="p-3">Reason</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {(admission.feeItems ?? []).map((item) => {
-                        const discount = (admission.discounts ?? []).find((d) => d.itemKey === item.key);
-                        return (
-                          <tr key={item.key}>
-                            <td className="p-3 font-bold text-school-blue uppercase">{item.label}</td>
-                            <td className="p-3 text-right">৳ {item.amount.toLocaleString()}</td>
-                            <td className="p-3 text-right text-red-500 font-bold">
-                              {discount ? `− ৳ ${discount.amount.toLocaleString()}` : '—'}
-                            </td>
-                            <td className="p-3 text-slate-500">{discount?.reason || '—'}</td>
-                          </tr>
-                        );
-                      })}
+                      {(admission.feeItems ?? []).map((item) => (
+                        <tr key={item.key}>
+                          <td className="p-3 font-bold text-school-blue uppercase">{item.label}</td>
+                          <td className="p-3 text-right">৳ {item.amount.toLocaleString()}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
+                {/* Overall concession (applied after gross total) */}
+                {(() => {
+                  const overall = (admission.discounts ?? []).find((d) => d.itemKey === 'overall');
+                  return overall ? (
+                    <div className="flex items-center justify-end gap-3 mt-2 px-1 text-[11px]">
+                      <span className="text-school-muted font-bold">Concession:</span>
+                      <span className="text-red-500 font-black">− ৳ {overall.amount.toLocaleString()}</span>
+                      <span className="text-school-muted">({overall.reason})</span>
+                    </div>
+                  ) : null;
+                })()}
                 <div className="flex justify-end gap-6 mt-3 text-xs font-black">
                   <span className="text-school-muted">Gross: ৳ {(admission.grossTotal ?? 0).toLocaleString()}</span>
-                  <span className="text-red-500">Discount: ৳ {(admission.totalDiscount ?? 0).toLocaleString()}</span>
+                  {(admission.totalDiscount ?? 0) > 0 && (
+                    <span className="text-red-500">Discount: ৳ {(admission.totalDiscount ?? 0).toLocaleString()}</span>
+                  )}
                   <span className="text-emerald-600">Grand Total: ৳ {(admission.grandTotal ?? 0).toLocaleString()}</span>
                 </div>
               </div>

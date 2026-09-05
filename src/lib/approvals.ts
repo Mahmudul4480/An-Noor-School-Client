@@ -1,17 +1,24 @@
 import { fetchAdmissions } from './admissions';
 import { fetchCategoryRequests } from './categories';
 import { fetchExpenses } from './expenses';
-import { fetchReverseRequests } from './ledger';
+import { fetchIncomeEntries } from './income';
+import { fetchInvoices } from './invoices';
+import { fetchAccounts, fetchReverseRequests } from './ledger';
+import { fetchPendingDuties, fetchPendingHires } from './staff';
 import { toIsoString } from './utils';
 import type {
   Admission,
   ApprovalDepartment,
   CategoryRequest,
+  DutyAssignment,
   Expense,
+  IncomeEntry,
   ReverseRequest,
+  StaffMember,
+  StudentInvoice,
 } from '../types';
 
-export type ApprovalItemKind = 'admission' | 'category' | 'expense' | 'reversal';
+export type ApprovalItemKind = 'admission' | 'category' | 'expense' | 'reversal' | 'invoice' | 'income' | 'hire' | 'duty';
 
 export interface ApprovalQueueItem {
   id: string;
@@ -25,7 +32,11 @@ export interface ApprovalQueueItem {
   admission?: Admission;
   categoryRequest?: CategoryRequest;
   expense?: Expense;
+  incomeEntry?: IncomeEntry;
   reverseRequest?: ReverseRequest;
+  invoice?: StudentInvoice;
+  staffMember?: StaffMember;
+  duty?: DutyAssignment;
   department?: ApprovalDepartment;
 }
 
@@ -48,12 +59,24 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
     fetchCategoryRequests(),
     fetchExpenses(),
     fetchReverseRequests(),
+    fetchInvoices(),
+    fetchAccounts(),
+    fetchIncomeEntries(),
+    fetchPendingHires(),
+    fetchPendingDuties(),
   ]);
 
   const admissions = results[0].status === 'fulfilled' ? results[0].value : [];
   const categories = results[1].status === 'fulfilled' ? results[1].value : [];
   const expenses = results[2].status === 'fulfilled' ? results[2].value : [];
   const reverseRequests = results[3].status === 'fulfilled' ? results[3].value : [];
+  const invoices = results[4].status === 'fulfilled' ? results[4].value : [];
+  const accounts = results[5].status === 'fulfilled' ? results[5].value : [];
+  const incomeEntries = results[6].status === 'fulfilled' ? results[6].value : [];
+  const hires = results[7].status === 'fulfilled' ? results[7].value : [];
+  const duties = results[8].status === 'fulfilled' ? results[8].value : [];
+  const accountName = (accountId?: string) =>
+    accounts.find((account) => account.id === accountId)?.name ?? accountId ?? '—';
 
   const pending: ApprovalQueueItem[] = [];
 
@@ -70,7 +93,7 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       kind: 'admission',
       title: `Admission — ${admission.studentName}`,
       subtitle: `${admission.formSerial} • ${admission.classApplied} • ৳ ${admission.grandTotal.toLocaleString('en-BD')}`,
-      requestedBy: 'Accounts Department',
+      requestedBy: admission.createdBy ?? 'Accounts Department',
       requestedAt: toIsoString(admission.createdAt),
       priority: 'high',
       actionable: department === 'principal',
@@ -99,12 +122,27 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       id: `exp-${expense.id}`,
       kind: 'expense',
       title: `Expense — ${expense.description}`,
-      subtitle: `${expense.category} • ৳ ${expense.amount.toLocaleString('en-BD')}`,
+      subtitle: `${expense.category} • ৳ ${expense.amount.toLocaleString('en-BD')} • Paid from ${accountName(expense.accountId)}`,
       requestedBy: expense.createdBy ?? 'Accounts Department',
       requestedAt: toIsoString(expense.createdAt || expense.date),
       priority: expense.amount >= 10000 ? 'high' : 'medium',
       actionable: department === 'principal',
       expense,
+      department: 'principal',
+    });
+  }
+
+  for (const entry of incomeEntries.filter((item) => item.approvalStatus === 'pending')) {
+    pending.push({
+      id: `inc-${entry.id}`,
+      kind: 'income',
+      title: `Income — ${entry.description}`,
+      subtitle: `${entry.category} • ৳ ${entry.amount.toLocaleString('en-BD')} • From ${entry.source} • Into ${accountName(entry.accountId)}${entry.reference ? ` • Ref ${entry.reference}` : ''}`,
+      requestedBy: entry.createdBy ?? 'Accounts Department',
+      requestedAt: toIsoString(entry.createdAt || entry.date),
+      priority: entry.amount >= 10000 ? 'high' : 'medium',
+      actionable: department === 'principal',
+      incomeEntry: entry,
       department: 'principal',
     });
   }
@@ -120,6 +158,55 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       priority: 'high',
       actionable: department === 'principal',
       reverseRequest,
+      department: 'principal',
+    });
+  }
+
+  for (const invoice of invoices.filter((item) => item.paymentApprovalStatus === 'pending')) {
+    const amount = invoice.pendingPaymentAmount || invoice.totalAmount - invoice.paidAmount;
+    const intoAccount = accountName(invoice.pendingPaymentAccountId);
+    const slip = invoice.pendingPaymentReference ? ` • Slip ${invoice.pendingPaymentReference}` : '';
+    pending.push({
+      id: `inv-${invoice.id}`,
+      kind: 'invoice',
+      title: `Fee Payment — ${invoice.invoiceNumber}`,
+      subtitle: `${invoice.studentName} • ${invoice.className} • ৳ ${amount.toLocaleString('en-BD')} • Into ${intoAccount}${slip}`,
+      requestedBy: invoice.paymentRequestedBy ?? 'Accounts Department',
+      requestedAt: toIsoString(invoice.paymentRequestedAt || invoice.generatedAt),
+      priority: amount >= 10000 ? 'high' : 'medium',
+      actionable: department === 'principal',
+      invoice,
+      department: 'principal',
+    });
+  }
+
+  for (const person of hires) {
+    pending.push({
+      id: `hire-${person.id}`,
+      kind: 'hire',
+      title: `Hire — ${person.name}`,
+      subtitle: `${person.employeeId} • ${person.category} • ${person.track === 'teacher' ? 'Teacher' : 'Staff'} • ${person.phone}`,
+      requestedBy: person.createdBy,
+      requestedAt: toIsoString(person.createdAt),
+      priority: 'high',
+      actionable: department === 'principal',
+      staffMember: person,
+      department: 'principal',
+    });
+  }
+
+  for (const { person, duty } of duties) {
+    pending.push({
+      id: `duty-${duty.id}`,
+      kind: 'duty',
+      title: `Duty — ${duty.title}`,
+      subtitle: `${person.name} • ${person.employeeId} • ${person.category}`,
+      requestedBy: duty.requestedBy,
+      requestedAt: toIsoString(duty.requestedAt),
+      priority: 'medium',
+      actionable: department === 'principal',
+      staffMember: person,
+      duty,
       department: 'principal',
     });
   }

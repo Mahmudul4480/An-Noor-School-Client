@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Lock, ArrowRight, UserCheck, Shield, BookOpen, GraduationCap, Calculator } from 'lucide-react';
+import { Lock, ArrowRight, UserCheck, Shield, BookOpen, GraduationCap, Calculator, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserRole } from './types';
 import {
@@ -19,6 +19,7 @@ const LoginPage = () => {
   });
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const roles = [
     { id: 'guardian', label: 'Guardian', icon: <GraduationCap size={18} /> },
@@ -88,7 +89,7 @@ const LoginPage = () => {
               </span>
             ) : (
               <span className="text-school-blue bg-blue-50 border-school-border px-3 py-1 rounded-full">
-                Production — Firebase Auth
+                Production — Principal-granted Accounts access
               </span>
             )}
           </div>
@@ -122,9 +123,7 @@ const LoginPage = () => {
                   ? role === 'guardian'
                     ? 'Guardian ID / Email'
                     : 'Employee ID / Email'
-                  : role === 'guardian'
-                    ? 'Mobile Number'
-                    : 'Email Address'}
+                  : 'Email or Mobile'}
               </label>
               <div className="relative">
                 <input
@@ -161,15 +160,24 @@ const LoginPage = () => {
               </div>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  className="w-full px-5 py-4 bg-slate-50 border border-school-border rounded-2xl focus:ring-2 focus:ring-school-blue outline-none transition-all pl-12 font-medium"
+                  autoComplete="current-password"
+                  className="w-full px-5 py-4 bg-slate-50 border border-school-border rounded-2xl focus:ring-2 focus:ring-school-blue outline-none transition-all pl-12 pr-12 font-medium"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required={!isDemoLoginEnabled}
                   disabled={loading}
                 />
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-school-blue" size={20} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-school-muted hover:text-school-blue"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -199,6 +207,17 @@ const LoginPage = () => {
               )}
             </motion.button>
           </form>
+
+          {!isDemoLoginEnabled && (
+            <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <p className="text-[10px] font-black text-school-muted uppercase tracking-widest mb-2">
+                Accounts access
+              </p>
+              <p className="text-[10px] text-slate-500 font-medium">
+                Principal Office যে ইমেইল grant করবে, সেই ইমেইল ও Firebase password দিয়ে login করলে Accounts dashboard খুলবে। প্রতিটি কাজ সেই ID দিয়ে mark হবে।
+              </p>
+            </div>
+          )}
 
           {isDemoLoginEnabled && (
             <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">

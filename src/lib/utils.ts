@@ -25,3 +25,9 @@ export function toIsoString(value: unknown, fallback = new Date().toISOString())
   }
   return fallback;
 }
+
+/** Signed money: negatives render as `-৳ 1,200` so overdrawn petty cash is obvious. */
+export function formatSignedBdt(amount: number): string {
+  const abs = Math.abs(Number(amount) || 0).toLocaleString('en-BD');
+  return amount < 0 ? `-৳ ${abs}` : `৳ ${abs}`;
+}

@@ -1,19 +1,29 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Loader2, ArrowDownRight } from 'lucide-react';
+import { Plus, Loader2, ArrowDownRight, Tag, FileText, X } from 'lucide-react';
+import { getCurrentActorLabel } from '../../lib/actor';
+import { formatSignedBdt } from '../../lib/utils';
 import { createExpense, fetchExpenses } from '../../lib/expenses';
-import { fetchApprovedCategories } from '../../lib/categories';
-import { fetchAccounts } from '../../lib/ledger';
-import type { Expense, LedgerAccount } from '../../types';
+import { fetchApprovedCategories, fetchCategoryRequests, requestCategory } from '../../lib/categories';
+import { computeAllBalances, fetchAccounts, fetchEntries, isPettyCashAccount } from '../../lib/ledger';
+import { ExpenseVoucherModal } from './ExpenseVoucherModal';
+import type { CategoryRequest, Expense, LedgerAccount, LedgerEntry } from '../../types';
 
 export function ExpensePanel() {
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
+  const [entries, setEntries] = React.useState<LedgerEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [categories, setCategories] = React.useState<string[]>([]);
+  const [pendingCategories, setPendingCategories] = React.useState<CategoryRequest[]>([]);
+  const [showNewCategory, setShowNewCategory] = React.useState(false);
+  const [newCategory, setNewCategory] = React.useState('');
+  const [categoryBusy, setCategoryBusy] = React.useState(false);
+  const [categoryError, setCategoryError] = React.useState('');
+  const [voucherExpense, setVoucherExpense] = React.useState<Expense | null>(null);
   const [form, setForm] = React.useState({
     date: new Date().toISOString().slice(0, 10),
     category: '',
@@ -26,14 +36,20 @@ export function ExpensePanel() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [expenseData, accountData, categoryList] = await Promise.all([
+      const [expenseData, accountData, entryData, categoryList, categoryRequests] = await Promise.all([
         fetchExpenses(),
         fetchAccounts(),
+        fetchEntries(),
         fetchApprovedCategories('expense'),
+        fetchCategoryRequests(),
       ]);
       setExpenses(expenseData);
       setAccounts(accountData);
+      setEntries(entryData);
       setCategories(categoryList);
+      setPendingCategories(
+        categoryRequests.filter((request) => request.type === 'expense' && request.status === 'pending'),
+      );
       setForm((prev) => ({
         ...prev,
         accountId: prev.accountId || accountData[0]?.id || '',
@@ -49,6 +65,34 @@ export function ExpensePanel() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  const balances = computeAllBalances(accounts, entries);
+  const selectedAccount = accounts.find((account) => account.id === form.accountId);
+  const selectedBalance = selectedAccount
+    ? balances.find((row) => row.account.id === selectedAccount.id)?.balance ?? selectedAccount.openingBalance
+    : 0;
+  const selectedIsPetty = selectedAccount ? isPettyCashAccount(selectedAccount) : false;
+
+  const handleCreateCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) {
+      setCategoryError('Category name লিখুন।');
+      return;
+    }
+    setCategoryBusy(true);
+    setCategoryError('');
+    try {
+      await requestCategory({ type: 'expense', name, requestedBy: getCurrentActorLabel('Accounts Department') });
+      setNewCategory('');
+      setShowNewCategory(false);
+      setMessage(`"${name}" category Principal approval-এর জন্য পাঠানো হয়েছে। Approve হলে dropdown-এ যুক্ত হবে।`);
+      await load();
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : 'Category request failed.');
+    } finally {
+      setCategoryBusy(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +116,11 @@ export function ExpensePanel() {
         note: form.note || undefined,
       });
       setForm((prev) => ({ ...prev, description: '', amount: '', note: '' }));
-      setMessage('Expense Principal approval-এর জন্য submit হয়েছে।');
+      setMessage(
+        selectedIsPetty
+          ? 'Expense নেওয়া হয়েছে। Petty cash-এ টাকা না থাকলেও balance minus দেখাবে; Principal approve করবে, পরে bank থেকে transfer করলে ঘাটতি কমে যাবে।'
+          : 'Expense Principal approval-এর জন্য submit হয়েছে।',
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Expense entry failed.');
@@ -105,7 +153,20 @@ export function ExpensePanel() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Category</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Category</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCategory((open) => !open);
+                  setCategoryError('');
+                }}
+                className="text-[9px] font-black uppercase tracking-widest text-school-gold hover:text-school-blue flex items-center gap-1"
+              >
+                {showNewCategory ? <X size={11} /> : <Plus size={11} />}
+                {showNewCategory ? 'Close' : 'New Category'}
+              </button>
+            </div>
             <select
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -117,6 +178,43 @@ export function ExpensePanel() {
                 </option>
               ))}
             </select>
+
+            {showNewCategory && (
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+                <p className="text-[10px] font-bold text-school-muted">
+                  নতুন expense category Principal approve করার পর dropdown-এ আসবে।
+                </p>
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateCategory();
+                    }
+                  }}
+                  placeholder="e.g. Generator Fuel"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+                />
+                {categoryError && <p className="text-[11px] font-bold text-red-600">{categoryError}</p>}
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  disabled={categoryBusy}
+                  className="w-full py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {categoryBusy ? <Loader2 size={13} className="animate-spin" /> : <Tag size={13} />}
+                  Send to Principal
+                </button>
+              </div>
+            )}
+
+            {pendingCategories.length > 0 && (
+              <p className="text-[10px] font-bold text-school-gold">
+                Awaiting approval: {pendingCategories.map((request) => request.name).join(', ')}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Description</label>
@@ -147,12 +245,21 @@ export function ExpensePanel() {
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
             >
               <option value="">Select account...</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
+              {accounts.map((account) => {
+                const balance = balances.find((row) => row.account.id === account.id)?.balance ?? account.openingBalance;
+                return (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({formatSignedBdt(balance)})
+                    {isPettyCashAccount(account) ? ' — minus allowed' : ''}
+                  </option>
+                );
+              })}
             </select>
+            {selectedIsPetty && (
+              <p className="text-[10px] font-bold text-school-muted">
+                এখন {formatSignedBdt(selectedBalance)}. টাকা না থাকলেও entry হবে — কারো কাছ থেকে নিয়ে খরচ হলে petty cash minus যাবে। পরে transfer করলে কমে যাবে।
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Note</label>
@@ -216,7 +323,9 @@ export function ExpensePanel() {
                   <th className="pb-3">Description</th>
                   <th className="pb-3">Account</th>
                   <th className="pb-3">Status</th>
+                  <th className="pb-3">Entered By</th>
                   <th className="pb-3 text-right">Amount</th>
+                  <th className="pb-3 text-right">Voucher</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -239,7 +348,21 @@ export function ExpensePanel() {
                         {expense.approvalStatus ?? 'approved'}
                       </span>
                     </td>
+                    <td className="py-4 text-slate-500 font-medium">{expense.createdBy || '—'}</td>
                     <td className="py-4 text-right font-black text-red-500">৳ {expense.amount.toLocaleString()}</td>
+                    <td className="py-4 text-right">
+                      {(expense.approvalStatus ?? 'approved') === 'approved' ? (
+                        <button
+                          type="button"
+                          onClick={() => setVoucherExpense(expense)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-100"
+                        >
+                          <FileText size={12} /> Voucher
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-bold text-school-muted">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -247,6 +370,14 @@ export function ExpensePanel() {
           </div>
         )}
       </motion.div>
+
+      {voucherExpense && (
+        <ExpenseVoucherModal
+          expense={voucherExpense}
+          account={accounts.find((account) => account.id === voucherExpense.accountId)}
+          onClose={() => setVoucherExpense(null)}
+        />
+      )}
     </div>
   );
 }
