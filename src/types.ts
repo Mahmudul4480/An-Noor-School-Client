@@ -412,6 +412,70 @@ export interface FinancialOverview {
   accountBalances: { account: LedgerAccount; balance: number }[];
 }
 
+export interface DirectorClassRow {
+  className: string;
+  displayName: string;
+  totalStudents: number;
+  newStudents: number;
+  classShifted: string;
+  leftStudents: number;
+  tuitionCollected: number;
+  tuitionDues: number;
+  examCollected: number;
+  examDues: number;
+  previousDuesNote: string;
+  isHifz: boolean;
+}
+
+export interface DirectorMoneyRow {
+  sl: string;
+  voucherNo: string;
+  label: string;
+  folio: string;
+  cash: number;
+  bank: number;
+  total: number;
+  isEmpty: boolean;
+}
+
+export interface DirectorMoneyTotals {
+  cash: number;
+  bank: number;
+  total: number;
+}
+
+export interface DirectorBankLine {
+  name: string;
+  balance: number;
+}
+
+/** Instant director-meeting pack: class collection sheet + income/expense sheet. */
+export interface DirectorBriefing {
+  generatedAt: string;
+  generatedAtLabel: string;
+  snapshotDate: string;
+  from: string;
+  to: string;
+  periodLabel: string;
+  collectionTitle: string;
+  incomeTitle: string;
+  schoolName: string;
+  schoolAddress: string;
+  classRows: DirectorClassRow[];
+  academicStudents: number;
+  hifzStudents: number;
+  receivedRows: DirectorMoneyRow[];
+  expenseRows: DirectorMoneyRow[];
+  todayReceived: DirectorMoneyTotals;
+  todayExpenses: DirectorMoneyTotals;
+  totalReceived: DirectorMoneyTotals;
+  totalExpenses: DirectorMoneyTotals;
+  balanceCd: DirectorMoneyTotals;
+  debitTotal: number;
+  creditTotal: number;
+  bankLines: DirectorBankLine[];
+}
+
 /* ---------------- Asset Registry ---------------- */
 
 export interface AssetCategory {

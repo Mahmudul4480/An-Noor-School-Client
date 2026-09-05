@@ -1,16 +1,29 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { FileDown, DollarSign, ArrowDownRight, TrendingUp, Percent, Loader2, CalendarRange } from 'lucide-react';
-import { cn, formatSignedBdt } from '../../lib/utils';
-import { exportSummaryToPdf, getFinancialSummary } from '../../lib/reports';
-import type { FinancialSummary } from '../../types';
+import { FileDown, Loader2, CalendarRange } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import {
+  directorReportFileBase,
+  downloadDirectorBriefingPdf,
+  getDirectorBriefing,
+} from '../../lib/directorReport';
+import { getSchoolLogoCircle } from '../../lib/receipts';
+import type { DirectorBriefing } from '../../types';
+import { DirectorReportSheets } from './DirectorReportSheets';
+
+function ymd(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function firstDayOfMonth(year: number, month: number): string {
-  return new Date(year, month, 1).toISOString().slice(0, 10);
+  return ymd(new Date(year, month, 1));
 }
 
 function lastDayOfMonth(year: number, month: number): string {
-  return new Date(year, month + 1, 0).toISOString().slice(0, 10);
+  return ymd(new Date(year, month + 1, 0));
 }
 
 export function DirectorReportPanel() {
@@ -19,10 +32,13 @@ export function DirectorReportPanel() {
   const [month, setMonth] = React.useState(now.getMonth());
   const [year, setYear] = React.useState(now.getFullYear());
   const [customFrom, setCustomFrom] = React.useState(firstDayOfMonth(now.getFullYear(), now.getMonth()));
-  const [customTo, setCustomTo] = React.useState(now.toISOString().slice(0, 10));
-  const [summary, setSummary] = React.useState<FinancialSummary | null>(null);
+  const [customTo, setCustomTo] = React.useState(ymd(now));
+  const [briefing, setBriefing] = React.useState<DirectorBriefing | null>(null);
+  const [logo, setLogo] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const packRef = React.useRef<HTMLDivElement>(null);
 
   const range = React.useMemo(() => {
     if (filterMode === 'month') {
@@ -34,22 +50,57 @@ export function DirectorReportPanel() {
     return { from: customFrom, to: customTo };
   }, [filterMode, month, year, customFrom, customTo]);
 
-  const runReport = React.useCallback(async () => {
+  const loadBriefing = React.useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const result = await getFinancialSummary(range.from, range.to, filterMode);
-      setSummary(result);
+      const result = await getDirectorBriefing(range.from, range.to, filterMode);
+      setBriefing(result);
+      return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Report generate করতে সমস্যা হয়েছে।');
+      return null;
     } finally {
       setLoading(false);
     }
   }, [range, filterMode]);
 
   React.useEffect(() => {
-    runReport();
-  }, [runReport]);
+    loadBriefing();
+  }, [loadBriefing]);
+
+  React.useEffect(() => {
+    const reload = () => {
+      if (document.visibilityState === 'visible') loadBriefing();
+    };
+    document.addEventListener('visibilitychange', reload);
+    window.addEventListener('focus', reload);
+    return () => {
+      document.removeEventListener('visibilitychange', reload);
+      window.removeEventListener('focus', reload);
+    };
+  }, [loadBriefing]);
+
+  React.useEffect(() => {
+    getSchoolLogoCircle().then(setLogo);
+  }, []);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError('');
+    try {
+      const latest = await getDirectorBriefing(range.from, range.to, filterMode);
+      setBriefing(latest);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const pack = packRef.current?.querySelector<HTMLElement>('[data-director-pack]');
+      if (!pack) throw new Error('Report view ready হয়নি।');
+      await downloadDirectorBriefingPdf(pack, directorReportFileBase(latest));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'PDF download করতে সমস্যা হয়েছে।');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -61,25 +112,28 @@ export function DirectorReportPanel() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm"
+        className="bg-white rounded-[2.5rem] p-6 md:p-8 border border-school-border shadow-sm"
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">
-              {summary?.reportLabel ?? 'Financial Report'}
+              Director Meeting Report
             </h3>
             <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
-              Masik / Batsorik report — filter করে PDF export করুন
+              এখানে নতুন করে কিছু লিখতে হয় না — Principal approve হলেই অটো উঠে
             </p>
           </div>
-          <button
-            type="button"
-            disabled={!summary || loading}
-            onClick={() => summary && exportSummaryToPdf(summary)}
-            className="px-6 py-2.5 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/10 hover:bg-blue-900 transition-colors disabled:opacity-60 flex items-center gap-2 w-fit"
-          >
-            <FileDown size={14} /> Export PDF
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!briefing || loading || downloading}
+              onClick={handleDownload}
+              className="px-6 py-2.5 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/10 hover:bg-blue-900 transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              {downloading ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+              {downloading ? 'Preparing PDF' : 'Download PDF'}
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -159,164 +213,16 @@ export function DirectorReportPanel() {
           </div>
         )}
 
-        {loading ? (
+        {loading && !briefing ? (
           <div className="py-16 text-center">
             <Loader2 size={28} className="animate-spin mx-auto text-school-blue" />
           </div>
-        ) : summary ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <StatCard label="Total Collections" value={summary.totalCollections} icon={<DollarSign size={20} />} color="text-emerald-500" bg="bg-emerald-50" />
-              <StatCard label="Admission Income" value={summary.admissionCollections} icon={<DollarSign size={20} />} color="text-emerald-600" bg="bg-emerald-50" />
-              <StatCard label="Fee Income" value={summary.feeCollections} icon={<DollarSign size={20} />} color="text-teal-600" bg="bg-teal-50" />
-              <StatCard label="Net Cash Flow" value={summary.netCashFlow} icon={<TrendingUp size={20} />} color="text-school-blue" bg="bg-blue-50" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <StatCard label="Discounts Given" value={summary.totalDiscountsGiven} icon={<Percent size={20} />} color="text-school-gold" bg="bg-amber-50" />
-              <StatCard label="Total Expenses" value={summary.totalExpenses} icon={<ArrowDownRight size={20} />} color="text-red-500" bg="bg-red-50" />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div>
-                <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
-                  Fee Collections ({summary.invoicesInRange.length})
-                </h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0">
-                      <tr className="bg-slate-50 text-school-muted font-black uppercase tracking-widest">
-                        <th className="p-3">Invoice</th>
-                        <th className="p-3">Student</th>
-                        <th className="p-3 text-right">Paid</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {summary.invoicesInRange.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-school-muted">No fee payments</td>
-                        </tr>
-                      ) : (
-                        summary.invoicesInRange.map((invoice) => (
-                          <tr key={invoice.id}>
-                            <td className="p-3 font-bold text-school-blue">{invoice.invoiceNumber}</td>
-                            <td className="p-3">{invoice.studentName}</td>
-                            <td className="p-3 text-right font-black text-emerald-600">৳ {invoice.paidAmount.toLocaleString()}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
-                  Admissions in Period ({summary.admissionsInRange.length})
-                </h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0">
-                      <tr className="bg-slate-50 text-school-muted font-black uppercase tracking-widest">
-                        <th className="p-3">Form</th>
-                        <th className="p-3">Student</th>
-                        <th className="p-3 text-right">Net</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {summary.admissionsInRange.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-school-muted">
-                            No admissions
-                          </td>
-                        </tr>
-                      ) : (
-                        summary.admissionsInRange.map((a) => (
-                          <tr key={a.id}>
-                            <td className="p-3 font-bold text-school-blue">{a.formSerial}</td>
-                            <td className="p-3">{a.studentName}</td>
-                            <td className="p-3 text-right font-black text-emerald-600">৳ {a.grandTotal.toLocaleString()}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">
-                  Expenses in Period ({summary.expensesInRange.length})
-                </h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0">
-                      <tr className="bg-slate-50 text-school-muted font-black uppercase tracking-widest">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {summary.expensesInRange.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="p-4 text-center text-school-muted">
-                            No expenses
-                          </td>
-                        </tr>
-                      ) : (
-                        summary.expensesInRange.map((e) => (
-                          <tr key={e.id}>
-                            <td className="p-3 font-bold text-school-blue">{e.date.slice(0, 10)}</td>
-                            <td className="p-3">{e.category}</td>
-                            <td className="p-3 text-right font-black text-red-500">৳ {e.amount.toLocaleString()}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <h4 className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-3">Account Balances (Current)</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {summary.accountBalances.map(({ account, balance }) => (
-                  <div key={account.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[9px] font-black text-school-muted uppercase tracking-widest">{account.name}</p>
-                    <p className={cn('text-sm font-black mt-1', balance < 0 ? 'text-red-600' : 'text-school-blue')}>
-                      {formatSignedBdt(balance)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
+        ) : briefing ? (
+          <div ref={packRef} className="overflow-x-auto pb-2">
+            <DirectorReportSheets briefing={briefing} logo={logo} />
+          </div>
         ) : null}
       </motion.div>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-  color,
-  bg,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <div className="bg-white p-6 rounded-[2rem] border border-school-border shadow-sm flex items-center gap-4">
-      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center', bg, color)}>{icon}</div>
-      <div>
-        <p className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-black text-school-blue">৳ {value.toLocaleString()}</p>
-      </div>
     </div>
   );
 }
