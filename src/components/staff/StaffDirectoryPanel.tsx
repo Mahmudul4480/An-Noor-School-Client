@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, UserRound } from 'lucide-react';
-import { fetchStaffMembers, statusLabel } from '../../lib/staff';
+import { fetchStaffMembers, statusLabel, coordinatorDuties } from '../../lib/staff';
 import { StaffProfileModal } from './StaffProfileModal';
 import type { StaffMember, StaffTrack } from '../../types';
 
@@ -94,6 +94,11 @@ export function StaffDirectoryPanel({
                     <p className="text-[10px] font-black uppercase tracking-widest mt-2 text-emerald-600">
                       {statusLabel(person.status)}
                     </p>
+                    {coordinatorDuties(person).length > 0 && (
+                      <p className="text-[10px] font-black uppercase tracking-widest mt-1 text-school-gold">
+                        Coordinator · {coordinatorDuties(person).map((duty) => duty.className).join(', ')}
+                      </p>
+                    )}
                   </div>
                 </div>
               </button>

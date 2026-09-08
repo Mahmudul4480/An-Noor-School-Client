@@ -6,26 +6,31 @@ import {
   Calendar, 
   Bell, 
   ClipboardList, 
-  Wifi, 
-  WifiOff, 
   CheckCircle2, 
   XCircle,
   FileText,
   Clock,
   ChevronRight,
   Plus,
-  BarChart3,
-  MessageSquare,
   Sparkles,
   School,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { CoordinatorClassTags, CoordinatorHub } from './staff/CoordinatorHub';
+import { coordinatorDuties, fetchStaffMemberForCurrentUser } from '../lib/staff';
+import type { StaffMember } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const TeacherDashboard = () => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
-  const [isWifiConnected, setIsWifiConnected] = React.useState(false);
-  const [checkedIn, setCheckedIn] = React.useState(false);
+  const [staff, setStaff] = React.useState<StaffMember | null>(null);
+
+  React.useEffect(() => {
+    fetchStaffMemberForCurrentUser().then(setStaff).catch(() => setStaff(null));
+  }, []);
+
+  const coordinatorClasses = staff ? coordinatorDuties(staff).map((duty) => duty.className as string) : [];
+  const isCoordinator = coordinatorClasses.length > 0;
 
   // Simulated Attendance State
   const [students, setStudents] = React.useState([
@@ -45,63 +50,34 @@ export const TeacherDashboard = () => {
     }));
   };
 
-  const coordinatorReports = [
-    { teacher: 'Ustaz Ahmedullah', class: 'Grade 4', performance: 94, status: 'On Track' },
-    { teacher: 'Ms. Rabeya', class: 'Grade 2', performance: 88, status: 'Consultation' },
-    { teacher: 'Ustaz Karim', class: 'Grade 5', performance: 92, status: 'Excellent' },
-  ];
-
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <Calendar size={16} /> },
     { id: 'attendance', label: 'Attendance', icon: <Users size={16} /> },
     { id: 'input', label: 'Daily Lessons', icon: <BookOpen size={16} /> },
     { id: 'leave', label: 'Leave Portal', icon: <FileText size={16} /> },
-    { id: 'coordinator', label: 'Coordinator Hub', icon: <School size={16} /> },
+    ...(isCoordinator ? [{ id: 'coordinator', label: 'Coordinator Hub', icon: <School size={16} /> }] : []),
   ];
 
   return (
     <div className="p-6 space-y-6">
-      {/* Teacher Top Bar with Wi-Fi Logic */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border border-school-border shadow-sm">
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 rounded-3xl bg-school-blue flex items-center justify-center text-white border-2 border-school-gold shadow-lg shadow-blue-900/20">
+          {staff?.photoUrl ? (
+            <img src={staff.photoUrl} alt="" className="w-16 h-16 rounded-3xl object-cover border-2 border-school-gold shadow-lg shadow-blue-900/20" />
+          ) : (
+            <div className="w-16 h-16 rounded-3xl bg-school-blue flex items-center justify-center text-white border-2 border-school-gold shadow-lg shadow-blue-900/20">
              <Users size={30} />
-          </div>
+            </div>
+          )}
           <div>
-            <h3 className="text-xl font-black text-school-blue uppercase tracking-tight">Ustaz Ahmedullah</h3>
-            <p className="text-[10px] font-black text-school-muted uppercase tracking-[0.2em] mt-1">Class Teacher: Grade 4 (Sapphire)</p>
+            <h3 className="text-xl font-black text-school-blue uppercase tracking-tight">
+              {staff?.name || 'Teacher'}
+            </h3>
+            <p className="text-[10px] font-black text-school-muted uppercase tracking-[0.2em] mt-1">
+              {staff?.designation || 'Class Teacher'}
+            </p>
+            <CoordinatorClassTags classes={coordinatorClasses} />
           </div>
-        </div>
-
-        <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
-           <div className="flex flex-col items-end">
-              <div className="flex items-center gap-2">
-                 <span className={cn("text-[9px] font-black uppercase", isWifiConnected ? "text-emerald-500" : "text-red-400")}>
-                    {isWifiConnected ? "School Wi-Fi: Active" : "Waiting for Network..."}
-                 </span>
-                 {isWifiConnected ? <Wifi size={16} className="text-emerald-500" /> : <WifiOff size={16} className="text-red-400" />}
-              </div>
-              <button 
-                onClick={() => setIsWifiConnected(!isWifiConnected)}
-                className="text-[8px] font-bold text-school-muted underline underline-offset-4 mt-1 hover:text-school-blue"
-              >
-                Simulate Network Sync
-              </button>
-           </div>
-           <button 
-             disabled={!isWifiConnected || checkedIn}
-             onClick={() => setCheckedIn(true)}
-             className={cn(
-               "px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl",
-               checkedIn 
-                 ? "bg-emerald-500 text-white shadow-emerald-500/20 cursor-default" 
-                 : isWifiConnected 
-                   ? "bg-school-gold text-school-blue shadow-amber-500/20 hover:scale-105" 
-                   : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-             )}
-           >
-             {checkedIn ? "Checked In ✓" : "Check-in to Class"}
-           </button>
         </div>
       </div>
 
@@ -410,82 +386,13 @@ export const TeacherDashboard = () => {
           </motion.div>
         )}
 
-        {activeSubTab === 'coordinator' && (
-          <motion.div 
+        {activeSubTab === 'coordinator' && staff && (
+          <motion.div
             key="coordinator"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="bg-white p-8 rounded-[2.5rem] border border-school-border shadow-sm flex flex-col justify-center text-center">
-                  <div className="w-20 h-20 bg-blue-50 text-school-blue rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-                    <Users size={32} />
-                  </div>
-                  <h4 className="text-2xl font-black text-school-blue">14</h4>
-                  <p className="text-[10px] font-black text-school-muted uppercase tracking-widest mt-1">Staff Under Management</p>
-               </div>
-               <div className="bg-white p-8 rounded-[2.5rem] border border-school-border shadow-sm flex flex-col justify-center text-center">
-                  <div className="w-20 h-20 bg-amber-50 text-school-gold rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-                    <BarChart3 size={32} />
-                  </div>
-                  <h4 className="text-2xl font-black text-school-blue">91.4%</h4>
-                  <p className="text-[10px] font-black text-school-muted uppercase tracking-widest mt-1">Academic KPI Avg.</p>
-               </div>
-               <div className="bg-white p-8 rounded-[2.5rem] border border-school-border shadow-sm flex flex-col justify-center text-center">
-                  <div className="w-20 h-20 bg-purple-50 text-purple-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-                    <MessageSquare size={32} />
-                  </div>
-                  <h4 className="text-2xl font-black text-school-blue">08</h4>
-                  <p className="text-[10px] font-black text-school-muted uppercase tracking-widest mt-1">Unresolved Reports</p>
-               </div>
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] p-10 border border-school-border shadow-sm">
-               <h3 className="text-lg font-black text-school-blue uppercase tracking-tight mb-8">Academic Staff Performance Tracker</h3>
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left text-[11px]">
-                   <thead>
-                     <tr className="text-school-muted font-black border-b border-school-border uppercase tracking-widest">
-                       <th className="pb-4">Teacher Name</th>
-                       <th className="pb-4">Assigned Class</th>
-                       <th className="pb-4">Attendance Rate</th>
-                       <th className="pb-4">KPI Score</th>
-                       <th className="pb-4 text-right">Action</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-50">
-                     {coordinatorReports.map((report, idx) => (
-                       <tr key={idx} className="group hover:bg-slate-50 transition-all">
-                         <td className="py-6 font-black text-school-blue uppercase tracking-tight">{report.teacher}</td>
-                         <td className="py-6 font-black text-school-muted uppercase">{report.class}</td>
-                         <td className="py-6">
-                            <div className="flex items-center gap-3">
-                               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                 <div className="h-full bg-school-gold" style={{ width: '92%' }} />
-                               </div>
-                               <span className="font-black text-school-blue">92%</span>
-                            </div>
-                         </td>
-                         <td className="py-6">
-                           <span className={cn(
-                             "px-4 py-1.5 rounded-xl font-black uppercase text-[8px] tracking-widest shadow-sm",
-                             report.performance > 90 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-school-gold"
-                           )}>
-                             {report.performance}% • {report.status}
-                           </span>
-                         </td>
-                         <td className="py-6 text-right">
-                           <button className="p-3 bg-white border border-slate-100 rounded-xl text-school-blue hover:text-school-gold transition-colors shadow-sm">
-                             <BarChart3 size={16} />
-                           </button>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-            </div>
+            <CoordinatorHub coordinator={staff} />
           </motion.div>
         )}
       </AnimatePresence>

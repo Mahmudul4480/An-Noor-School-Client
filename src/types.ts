@@ -736,6 +736,38 @@ export interface StaffMember {
   reviewNote?: string;
 }
 
+export type CoordinatorFollowMark = 'following' | 'not_following' | 'partial';
+export type CoordinatorLevelMark = 'good' | 'average' | 'needs_attention';
+export type CoordinatorPointKind = 'count' | 'count_detail' | 'follow' | 'text' | 'level' | 'behaviour';
+export type CoordinatorPrincipalAction = 'noted' | 'appreciation' | 'counsel' | 'warning';
+
+export interface CoordinatorEvaluationPoint {
+  pointId: string;
+  mark?: string;
+  count?: number;
+  detail?: string;
+  note: string;
+  subMarks?: Record<string, string>;
+}
+
+export interface CoordinatorEvaluation {
+  id: string;
+  className: string;
+  teacherId: string;
+  teacherName: string;
+  coordinatorId: string;
+  coordinatorName: string;
+  date: string;
+  points: CoordinatorEvaluationPoint[];
+  overallNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  principalAction?: CoordinatorPrincipalAction;
+  principalNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
 export type PaymentIntentStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 
 export interface PaymentIntent {

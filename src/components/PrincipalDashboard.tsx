@@ -14,12 +14,14 @@ import {
   Award,
   Zap,
   ArrowUpRight,
-  UserCheck
+  UserCheck,
+  School,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { cn } from '../lib/utils';
 import { ApprovalsPanel } from './accounts/ApprovalsPanel';
 import { AccessControlPanel } from './AccessControlPanel';
+import { CoordinatorOfficePanel } from './staff/CoordinatorOfficePanel';
 import { StaffDirectoryPanel } from './staff/StaffDirectoryPanel';
 import { LowStockAlertCard } from './LowStockAlertCard';
 import { fetchApprovalStats } from '../lib/approvals';
@@ -53,6 +55,7 @@ export const PrincipalDashboard = () => {
     { id: 'approvals', label: 'Approval Hub', icon: <Shield size={16} /> },
     { id: 'access', label: 'Accounts Access', icon: <UserCheck size={16} /> },
     { id: 'staff', label: 'Staff Directory', icon: <Users size={16} /> },
+    { id: 'coordinators', label: 'Coordinators', icon: <School size={16} /> },
     { id: 'analytics', label: 'Oversight', icon: <TrendingUp size={16} /> },
   ];
 
@@ -188,6 +191,12 @@ export const PrincipalDashboard = () => {
         {activeSubTab === 'staff' && (
           <motion.div key="staff" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <StaffDirectoryPanel viewer="principal" />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'coordinators' && (
+          <motion.div key="coordinators" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <CoordinatorOfficePanel />
           </motion.div>
         )}
 

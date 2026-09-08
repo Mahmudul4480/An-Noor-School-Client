@@ -2,7 +2,7 @@ import { collection, doc, getDocs, query, serverTimestamp, setDoc } from 'fireba
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
-import { getCurrentActorLabel } from './actor';
+import { getCurrentActor, getCurrentActorLabel } from './actor';
 import { provisionLoginAccount } from './provisionAuth';
 import { omitUndefined, toIsoString } from './utils';
 import type {
@@ -51,7 +51,7 @@ export const ALL_STAFF_CATEGORIES = [...TEACHER_CATEGORIES, ...STAFF_CATEGORIES]
 export const DUTY_OPTIONS: { id: DutyKind; label: string; needsClass?: boolean }[] = [
   { id: 'class_teacher', label: 'Class Teacher', needsClass: true },
   { id: 'subject_teacher', label: 'Subject Teacher', needsClass: true },
-  { id: 'coordinator', label: 'Coordinator' },
+  { id: 'coordinator', label: 'Class Coordinator', needsClass: true },
   { id: 'exam_incharge', label: 'Exam In-charge' },
   { id: 'sports_incharge', label: 'Sports In-charge' },
   { id: 'cultural_incharge', label: 'Cultural In-charge' },
@@ -391,6 +391,14 @@ export async function assignDutyDirect(params: {
   if (params.section) titleParts.push(params.section);
   const now = new Date().toISOString();
 
+  if (params.kind === 'coordinator' && params.className) {
+    const already = params.person.duties.some(
+      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && duty.className === params.className,
+    );
+    if (already) throw new Error('This teacher is already coordinator for this class.');
+    await endOtherCoordinatorsForClass(params.className, params.person.id);
+  }
+
   const duty: DutyAssignment = {
     id: generateId('duty'),
     kind: params.kind,
@@ -425,6 +433,10 @@ export async function reviewDutyAssignment(params: {
   if (duty.status !== 'pending') throw new Error('This duty is not pending.');
 
   const now = new Date().toISOString();
+  if (params.action === 'approved' && duty.kind === 'coordinator' && duty.className) {
+    await endOtherCoordinatorsForClass(duty.className, params.person.id);
+  }
+
   const updated: StaffMember = {
     ...params.person,
     duties: params.person.duties.map((item) =>
@@ -445,6 +457,79 @@ export async function reviewDutyAssignment(params: {
 
 export function activeDuties(person: StaffMember): DutyAssignment[] {
   return person.duties.filter((duty) => duty.status === 'active');
+}
+
+export function coordinatorDuties(person: StaffMember): DutyAssignment[] {
+  return activeDuties(person).filter((duty) => duty.kind === 'coordinator' && duty.className);
+}
+
+export function isClassCoordinator(person: StaffMember): boolean {
+  return coordinatorDuties(person).length > 0;
+}
+
+export async function fetchStaffMemberForCurrentUser(): Promise<StaffMember | null> {
+  const actor = getCurrentActor();
+  const people = await fetchStaffMembers();
+  const email = actor.email.trim().toLowerCase();
+  if (email) {
+    const match = people.find((person) => person.email?.trim().toLowerCase() === email);
+    if (match) return match;
+  }
+  const name = actor.name.trim().toLowerCase();
+  if (name) {
+    const match = people.find(
+      (person) => person.track === 'teacher' && person.name.trim().toLowerCase() === name,
+    );
+    if (match) return match;
+  }
+  return null;
+}
+
+export function teachersUnderClass(
+  people: StaffMember[],
+  className: string,
+  excludeId?: string,
+): StaffMember[] {
+  return people
+    .filter((person) => {
+      if (excludeId && person.id === excludeId) return false;
+      if (person.status !== 'active' || person.track !== 'teacher') return false;
+      return activeDuties(person).some(
+        (duty) =>
+          (duty.kind === 'class_teacher' || duty.kind === 'subject_teacher') &&
+          duty.className === className,
+      );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function coordinatorByClass(people: StaffMember[]): { className: string; person: StaffMember; duty: DutyAssignment }[] {
+  const rows: { className: string; person: StaffMember; duty: DutyAssignment }[] = [];
+  for (const person of people) {
+    for (const duty of coordinatorDuties(person)) {
+      rows.push({ className: duty.className as string, person, duty });
+    }
+  }
+  return rows.sort((a, b) => a.className.localeCompare(b.className));
+}
+
+async function endOtherCoordinatorsForClass(className: string, exceptPersonId: string): Promise<void> {
+  const people = await fetchStaffMembers();
+  for (const person of people) {
+    if (person.id === exceptPersonId) continue;
+    const touched = person.duties.some(
+      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && duty.className === className,
+    );
+    if (!touched) continue;
+    await persistStaff({
+      ...person,
+      duties: person.duties.map((duty) =>
+        duty.kind === 'coordinator' && duty.status === 'active' && duty.className === className
+          ? { ...duty, status: 'ended' }
+          : duty,
+      ),
+    });
+  }
 }
 
 export function statusLabel(status: StaffHireStatus): string {

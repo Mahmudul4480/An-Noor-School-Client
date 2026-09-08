@@ -45,7 +45,7 @@ export function StaffProfileModal({
           person,
           kind,
           className: needsClass ? className : undefined,
-          section: needsClass ? section : undefined,
+          section: needsClass && kind !== 'coordinator' ? section : undefined,
           note,
           actorName: getCurrentActorLabel('Principal Office'),
         });
@@ -55,7 +55,7 @@ export function StaffProfileModal({
           person,
           kind,
           className: needsClass ? className : undefined,
-          section: needsClass ? section : undefined,
+          section: needsClass && kind !== 'coordinator' ? section : undefined,
           note,
         });
         setMessage('Duty request Principal approval-এ পাঠানো হয়েছে।');
@@ -184,7 +184,7 @@ export function StaffProfileModal({
                   </select>
                 </label>
               )}
-              {needsClass && (
+              {needsClass && kind !== 'coordinator' && (
                 <label className="block">
                   <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Section</span>
                   <input className={`${inputClass} mt-2`} value={section} onChange={(event) => setSection(event.target.value)} placeholder="A" />
