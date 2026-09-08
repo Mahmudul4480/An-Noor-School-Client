@@ -267,10 +267,10 @@ function IncomeSheet({ briefing, logo }: { briefing: DirectorBriefing; logo: str
           <thead>
             <tr>
               <th colSpan={7} style={{ ...headL, fontSize: 12 }}>
-                Debit · Received
+                Debit
               </th>
               <th colSpan={6} style={{ ...headR, fontSize: 12 }}>
-                Credit · Expenses
+                Credit
               </th>
             </tr>
             <tr>
