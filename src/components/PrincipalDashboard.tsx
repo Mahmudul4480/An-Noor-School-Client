@@ -42,7 +42,7 @@ const revenueData = [
   { month: 'Apr', rev: 610, exp: 430 },
 ];
 
-export const PrincipalDashboard = () => {
+export const PrincipalDashboard = ({ officeLabel = 'Principal' }: { officeLabel?: string }) => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
   const [pendingCount, setPendingCount] = React.useState(0);
 
@@ -53,7 +53,7 @@ export const PrincipalDashboard = () => {
   const tabs = [
     { id: 'overview', label: 'Command Center', icon: <LayoutGrid size={16} /> },
     { id: 'approvals', label: 'Approval Hub', icon: <Shield size={16} /> },
-    { id: 'access', label: 'Accounts Access', icon: <UserCheck size={16} /> },
+    { id: 'access', label: 'Role Access', icon: <UserCheck size={16} /> },
     { id: 'staff', label: 'Staff Directory', icon: <Users size={16} /> },
     { id: 'coordinators', label: 'Coordinators', icon: <School size={16} /> },
     { id: 'analytics', label: 'Oversight', icon: <TrendingUp size={16} /> },
@@ -121,7 +121,7 @@ export const PrincipalDashboard = () => {
                </h3>
                <div className="space-y-4">
                   {pendingCount === 0 ? (
-                    <p className="text-sm text-school-muted font-medium py-6 text-center">No pending approvals for Principal.</p>
+                    <p className="text-sm text-school-muted font-medium py-6 text-center">No pending approvals for {officeLabel}.</p>
                   ) : (
                     <button
                       type="button"

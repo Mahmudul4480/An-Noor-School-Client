@@ -9,11 +9,16 @@ import { auth, db } from './firebase';
 import { clearActor, persistActor } from './actor';
 import { fetchGuardianByAuthEmail, isGuardianAuthEmail, isMobileNumber, mobileToAuthEmail, normalizeMobile } from './guardians';
 import { peekStaffAccessByEmail } from './staffAccess';
+import { demoPortalForUserId, isUserRole } from './permissions';
 import type { UserRole } from '../types';
 
 export const isDemoLoginEnabled = import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true';
 
 const SUPER_ADMIN_EMAILS = ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
+
+export function isReservedSuperAdminEmail(email: string): boolean {
+  return SUPER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
 
 function persistSession(role: UserRole, extra?: { guardianMobile?: string }) {
   localStorage.setItem('userRole', role);
@@ -52,14 +57,21 @@ export function demoLogin(userId: string, selectedRole: UserRole): UserRole {
 
   if (email) {
     const grant = peekStaffAccessByEmail(email);
-    if (grant?.status === 'active') {
+    if (grant?.status === 'active' && isUserRole(grant.role)) {
       persistSession(grant.role);
       persistLoginIdentity({ email: grant.email, name: grant.name });
       return grant.role;
     }
-    if (grant?.status === 'revoked' && selectedRole === 'accounts') {
-      throw new Error('Your Accounts access has been revoked. Contact the Principal Office.');
+    if (grant?.status === 'revoked') {
+      throw new Error('Your access has been revoked. Contact the Principal Office.');
     }
+  }
+
+  const demoPortal = demoPortalForUserId(trimmed);
+  if (demoPortal) {
+    persistSession(demoPortal.role);
+    persistLoginIdentity({ email: trimmed, name: demoPortal.label, uid: `demo-${demoPortal.userId.toLowerCase()}` });
+    return demoPortal.role;
   }
 
   const finalRole = selectedRole;
@@ -95,17 +107,17 @@ async function resolveUserRole(user: User): Promise<UserRole> {
   if (user.email) {
     const { fetchStaffAccessByEmail } = await import('./staffAccess');
     const grant = await fetchStaffAccessByEmail(user.email);
-    if (grant?.status === 'active') {
+    if (grant?.status === 'active' && isUserRole(grant.role)) {
       persistLoginIdentity({ email: grant.email, name: grant.name, uid: user.uid });
       return grant.role;
     }
     if (grant?.status === 'revoked') {
-      throw new Error('Your Accounts access has been revoked. Contact the Principal Office.');
+      throw new Error('Your access has been revoked. Contact the Principal Office.');
     }
   }
 
   const userDoc = await getDoc(doc(db, 'users', user.uid));
-  if (userDoc.exists() && userDoc.data().role) {
+  if (userDoc.exists() && userDoc.data().role && isUserRole(String(userDoc.data().role))) {
     const data = userDoc.data();
     persistLoginIdentity({
       email: user.email ?? data.email,

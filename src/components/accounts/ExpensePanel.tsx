@@ -9,7 +9,7 @@ import { computeAllBalances, fetchAccounts, fetchEntries, isPettyCashAccount } f
 import { ExpenseVoucherModal } from './ExpenseVoucherModal';
 import type { CategoryRequest, Expense, LedgerAccount, LedgerEntry } from '../../types';
 
-export function ExpensePanel() {
+export function ExpensePanel({ readOnly = false }: { readOnly?: boolean }) {
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [entries, setEntries] = React.useState<LedgerEntry[]>([]);
@@ -130,7 +130,8 @@ export function ExpensePanel() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className={readOnly ? 'space-y-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}>
+      {!readOnly && (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -300,11 +301,12 @@ export function ExpensePanel() {
           </button>
         </form>
       </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm lg:col-span-2"
+        className={`bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm ${readOnly ? '' : 'lg:col-span-2'}`}
       >
         <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-6">Expense History</h3>
         {loading ? (

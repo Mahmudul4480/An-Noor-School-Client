@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { omitUndefined } from './utils';
 import type { SchoolSettings } from '../types';
+import { assertCanMutate } from './permissions';
 
 const SETTINGS_COLLECTION = 'schoolSettings';
 const SETTINGS_DOC = 'profile';
@@ -86,6 +87,7 @@ export async function saveSchoolSettings(
   input: Partial<SchoolSettings>,
   updatedBy: string,
 ): Promise<SchoolSettings> {
+  assertCanMutate();
   const current = await fetchSchoolSettings();
   const next = normalizeSettings({
     ...current,

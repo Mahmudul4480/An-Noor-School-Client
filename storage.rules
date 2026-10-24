@@ -1,15 +1,65 @@
 rules_version = '2';
 
+// Director can read files and cannot upload or replace them.
+// Principal and Managing Partner share the same write access as other non-director staff.
+// Deploy only when the live project should stop using the open demo rules.
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function authEmail() {
+      return request.auth.token.email;
+    }
+
+    function isReservedSuperAdmin() {
+      return signedIn()
+        && authEmail() in ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
+    }
+
+    function userPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function grantPath() {
+      return /databases/(default)/documents/staffAccess/$(authEmail());
+    }
+
+    function hasActiveGrant() {
+      return signedIn()
+        && authEmail() != null
+        && firestore.exists(grantPath())
+        && firestore.get(grantPath()).data.status == 'active';
+    }
+
+    function userRole() {
+      return firestore.exists(userPath()) ? firestore.get(userPath()).data.role : '';
+    }
+
+    function effectiveRole() {
+      return isReservedSuperAdmin()
+        ? 'super_admin'
+        : hasActiveGrant()
+          ? firestore.get(grantPath()).data.role
+          : userRole();
+    }
+
+    function canWriteFiles() {
+      return signedIn() && effectiveRole() != 'director';
+    }
+
     match /admission-forms/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow write: if canWriteFiles();
     }
     match /student-photos/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow write: if canWriteFiles();
     }
     match /birth-reg-docs/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow write: if canWriteFiles();
     }
   }
 }

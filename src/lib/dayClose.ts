@@ -4,6 +4,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
 import { fetchExpenses } from './expenses';
 import type { DayCloseRecord, LedgerEntry } from '../types';
+import { assertCanMutate } from './permissions';
 
 const DAY_CLOSE_COLLECTION = 'dayCloseRecords';
 const LOCAL_DAY_CLOSE_KEY = 'an-noor-day-close';
@@ -113,6 +114,7 @@ export async function closeDay(params: {
   closedBy: string;
   note?: string;
 }): Promise<DayCloseRecord> {
+  assertCanMutate();
   const alreadyClosed = await isDayClosed(params.date);
   if (alreadyClosed) throw new Error('This day is already closed.');
 

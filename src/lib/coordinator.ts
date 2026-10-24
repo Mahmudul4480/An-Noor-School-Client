@@ -9,6 +9,7 @@ import type {
   CoordinatorPointKind,
   CoordinatorPrincipalAction,
 } from '../types';
+import { assertCanMutate } from './permissions';
 
 const EVAL_COLLECTION = 'coordinatorEvaluations';
 const LOCAL_EVAL_KEY = 'an-noor-coordinator-evaluations';
@@ -167,6 +168,7 @@ export async function saveCoordinatorEvaluation(input: {
   points: CoordinatorEvaluationPoint[];
   overallNote?: string;
 }): Promise<CoordinatorEvaluation> {
+  assertCanMutate();
   const existing = await fetchCoordinatorEvaluations();
   const date = (input.date || new Date().toISOString()).slice(0, 10);
   const previous =
@@ -208,6 +210,7 @@ export async function reviewCoordinatorEvaluation(params: {
   action: CoordinatorPrincipalAction;
   note?: string;
 }): Promise<CoordinatorEvaluation> {
+  assertCanMutate();
   const updated = normalizeEvaluation({
     ...params.evaluation,
     principalAction: params.action,

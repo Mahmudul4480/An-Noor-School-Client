@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { FileDown, Loader2, CalendarRange } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Loader2, CalendarRange } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
   directorReportFileBase,
+  downloadDirectorBriefingExcel,
   downloadDirectorBriefingPdf,
   getDirectorBriefing,
 } from '../../lib/directorReport';
@@ -37,6 +38,7 @@ export function DirectorReportPanel() {
   const [logo, setLogo] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
+  const [downloadingExcel, setDownloadingExcel] = React.useState(false);
   const [error, setError] = React.useState('');
   const packRef = React.useRef<HTMLDivElement>(null);
 
@@ -85,6 +87,20 @@ export function DirectorReportPanel() {
     getSchoolLogoCircle().then(setLogo);
   }, []);
 
+  const handleDownloadExcel = async () => {
+    setDownloadingExcel(true);
+    setError('');
+    try {
+      const latest = briefing ?? (await getDirectorBriefing(range.from, range.to, filterMode));
+      setBriefing(latest);
+      downloadDirectorBriefingExcel(latest);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Excel download করতে সমস্যা হয়েছে।');
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
   const handleDownload = async () => {
     setDownloading(true);
     setError('');
@@ -124,6 +140,15 @@ export function DirectorReportPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!briefing || loading || downloadingExcel}
+              onClick={handleDownloadExcel}
+              className="px-6 py-2.5 bg-slate-50 text-school-blue border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              {downloadingExcel ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+              {downloadingExcel ? 'Preparing Excel' : 'Download Excel'}
+            </button>
             <button
               type="button"
               disabled={!briefing || loading || downloading}

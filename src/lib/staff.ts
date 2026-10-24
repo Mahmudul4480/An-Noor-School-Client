@@ -14,6 +14,7 @@ import type {
   StaffMember,
   StaffTrack,
 } from '../types';
+import { assertCanMutate } from './permissions';
 
 const STAFF_COLLECTION = 'schoolStaff';
 const LOCAL_STAFF_KEY = 'an-noor-school-staff';
@@ -213,6 +214,7 @@ export async function uploadStaffFile(
   folder: string,
   ownerId: string,
 ): Promise<{ url: string; name: string }> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     return { url: await fileToDataUrl(file), name: file.name };
   }
@@ -244,6 +246,7 @@ export interface CreateHireInput {
 }
 
 export async function createStaffHire(input: CreateHireInput): Promise<StaffMember> {
+  assertCanMutate();
   const name = input.name.trim();
   const phone = input.phone.trim();
   if (!name) throw new Error('Name লিখুন।');
@@ -306,6 +309,7 @@ export async function reviewStaffHire(params: {
   note?: string;
   loginPassword?: string;
 }): Promise<StaffMember> {
+  assertCanMutate();
   if (params.person.status !== 'pending_approval') {
     throw new Error('This hire is not waiting for approval.');
   }
@@ -346,6 +350,7 @@ export async function requestDutyAssignment(params: {
   section?: string;
   note?: string;
 }): Promise<StaffMember> {
+  assertCanMutate();
   const option = DUTY_OPTIONS.find((item) => item.id === params.kind);
   if (!option) throw new Error('Duty select করুন।');
   if (option.needsClass && !params.className) throw new Error('Class select করুন।');
@@ -382,6 +387,7 @@ export async function assignDutyDirect(params: {
   note?: string;
   actorName: string;
 }): Promise<StaffMember> {
+  assertCanMutate();
   const option = DUTY_OPTIONS.find((item) => item.id === params.kind);
   if (!option) throw new Error('Duty select করুন।');
   if (option.needsClass && !params.className) throw new Error('Class select করুন।');
@@ -428,6 +434,7 @@ export async function reviewDutyAssignment(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<StaffMember> {
+  assertCanMutate();
   const duty = params.person.duties.find((item) => item.id === params.dutyId);
   if (!duty) throw new Error('Duty request পাওয়া যায়নি।');
   if (duty.status !== 'pending') throw new Error('This duty is not pending.');

@@ -5,6 +5,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { fetchAccounts, fetchEntries, isPettyCashAccount, recordCollection, recordExpense } from './ledger';
 import { omitUndefined, toIsoString } from './utils';
 import type { Expense } from '../types';
+import { assertCanMutate } from './permissions';
 
 const EXPENSES_COLLECTION = 'expenses';
 const LOCAL_EXPENSES_KEY = 'an-noor-expenses';
@@ -98,6 +99,7 @@ async function persistExpense(expense: Expense): Promise<void> {
 }
 
 export async function createExpense(input: CreateExpenseInput): Promise<Expense> {
+  assertCanMutate();
   const expense: Expense = {
     id: generateId('exp'),
     date: input.date,
@@ -143,6 +145,7 @@ export async function postTransferChargeExpense(input: {
   note?: string;
   createdBy?: string;
 }): Promise<Expense> {
+  assertCanMutate();
   if (!input.amount || input.amount <= 0) {
     throw new Error('Valid transfer charge দিন।');
   }
@@ -184,6 +187,7 @@ export async function reviewExpense(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<Expense> {
+  assertCanMutate();
   if (params.expense.approvalStatus !== 'pending') {
     throw new Error('This expense is not pending approval.');
   }

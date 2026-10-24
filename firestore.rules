@@ -1,9 +1,107 @@
 rules_version = '2';
 
+// Role-aware rules.
+// Director is read-only. Principal and Managing Partner are the same super-admin
+// office and can write, including assigning roles. Users cannot write their own
+// role. The reserved emails match src/lib/auth.ts and are not new accounts.
+// Deploy these only when the live project should stop using the open demo rules.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function authEmail() {
+      return request.auth.token.email;
+    }
+
+    function isReservedSuperAdmin() {
+      return signedIn()
+        && authEmail() in ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
+    }
+
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function grantPath() {
+      return /databases/$(database)/documents/staffAccess/$(authEmail());
+    }
+
+    function hasActiveGrant() {
+      return signedIn()
+        && authEmail() != null
+        && exists(grantPath())
+        && get(grantPath()).data.status == 'active';
+    }
+
+    function isRevokedGrant() {
+      return signedIn()
+        && authEmail() != null
+        && exists(grantPath())
+        && get(grantPath()).data.status == 'revoked';
+    }
+
+    function userRole() {
+      return exists(userPath()) ? get(userPath()).data.role : '';
+    }
+
+    function effectiveRole() {
+      return isReservedSuperAdmin()
+        ? 'super_admin'
+        : hasActiveGrant()
+          ? get(grantPath()).data.role
+          : userRole();
+    }
+
+    function isSuperAdmin() {
+      return effectiveRole() in ['principal', 'managing_partner', 'super_admin'];
+    }
+
+    function isDirector() {
+      return effectiveRole() == 'director';
+    }
+
+    function canWriteData() {
+      return signedIn() && !isDirector() && !isRevokedGrant();
+    }
+
+    function assignableRole(role) {
+      return role in ['teacher', 'accounts', 'principal', 'managing_partner', 'director'];
+    }
+
+    match /staffAccess/{email} {
+      allow read: if signedIn();
+      allow create, update: if isSuperAdmin()
+        && authEmail() != email
+        && request.resource.data.email == email
+        && assignableRole(request.resource.data.role)
+        && request.resource.data.status in ['active', 'revoked'];
+      allow delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isSuperAdmin()
+        && userId != request.auth.uid
+        && assignableRole(request.resource.data.role);
+      allow update: if isSuperAdmin()
+        && userId != request.auth.uid
+        && (
+          assignableRole(request.resource.data.role)
+          || request.resource.data.role == 'revoked'
+        );
+      allow update: if signedIn()
+        && userId == request.auth.uid
+        && resource.data.role == request.resource.data.role;
+      allow delete: if false;
+    }
+
+    match /{collection}/{document} {
+      allow read: if signedIn();
+      allow write: if canWriteData()
+        && collection != 'staffAccess'
+        && collection != 'users';
     }
   }
 }

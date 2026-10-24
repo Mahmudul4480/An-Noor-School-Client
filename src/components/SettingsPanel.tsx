@@ -10,6 +10,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { getCurrentActor, getCurrentActorLabel } from '../lib/actor';
+import { isSuperAdminRole, isViewOnlyRole, roleLabel } from '../lib/permissions';
 import { CLASS_OPTIONS } from '../lib/schoolConstants';
 import { fetchSchoolSettings, saveSchoolSettings } from '../lib/schoolSettings';
 import { AccessControlPanel } from './AccessControlPanel';
@@ -51,8 +52,8 @@ const inputClass =
 export function SettingsPanel({ portal }: { portal?: UserRole | null }) {
   const loggedInRole = (localStorage.getItem('userRole') as UserRole) || 'guardian';
   const view = portal || loggedInRole;
-  const isSchoolAdminView = view === 'principal' || view === 'super_admin';
-  const canEdit = isSchoolAdminView && (loggedInRole === 'principal' || loggedInRole === 'super_admin');
+  const isSchoolAdminView = view === 'principal' || view === 'managing_partner' || view === 'super_admin';
+  const canEdit = isSchoolAdminView && isSuperAdminRole(loggedInRole);
   const canManageAccess = canEdit;
   const actor = getCurrentActor();
 
@@ -104,8 +105,9 @@ export function SettingsPanel({ portal }: { portal?: UserRole | null }) {
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
         <p className="text-[10px] font-black text-school-muted uppercase tracking-widest">Logged in as</p>
         <h2 className="text-2xl font-black text-school-blue uppercase tracking-tight mt-1">
-          {actor.name || view}
+          {actor.name || roleLabel(view)}
         </h2>
+        <p className="text-[10px] font-black text-school-gold uppercase tracking-widest mt-2">{roleLabel(loggedInRole)}</p>
         <p className="text-sm font-bold text-school-muted mt-1">{actor.email || 'No email on this session'}</p>
         {view === 'accounts' && (
           <p className="text-[10px] font-bold text-school-muted uppercase tracking-widest mt-3">
@@ -123,7 +125,9 @@ export function SettingsPanel({ portal }: { portal?: UserRole | null }) {
             <div>
               <h3 className="text-sm font-black text-school-blue uppercase tracking-tight">School on receipts</h3>
               <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
-                Principal Office এই তথ্য বদলায় — এখানে শুধু দেখা যায়
+                {isViewOnlyRole(loggedInRole)
+                  ? 'Director access is view-only — settings cannot be changed'
+                  : 'Principal Office এই তথ্য বদলায় — এখানে শুধু দেখা যায়'}
               </p>
             </div>
           </div>

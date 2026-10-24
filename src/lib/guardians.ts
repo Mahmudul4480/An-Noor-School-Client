@@ -2,6 +2,7 @@ import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, wh
 import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
 import type { GuardianAccount } from '../types';
+import { assertCanMutate } from './permissions';
 
 const GUARDIANS_COLLECTION = 'guardians';
 const LOCAL_GUARDIANS_KEY = 'an-noor-guardians';
@@ -69,6 +70,7 @@ export async function provisionGuardianLogin(params: {
   guardianName: string;
   studentId: string;
 }): Promise<{ mobile: string; password?: string; isNewAccount: boolean }> {
+  assertCanMutate();
   const mobile = normalizeMobile(params.mobile);
   const authEmail = mobileToAuthEmail(mobile);
   const password = generateGuardianPassword();

@@ -92,7 +92,7 @@ const STATUS_STYLE: Record<StudentInvoice['status'], string> = {
   cancelled: 'bg-slate-100 text-slate-500',
 };
 
-export function InvoicingPanel() {
+export function InvoicingPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [invoices, setInvoices] = React.useState<StudentInvoice[]>([]);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
@@ -362,6 +362,8 @@ export function InvoicingPanel() {
                 onChange={(e) => setBillingMonth(e.target.value)}
                 className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
               />
+              {!readOnly && (
+                <>
               <button
                 type="button"
                 onClick={() => setShowFeeSettings(true)}
@@ -392,6 +394,8 @@ export function InvoicingPanel() {
               >
                 <Plus size={14} /> Manual Invoice
               </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -447,7 +451,9 @@ export function InvoicingPanel() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-school-muted font-medium">
-                        {formatBillingMonthLabel(billingMonth)}-এ কোনো invoice নেই। Generate Tuition চাপুন।
+                        {readOnly
+                          ? `${formatBillingMonthLabel(billingMonth)}-এ কোনো invoice নেই।`
+                          : `${formatBillingMonthLabel(billingMonth)}-এ কোনো invoice নেই। Generate Tuition চাপুন।`}
                       </td>
                     </tr>
                   ) : (
@@ -487,9 +493,9 @@ export function InvoicingPanel() {
                             >
                               <FileText size={12} /> Receipt
                             </button>
-                          ) : invoice.status === 'cancelled' || invoice.paymentApprovalStatus === 'pending' ? (
+                          ) : readOnly || invoice.status === 'cancelled' || invoice.paymentApprovalStatus === 'pending' ? (
                             <span className="text-[10px] font-bold text-school-muted uppercase tracking-widest">
-                              {invoice.paymentApprovalStatus === 'pending' ? 'Sent to Principal' : '—'}
+                              {readOnly ? 'View only' : invoice.paymentApprovalStatus === 'pending' ? 'Sent to Principal' : '—'}
                             </span>
                           ) : (
                             <button
@@ -535,6 +541,7 @@ export function InvoicingPanel() {
             </p>
           </div>
 
+          {!readOnly && (
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100">
             <p className="text-[10px] font-black text-school-blue uppercase tracking-widest mb-2">Counter Collection</p>
             <p className="text-[11px] font-medium text-slate-600">
@@ -543,6 +550,7 @@ export function InvoicingPanel() {
               লিখতে হবে।
             </p>
           </div>
+          )}
 
           <div className="space-y-3">
             <h4 className="text-[10px] font-black text-school-muted uppercase tracking-widest">Recent Paid</h4>

@@ -18,7 +18,12 @@ import {
   LayoutGrid,
   GraduationCap,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  Landmark,
+  Receipt,
+  FileBarChart,
+  Lock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
@@ -27,10 +32,12 @@ import { logout } from './lib/auth';
 import { getCurrentActor } from './lib/actor';
 import { fetchSchoolSettings, getCachedSchoolSettings } from './lib/schoolSettings';
 import { UserRole } from './types';
+import { roleLabel } from './lib/permissions';
 import { GuardianDashboard } from './components/GuardianDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AccountsDashboard } from './components/AccountsDashboard';
 import { PrincipalDashboard } from './components/PrincipalDashboard';
+import { DirectorDashboard } from './components/DirectorDashboard';
 import { SettingsPanel } from './components/SettingsPanel';
 
 const DashboardPage = () => {
@@ -103,7 +110,7 @@ const DashboardPage = () => {
     },
     principal: {
       name: "Principal Office",
-      portalName: "Executive Portal",
+      portalName: "Principal",
       color: "bg-school-gold",
       accent: "text-school-blue",
       icon: <Shield size={40} />,
@@ -112,6 +119,36 @@ const DashboardPage = () => {
         { icon: <TrendingUp size={20} />, label: "Analytics", id: "analytics" },
         { icon: <Users size={20} />, label: "Staff", id: "staff" },
         { icon: <Settings size={20} />, label: "School Ops", id: "ops" },
+      ]
+    },
+    managing_partner: {
+      name: "Managing Partner",
+      portalName: "Managing Partner",
+      color: "bg-school-gold",
+      accent: "text-school-blue",
+      icon: <Shield size={40} />,
+      menu: [
+        { icon: <Shield size={20} />, label: "Overview", id: "overview" },
+        { icon: <TrendingUp size={20} />, label: "Analytics", id: "analytics" },
+        { icon: <Users size={20} />, label: "Staff", id: "staff" },
+        { icon: <Settings size={20} />, label: "School Ops", id: "ops" },
+      ]
+    },
+    director: {
+      name: "Director",
+      portalName: "Director · View Only",
+      color: "bg-slate-800",
+      accent: "text-school-gold",
+      icon: <Eye size={40} />,
+      menu: [
+        { icon: <LayoutDashboard size={20} />, label: "Overview", id: "overview" },
+        { icon: <Users size={20} />, label: "Students", id: "students" },
+        { icon: <Receipt size={20} />, label: "Invoices", id: "billing" },
+        { icon: <TrendingUp size={20} />, label: "Income", id: "income" },
+        { icon: <CreditCard size={20} />, label: "Expenses", id: "expenses" },
+        { icon: <Landmark size={20} />, label: "Ledger", id: "ledger" },
+        { icon: <FileBarChart size={20} />, label: "Reports", id: "report" },
+        { icon: <Lock size={20} />, label: "Day Close", id: "dayclose" },
       ]
     },
     super_admin: {
@@ -135,6 +172,19 @@ const DashboardPage = () => {
 
   const isAccountsSidebarTab = currentView === 'accounts' && activeTab in accountsSidebarSections;
 
+  const directorSidebarSections: Record<string, string> = {
+    overview: 'overview',
+    students: 'students',
+    billing: 'billing',
+    income: 'income',
+    expenses: 'expenses',
+    ledger: 'ledger',
+    report: 'report',
+    dayclose: 'dayclose',
+  };
+
+  const isDirectorSidebarTab = currentView === 'director' && activeTab in directorSidebarSections;
+
   const renderAdminPortal = () => (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
       <motion.div 
@@ -149,12 +199,14 @@ const DashboardPage = () => {
         <p className="text-school-muted font-medium uppercase tracking-widest text-xs">Select a department portal to inspect data</p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
         {[
           { id: 'guardian', label: 'Guardian', icon: <GraduationCap size={32} />, color: 'bg-school-blue', desc: 'Parent/Student view' },
           { id: 'teacher', label: 'Teacher', icon: <BookOpen size={32} />, color: 'bg-emerald-600', desc: 'Classroom & Lessons' },
           { id: 'accounts', label: 'Accounts', icon: <Calculator size={32} />, color: 'bg-purple-600', desc: 'Fiscal & Billing' },
           { id: 'principal', label: 'Principal', icon: <Shield size={32} />, color: 'bg-school-gold text-school-blue', desc: 'School Operations' },
+          { id: 'managing_partner', label: 'Managing Partner', icon: <Shield size={32} />, color: 'bg-school-gold text-school-blue', desc: 'Same powers as Principal' },
+          { id: 'director', label: 'Director', icon: <Eye size={32} />, color: 'bg-slate-800', desc: 'View-only reports' },
         ].map((p) => (
           <motion.button
             key={p.id}
@@ -186,7 +238,7 @@ const DashboardPage = () => {
       return <SettingsPanel portal={currentView} />;
     }
 
-    if (activeTab !== 'overview' && !isAccountsSidebarTab) {
+    if (activeTab !== 'overview' && !isAccountsSidebarTab && !isDirectorSidebarTab) {
       return (
         <div className="h-[60vh] flex flex-col items-center justify-center text-center p-8">
           <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 mb-6">
@@ -213,7 +265,10 @@ const DashboardPage = () => {
             activeSection={accountsSidebarSections[activeTab] ?? 'overview'}
           />
         );
-      case 'principal': return <PrincipalDashboard />;
+      case 'principal': return <PrincipalDashboard officeLabel="Principal" />;
+      case 'managing_partner': return <PrincipalDashboard officeLabel="Managing Partner" />;
+      case 'director':
+        return <DirectorDashboard activeSection={directorSidebarSections[activeTab] ?? 'overview'} />;
       default: return <GuardianDashboard />;
     }
   };
@@ -344,8 +399,19 @@ const DashboardPage = () => {
                     expenses: 'Expenses',
                     financials: 'Financials',
                   }[activeTab] ?? 'Accounts Dashboard')
+                : currentView === 'director'
+                ? ({
+                    overview: 'Director Dashboard',
+                    students: 'Students',
+                    billing: 'Invoices',
+                    income: 'Income',
+                    expenses: 'Expenses',
+                    ledger: 'Ledger',
+                    report: 'Reports',
+                    dayclose: 'Day Close',
+                  }[activeTab] ?? 'Director Dashboard')
                 : activeTab === 'overview'
-                  ? `${currentView || 'Admin'} Dashboard`
+                  ? `${roleLabel(currentView)} Dashboard`
                   : activeTab}
             </h2>
           </div>
@@ -367,7 +433,7 @@ const DashboardPage = () => {
                 </p>
               </div>
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white border-2 border-school-gold shadow-sm", activeConfig?.color)}>
-                 {currentView === 'principal' ? <Shield size={20} /> : <User size={20} />}
+                 {currentView === 'principal' || currentView === 'managing_partner' ? <Shield size={20} /> : currentView === 'director' ? <Eye size={20} /> : <User size={20} />}
               </div>
             </div>
           </div>

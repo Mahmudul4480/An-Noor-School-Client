@@ -27,6 +27,7 @@ import type {
   FeeStructureItem,
   Student,
 } from '../types';
+import { assertCanMutate } from './permissions';
 
 const ADMISSIONS_COLLECTION = 'admissions';
 const FEE_STRUCTURES_COLLECTION = 'feeStructures';
@@ -294,6 +295,7 @@ export async function fetchFeeStructure(className?: string): Promise<FeeStructur
 }
 
 export async function saveFeeStructure(className: string, items: FeeStructureItem[]): Promise<FeeStructure> {
+  assertCanMutate();
   const structure = buildClassFeeStructure(className, items);
 
   if (isDemoLoginEnabled) {
@@ -372,6 +374,7 @@ export async function getNextFormSerial(academicYear: string): Promise<string> {
 /* ---------------- Scanned form upload ---------------- */
 
 export async function uploadStudentPhoto(file: File, admissionId: string): Promise<string> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -388,6 +391,7 @@ export async function uploadStudentPhoto(file: File, admissionId: string): Promi
 }
 
 export async function uploadScannedForm(file: File, formSerial: string): Promise<{ url: string; name: string }> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -406,6 +410,7 @@ export async function uploadScannedForm(file: File, formSerial: string): Promise
 }
 
 export async function uploadBirthRegDocument(file: File, formSerial: string): Promise<{ url: string; name: string }> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -471,6 +476,7 @@ export interface CreateAdmissionInput {
 }
 
 export async function createAdmission(input: CreateAdmissionInput): Promise<Admission> {
+  assertCanMutate();
   const formSerial = await getNextFormSerial(input.academicYear);
   const { grossTotal, totalDiscount, grandTotal } = computeTotals(input.feeItems, input.discounts);
   const now = new Date().toISOString();
@@ -550,6 +556,7 @@ export async function actOnApproval(params: {
   note?: string;
   receivedInAccountId?: string;
 }): Promise<Admission> {
+  assertCanMutate();
   const { admission } = params;
 
   const updatedApprovals: ApprovalStep[] = admission.approvals.map((step) =>
@@ -632,6 +639,7 @@ export async function actOnApproval(params: {
 }
 
 export async function cancelAdmission(admission: Admission, reason: string, actorName: string): Promise<Admission> {
+  assertCanMutate();
   const updated: Admission = {
     ...admission,
     status: 'cancelled',

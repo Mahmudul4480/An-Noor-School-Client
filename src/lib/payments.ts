@@ -13,6 +13,7 @@ import { recordInvoicePayment } from './invoices';
 import { ONLINE_PAYMENT_ACCOUNT_ID } from './ledger';
 import { omitUndefined } from './utils';
 import type { PaymentGatewayProvider, PaymentIntent, StudentInvoice } from '../types';
+import { assertCanMutate } from './permissions';
 
 const PAYMENT_INTENTS_COLLECTION = 'paymentIntents';
 const LOCAL_PAYMENT_INTENTS_KEY = 'an-noor-payment-intents';
@@ -86,6 +87,7 @@ export interface InitiateOnlinePaymentResult {
 }
 
 export async function initiateOnlinePayment(invoice: StudentInvoice): Promise<InitiateOnlinePaymentResult> {
+  assertCanMutate();
   const dueAmount = invoice.totalAmount - invoice.paidAmount;
   if (dueAmount <= 0) throw new Error('This invoice is already paid.');
 
@@ -127,6 +129,7 @@ export async function completeOnlinePayment(params: {
   intentId: string;
   gatewayTransactionId: string;
 }): Promise<{ intent: PaymentIntent; invoice: StudentInvoice }> {
+  assertCanMutate();
   const intents = await fetchPaymentIntents();
   const intent = intents.find((item) => item.id === params.intentId);
   if (!intent) throw new Error('Payment intent not found.');
@@ -164,6 +167,7 @@ export async function completeOnlinePayment(params: {
 
 /** Demo / manual online payment when gateway is not live yet */
 export async function simulateOnlinePayment(invoice: StudentInvoice): Promise<StudentInvoice> {
+  assertCanMutate();
   const dueAmount = invoice.totalAmount - invoice.paidAmount;
   if (dueAmount <= 0) throw new Error('Invoice already paid.');
 

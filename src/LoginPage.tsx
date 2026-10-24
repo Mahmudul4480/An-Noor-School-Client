@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Lock, ArrowRight, UserCheck, Shield, BookOpen, GraduationCap, Calculator, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserRole } from './types';
+import { DEMO_PORTAL_LOGINS, roleLabel } from './lib/permissions';
 import {
   demoLogin,
   firebaseLogin,
@@ -26,6 +27,8 @@ const LoginPage = () => {
     { id: 'teacher', label: 'Teacher', icon: <BookOpen size={18} /> },
     { id: 'accounts', label: 'Accounts', icon: <Calculator size={18} /> },
     { id: 'principal', label: 'Principal', icon: <Shield size={18} /> },
+    { id: 'managing_partner', label: 'Managing Partner', icon: <Shield size={18} /> },
+    { id: 'director', label: 'Director', icon: <Eye size={18} /> },
   ];
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -102,8 +105,13 @@ const LoginPage = () => {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setRole(r.id as UserRole)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                  onClick={() => {
+                    const nextRole = r.id as UserRole;
+                    setRole(nextRole);
+                    const demo = DEMO_PORTAL_LOGINS.find((entry) => entry.role === nextRole);
+                    if (demo) setFormData((prev) => ({ ...prev, userId: demo.userId }));
+                  }}
+                  className={`flex items-center gap-2 px-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-left leading-tight transition-all ${
                     role === r.id
                       ? 'bg-school-blue text-white shadow-lg shadow-blue-900/20'
                       : 'bg-slate-50 text-school-muted hover:bg-slate-100 hover:text-school-blue border border-slate-100'
@@ -198,7 +206,7 @@ const LoginPage = () => {
                 'Signing in...'
               ) : isDemoLoginEnabled ? (
                 <>
-                  Log In as <span className="underline">{role}</span> <ArrowRight size={20} />
+                  Log In as <span className="underline">{roleLabel(role)}</span> <ArrowRight size={20} />
                 </>
               ) : (
                 <>
@@ -230,8 +238,14 @@ const LoginPage = () => {
                   <span className="underline font-black">chotan4480@gmail.com</span>
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
+                  <span className="font-bold text-school-blue">Managing Partner:</span> {DEMO_PORTAL_LOGINS.find((entry) => entry.role === 'managing_partner')?.userId} — same powers as Principal
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  <span className="font-bold text-school-blue">Director:</span> {DEMO_PORTAL_LOGINS.find((entry) => entry.role === 'director')?.userId} — view only
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium">
                   <span className="font-bold text-school-blue">All dashboards:</span> Super Admin login
-                  করে Guardian, Teacher, Accounts, Principal — সব portal দেখতে পারবেন।
+                  করে Guardian, Teacher, Accounts, Principal, Managing Partner, Director — সব portal দেখতে পারবেন।
                 </p>
                 <p className="text-[10px] text-slate-500 font-medium">
                   <span className="font-bold text-school-blue">Password:</span> যেকোনো character ব্যবহার

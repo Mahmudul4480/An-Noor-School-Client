@@ -5,6 +5,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { recordCollection } from './ledger';
 import { omitUndefined, toIsoString } from './utils';
 import type { IncomeEntry } from '../types';
+import { assertCanMutate } from './permissions';
 
 const INCOME_COLLECTION = 'incomeEntries';
 const LOCAL_INCOME_KEY = 'an-noor-income-entries';
@@ -94,6 +95,7 @@ export interface CreateIncomeInput {
 }
 
 export async function createIncomeEntry(input: CreateIncomeInput): Promise<IncomeEntry> {
+  assertCanMutate();
   if (!input.category) throw new Error('Income category select করুন।');
   if (!input.source.trim()) throw new Error('Received from কার কাছ থেকে এসেছে লিখুন।');
   if (!input.description.trim()) throw new Error('Description লিখুন।');
@@ -129,6 +131,7 @@ export async function reviewIncomeEntry(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<IncomeEntry> {
+  assertCanMutate();
   if (params.entry.approvalStatus !== 'pending') {
     throw new Error('This income entry is not pending approval.');
   }

@@ -22,6 +22,7 @@ import type {
   Student,
   StudentInvoice,
 } from '../types';
+import { assertCanMutate } from './permissions';
 
 const INVOICES_COLLECTION = 'studentInvoices';
 const LOCAL_INVOICES_KEY = 'an-noor-student-invoices';
@@ -210,6 +211,7 @@ export interface GenerateMonthlyTuitionResult {
 }
 
 export async function ensureMonthlyTuitionInvoices(billingMonth = formatBillingMonth()): Promise<GenerateMonthlyTuitionResult> {
+  assertCanMutate();
   const [students, existingInvoices, structures] = await Promise.all([
     fetchStudents(),
     fetchInvoices({ billingMonth }),
@@ -276,6 +278,7 @@ export async function syncClassTuitionInvoices(params: {
   tuitionAmount: number;
   billingMonth?: string;
 }): Promise<{ created: number; updated: number; skippedPaid: number }> {
+  assertCanMutate();
   const billingMonth = params.billingMonth ?? formatBillingMonth();
   const [students, existingInvoices] = await Promise.all([
     fetchStudents(),
@@ -344,6 +347,7 @@ export interface CreateManualInvoiceInput {
  * khata, dress and so on. Each line can carry a quantity (e.g. 3 khata × ৳60).
  */
 export async function createManualInvoice(input: CreateManualInvoiceInput): Promise<StudentInvoice> {
+  assertCanMutate();
   const students = await fetchStudents();
   const student = students.find((item) => item.studentId === input.studentId);
   if (!student) throw new Error('Student not found.');
@@ -396,6 +400,7 @@ export async function recordInvoicePayment(params: {
   gatewayRef?: string;
   gatewayProvider?: StudentInvoice['gatewayProvider'];
 }): Promise<StudentInvoice> {
+  assertCanMutate();
   const invoices = await fetchInvoices();
   const invoice = invoices.find((item) => item.id === params.invoiceId);
   if (!invoice) throw new Error('Invoice not found.');
@@ -452,6 +457,7 @@ export async function markInvoicePaidAtSchool(params: {
   reference?: string;
   requestedBy?: string;
 }): Promise<StudentInvoice> {
+  assertCanMutate();
   const invoices = await fetchInvoices();
   const invoice = invoices.find((item) => item.id === params.invoiceId);
   if (!invoice) throw new Error('Invoice not found.');
@@ -485,6 +491,7 @@ export async function reviewInvoicePayment(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<StudentInvoice> {
+  assertCanMutate();
   if (params.invoice.paymentApprovalStatus !== 'pending') {
     throw new Error('This invoice payment is not pending Principal approval.');
   }
@@ -531,6 +538,7 @@ export function computeInvoiceStats(invoices: StudentInvoice[]) {
 }
 
 export async function cancelInvoice(invoiceId: string): Promise<StudentInvoice> {
+  assertCanMutate();
   const invoices = await fetchInvoices();
   const invoice = invoices.find((item) => item.id === invoiceId);
   if (!invoice) throw new Error('Invoice not found.');

@@ -5,7 +5,7 @@ import { getCurrentActorLabel } from '../../lib/actor';
 import { closeDay, getDailySummary, isDayClosed } from '../../lib/dayClose';
 import { cn, formatSignedBdt } from '../../lib/utils';
 
-export function DayClosePanel() {
+export function DayClosePanel({ readOnly = false }: { readOnly?: boolean }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = React.useState(today);
   const [loading, setLoading] = React.useState(true);
@@ -134,6 +134,7 @@ export function DayClosePanel() {
               </div>
             )}
 
+            {!readOnly && (
             <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
               <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Day Close Note (optional)</label>
               <input
@@ -154,6 +155,7 @@ export function DayClosePanel() {
                 {closed ? 'Day Already Closed' : 'Close Day'}
               </button>
             </div>
+            )}
           </>
         ) : null}
       </div>
