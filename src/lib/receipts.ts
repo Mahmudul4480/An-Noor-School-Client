@@ -171,7 +171,7 @@ export function buildInvoiceReceipt(
   };
 }
 
-interface SchoolReceiptDocument {
+export interface SchoolReceiptDocument {
   docTitle: string;
   receiptNumber: string;
   /** Caption above the receipt number, e.g. "Receipt No" or "Voucher No" */
@@ -186,7 +186,7 @@ interface SchoolReceiptDocument {
   statusNote: string;
 }
 
-function admissionToDocument(data: AdmissionReceiptData): SchoolReceiptDocument {
+export function admissionToDocument(data: AdmissionReceiptData): SchoolReceiptDocument {
   const classLabel = `${data.classApplied}${data.section ? ` (${data.section})` : ''}`;
   const overall = data.discounts.find((d) => d.itemKey === 'overall');
   const concession =
@@ -537,7 +537,7 @@ export async function downloadExpenseVoucherPdf(data: ExpenseVoucherData): Promi
   pdf.save(`${data.voucherNumber}.pdf`);
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -770,9 +770,7 @@ export function buildInvoiceReceiptHtml(data: InvoiceReceiptData, autoPrint = fa
   return buildSchoolReceiptHtml(invoiceToDocument(data), autoPrint);
 }
 
-export function printAdmissionReceipt(data: AdmissionReceiptData): void {
-  printSchoolReceipt(admissionToDocument(data));
-}
+export { printAdmissionReceipt } from './admissionDualReceipt';
 
 export function printInvoiceReceipt(data: InvoiceReceiptData): void {
   printSchoolReceipt(invoiceToDocument(data));
@@ -936,9 +934,7 @@ function pdfMoney(value: string): string {
   return value.replace(/৳/g, 'Tk');
 }
 
-export async function downloadAdmissionReceiptPdf(data: AdmissionReceiptData): Promise<void> {
-  await downloadSchoolReceiptPdf(admissionToDocument(data));
-}
+export { downloadAdmissionReceiptPdf } from './admissionDualReceipt';
 
 export async function downloadInvoiceReceiptPdf(data: InvoiceReceiptData): Promise<void> {
   await downloadSchoolReceiptPdf(invoiceToDocument(data));
