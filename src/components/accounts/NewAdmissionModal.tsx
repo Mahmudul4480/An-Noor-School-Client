@@ -14,6 +14,8 @@ import {
   validateDiscount,
 } from '../../lib/admissions';
 import { getFirebaseOperationErrorMessage } from '../../lib/auth';
+import { toFriendlyError } from '../../lib/errorMessages';
+import { showToast } from '../../lib/toast';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
 import { fetchAccounts } from '../../lib/ledger';
 import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
@@ -61,6 +63,17 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const [receivedInAccountId, setReceivedInAccountId] = React.useState('');
   const [error, setError] = React.useState('');
   const [warning, setWarning] = React.useState('');
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
+  React.useEffect(() => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      for (const k of Object.keys(prev)) {
+        const v = k === 'receivedInAccountId' ? receivedInAccountId : (form as Record<string, string>)[k];
+        if (v && String(v).trim()) delete next[k];
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [form, receivedInAccountId]);
   const [submitting, setSubmitting] = React.useState(false);
   const [loadingStructure, setLoadingStructure] = React.useState(true);
 
@@ -131,13 +144,25 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     setError('');
     setWarning('');
 
-    if (!form.studentName || !form.classApplied || !form.gender || !form.guardianName || !form.guardianContact) {
-      setError('Student Name, Class, Gender, Guardian Name ও Guardian Contact আবশ্যক।');
-      return;
-    }
-
-    if (!receivedInAccountId) {
-      setError('Admission fee কোন account-এ জমা হয়েছে সেটা select করুন।');
+    const errs: Record<string, string> = {};
+    if (!form.studentName.trim()) errs.studentName = 'শিক্ষার্থীর নাম লিখুন';
+    if (!form.gender) errs.gender = 'লিঙ্গ নির্বাচন করুন';
+    if (!form.classApplied) errs.classApplied = 'ক্লাস নির্বাচন করুন';
+    if (sectionsForClass(form.classApplied).length > 0 && !form.section) errs.section = 'সেকশন নির্বাচন করুন';
+    if (!form.academicYear.trim()) errs.academicYear = 'শিক্ষাবর্ষ লিখুন';
+    if (birthRegFile && !form.birthRegNo.trim()) errs.birthRegNo = 'জন্ম নিবন্ধন নম্বর লিখুন';
+    if (!form.guardianName.trim()) errs.guardianName = 'অভিভাবকের নাম লিখুন';
+    if (!form.guardianContact.trim()) errs.guardianContact = 'অভিভাবকের মোবাইল নম্বর লিখুন';
+    if (!receivedInAccountId) errs.receivedInAccountId = 'টাকা কোন অ্যাকাউন্টে জমা হয়েছে নির্বাচন করুন';
+    setFieldErrors(errs);
+    const order = ['studentName', 'gender', 'classApplied', 'section', 'academicYear', 'birthRegNo', 'guardianName', 'guardianContact', 'receivedInAccountId'];
+    const first = order.find((k) => errs[k]);
+    if (first) {
+      const el = document.getElementById(`field-${first}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => (el as HTMLElement | null)?.focus(), 300);
+      setError('লাল দাগ দেওয়া ঘরগুলো পূরণ করুন');
+      showToast('error', errs[first], 'Please fill in the field marked in red.');
       return;
     }
 
@@ -210,7 +235,9 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       onCreated(admission);
       onClose();
     } catch (err) {
-      setError(getFirebaseOperationErrorMessage(err));
+      const f = toFriendlyError(err);
+      setError(`${f.bn}\n${f.en}`);
+      showToast('error', f.bn, f.en);
     } finally {
       setSubmitting(false);
     }
@@ -242,16 +269,18 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
+          <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
             {/* Student Info */}
             <section className="space-y-4">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Student Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormInput label="Student Name *" value={form.studentName} onChange={(v) => setForm({ ...form, studentName: v })} />
+                <FormInput name="studentName" error={fieldErrors.studentName} label="Student Name *" value={form.studentName} onChange={(v) => setForm({ ...form, studentName: v })} />
                 <FormInput label="Father's Name" value={form.fatherName} onChange={(v) => setForm({ ...form, fatherName: v })} />
                 <FormInput label="Mother's Name" value={form.motherName} onChange={(v) => setForm({ ...form, motherName: v })} />
                 <FormInput label="Date of Birth" type="date" value={form.dob} onChange={(v) => setForm({ ...form, dob: v })} />
                 <FormSelect
+                  name="gender"
+                  error={fieldErrors.gender}
                   label="Gender *"
                   value={form.gender}
                   onChange={(v) => setForm({ ...form, gender: v })}
@@ -260,6 +289,8 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   required
                 />
                 <FormSelect
+                  name="classApplied"
+                  error={fieldErrors.classApplied}
                   label="Class Applied *"
                   value={form.classApplied}
                   onChange={(v) => setForm({ ...form, classApplied: v, section: sectionsForClass(v).includes(form.section) ? form.section : '' })}
@@ -269,7 +300,9 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                 />
                 {sectionsForClass(form.classApplied).length > 0 && (
                   <FormSelect
-                    label="Section *"
+                    name="section"
+                  error={fieldErrors.section}
+                  label="Section *"
                     value={form.section}
                     onChange={(v) => setForm({ ...form, section: v })}
                     options={sectionsForClass(form.classApplied)}
@@ -277,7 +310,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                     required
                   />
                 )}
-                <FormInput label="Academic Year *" value={form.academicYear} onChange={(v) => setForm({ ...form, academicYear: v })} />
+                <FormInput name="academicYear" error={fieldErrors.academicYear} label="Academic Year *" value={form.academicYear} onChange={(v) => setForm({ ...form, academicYear: v })} />
               </div>
             </section>
 
@@ -286,7 +319,9 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Birth Registration</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput
-                  label="Birth Reg. No."
+                  name="birthRegNo"
+                  error={fieldErrors.birthRegNo}
+                  label={birthRegFile ? 'Birth Reg. No. *' : 'Birth Reg. No.'}
                   value={form.birthRegNo}
                   onChange={(v) => setForm({ ...form, birthRegNo: v })}
                   placeholder="e.g. 19801234567890123"
@@ -315,8 +350,8 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
             <section className="space-y-4">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Guardian Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormInput label="Guardian Name *" value={form.guardianName} onChange={(v) => setForm({ ...form, guardianName: v })} />
-                <FormInput label="Guardian Contact *" value={form.guardianContact} onChange={(v) => setForm({ ...form, guardianContact: v })} />
+                <FormInput name="guardianName" error={fieldErrors.guardianName} label="Guardian Name *" value={form.guardianName} onChange={(v) => setForm({ ...form, guardianName: v })} />
+                <FormInput name="guardianContact" error={fieldErrors.guardianContact} label="Guardian Contact *" value={form.guardianContact} onChange={(v) => setForm({ ...form, guardianContact: v })} />
                 <FormInput label="Guardian Email" value={form.guardianEmail} onChange={(v) => setForm({ ...form, guardianEmail: v })} />
                 <div className="md:col-span-3">
                   <FormInput label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
@@ -374,9 +409,10 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
             <section className="space-y-3">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Admission Fee Deposit Account *</h4>
               <select
+                id="field-receivedInAccountId"
                 value={receivedInAccountId}
                 onChange={(e) => setReceivedInAccountId(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+                className={cn('w-full px-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold outline-none', fieldErrors.receivedInAccountId ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-100')}
                 required
               >
                 <option value="">Select account...</option>
@@ -386,6 +422,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   </option>
                 ))}
               </select>
+              {fieldErrors.receivedInAccountId && <p className="text-[11px] font-bold text-red-600">{fieldErrors.receivedInAccountId}</p>}
               <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
                 Admission fee ৳ {totals.grandTotal.toLocaleString()} এই account-এ record হবে
               </p>
@@ -512,14 +549,14 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
             {warning && (
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2">
                 <FileWarning size={16} className="text-amber-500 mt-0.5" />
-                <p className="text-xs font-bold text-amber-700">{warning}</p>
+                <p className="text-xs font-bold text-amber-700 whitespace-pre-line">{warning}</p>
               </div>
             )}
 
             {error && (
               <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2">
                 <FileWarning size={16} className="text-red-500 mt-0.5" />
-                <p className="text-xs font-bold text-red-600">{error}</p>
+                <p className="text-xs font-bold text-red-600 whitespace-pre-line">{error}</p>
               </div>
             )}
           </form>
@@ -562,7 +599,11 @@ function FormSelect({
   options,
   placeholder,
   required = false,
+  name,
+  error,
 }: {
+  name?: string;
+  error?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -574,10 +615,15 @@ function FormSelect({
     <div className="space-y-1.5">
       <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
       <select
+        id={name ? `field-${name}` : undefined}
+        aria-invalid={!!error}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20 text-school-blue"
+        className={cn(
+          'w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2 text-school-blue',
+          error ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-100 ring-school-gold/20',
+        )}
       >
         <option value="">{placeholder ?? 'Select...'}</option>
         {options.map((option) => (
@@ -586,6 +632,7 @@ function FormSelect({
           </option>
         ))}
       </select>
+      {error && <p className="text-[11px] font-bold text-red-600">{error}</p>}
     </div>
   );
 }
@@ -596,7 +643,11 @@ function FormInput({
   onChange,
   type = 'text',
   placeholder,
+  name,
+  error,
 }: {
+  name?: string;
+  error?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -607,12 +658,18 @@ function FormInput({
     <div className="space-y-1.5">
       <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
       <input
+        id={name ? `field-${name}` : undefined}
+        aria-invalid={!!error}
         type={type}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+        className={cn(
+          'w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:ring-2',
+          error ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-100 ring-school-gold/20',
+        )}
       />
+      {error && <p className="text-[11px] font-bold text-red-600">{error}</p>}
     </div>
   );
 }
