@@ -1,3 +1,4 @@
+import { omitUndefined } from './utils';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
@@ -121,7 +122,10 @@ export async function provisionGuardianLogin(params: {
     createdAt: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, GUARDIANS_COLLECTION, account.id), { ...account, createdAt: serverTimestamp() });
+  await setDoc(
+    doc(db, GUARDIANS_COLLECTION, account.id),
+    omitUndefined({ ...account, createdAt: serverTimestamp() } as Record<string, unknown>),
+  );
 
   return {
     mobile,

@@ -1,3 +1,4 @@
+import { omitUndefined } from './utils';
 import {
   collection,
   doc,
@@ -171,7 +172,11 @@ export async function addStudent(student: Student): Promise<void> {
   }
 
   const ref = doc(db, STUDENTS_COLLECTION, student.studentId);
-  await setDoc(ref, { ...student, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    ref,
+    omitUndefined({ ...student, createdAt: serverTimestamp(), updatedAt: serverTimestamp() } as Record<string, unknown>),
+    { merge: true },
+  );
 }
 
 export interface UpdateStudentInput {
@@ -225,13 +230,13 @@ export async function updateStudent(input: UpdateStudentInput): Promise<Student>
   const ref = doc(db, STUDENTS_COLLECTION, updated.studentId);
   await setDoc(
     ref,
-    {
+    omitUndefined({
       ...updated,
       correctionReason: input.correctionReason?.trim() || null,
       correctedBy: input.correctedBy ?? null,
       correctedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    },
+    } as Record<string, unknown>),
     { merge: true },
   );
 
