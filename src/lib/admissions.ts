@@ -524,7 +524,10 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
   }
 
   await ensureFirebaseSession();
-  await setDoc(doc(db, ADMISSIONS_COLLECTION, admission.id), { ...admission, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  await setDoc(
+    doc(db, ADMISSIONS_COLLECTION, admission.id),
+    omitUndefined({ ...admission, createdAt: serverTimestamp(), updatedAt: serverTimestamp() } as Record<string, unknown>),
+  );
   return admission;
 }
 
@@ -536,10 +539,10 @@ async function persistAdmission(admission: Admission): Promise<void> {
   }
 
   await ensureFirebaseSession();
-  await updateDoc(doc(db, ADMISSIONS_COLLECTION, admission.id), {
-    ...admission,
-    updatedAt: serverTimestamp(),
-  });
+  await updateDoc(
+    doc(db, ADMISSIONS_COLLECTION, admission.id),
+    omitUndefined({ ...admission, updatedAt: serverTimestamp() } as Record<string, unknown>),
+  );
 }
 
 export async function actOnApproval(params: {

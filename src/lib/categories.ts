@@ -1,3 +1,4 @@
+import { omitUndefined } from './utils';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
@@ -96,7 +97,10 @@ export async function requestCategory(input: {
   }
 
   await waitForAuthUser();
-  await setDoc(doc(db, CATEGORIES_COLLECTION, request.id), { ...request, createdAt: serverTimestamp() });
+  await setDoc(
+    doc(db, CATEGORIES_COLLECTION, request.id),
+    omitUndefined({ ...request, createdAt: serverTimestamp() } as Record<string, unknown>),
+  );
   return request;
 }
 
