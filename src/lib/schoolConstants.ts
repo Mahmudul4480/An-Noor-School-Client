@@ -8,9 +8,18 @@ export const CLASS_OPTIONS = [
   'Class 4',
   'Class 5',
   'Class 6',
-  'Class 7',
-  'Class 8',
 ] as const;
+
+/** Sections per class. Classes not listed here have no sections. */
+export const CLASS_SECTIONS: Record<string, readonly string[]> = {
+  Play: ['Rawdah', 'Nabat'],
+  Nursery: ['Alwan', 'Qamar'],
+  KG: ['Marwa', 'Taqwa'],
+};
+
+export function sectionsForClass(className: string | undefined): readonly string[] {
+  return (className && CLASS_SECTIONS[className]) || [];
+}
 
 export const GENDER_OPTIONS = ['Male', 'Female'] as const;
 
