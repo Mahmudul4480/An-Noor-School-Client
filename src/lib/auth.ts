@@ -1,3 +1,4 @@
+import { friendlyErrorText } from './errorMessages';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -190,24 +191,7 @@ export function subscribeToAuthState(onChange: (isAuthenticated: boolean) => voi
 }
 
 export function getFirebaseOperationErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Operation failed. Please try again.';
-  }
-
-  const code = (error as Error & { code?: string }).code;
-  switch (code) {
-    case 'auth/network-request-failed':
-      return 'Network error. Check your internet connection, then log out and sign in again.';
-    case 'permission-denied':
-      return 'Permission denied. Make sure you are logged in with an authorized account.';
-    case 'unavailable':
-      return 'Firebase is temporarily unavailable. Please try again in a moment.';
-    case 'storage/unauthorized':
-    case 'storage/unauthenticated':
-      return 'File upload is not available yet. Submit without the scanned form, or contact admin to enable Firebase Storage.';
-    default:
-      return error.message || 'Operation failed. Please try again.';
-  }
+  return friendlyErrorText(error);
 }
 
 export function getFirebaseAuthErrorMessage(error: unknown): string {
