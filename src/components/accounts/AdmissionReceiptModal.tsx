@@ -9,7 +9,9 @@ import {
   downloadAdmissionReceiptPdf,
   formatCurrency,
   formatReceiptDate,
+  getSchoolLogoCircle,
 } from '../../lib/receipts';
+import { buildAdmissionDualReceiptHtml } from '../../lib/admissionDualReceipt';
 import { ReceiptLogo } from '../ReceiptLogo';
 import type { Admission, LedgerAccount } from '../../types';
 
@@ -22,6 +24,11 @@ interface AdmissionReceiptModalProps {
 export function AdmissionReceiptModal({ admission, account, onClose }: AdmissionReceiptModalProps) {
   const receipt = buildAdmissionReceipt(admission, account);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [logo, setLogo] = useState<string | null>(null);
+  React.useEffect(() => {
+    getSchoolLogoCircle().then(setLogo);
+  }, []);
+  const previewHtml = buildAdmissionDualReceiptHtml(receipt, logo);
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
@@ -43,7 +50,7 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[2rem] border border-school-border shadow-2xl w-full max-w-2xl overflow-hidden"
+          className="bg-white rounded-[2rem] border border-school-border shadow-2xl w-full max-w-4xl overflow-hidden"
         >
           <div className="p-6 border-b border-school-border flex items-center gap-4">
             <button
@@ -65,85 +72,15 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
             </button>
           </div>
 
-          <div className="p-6 max-h-[70vh] overflow-y-auto">
-            <div className="rounded-2xl border-[3px] border-[#26338B] overflow-hidden shadow-lg">
-              <div className="bg-gradient-to-br from-[#26338B] to-[#1a2560] text-white text-center px-6 py-5 border-b-4 border-[#F8A41C]">
-                <ReceiptLogo />
-                <h4 className="text-base font-black uppercase tracking-wide">{getSchoolName()}</h4>
-                <p className="text-xs font-bold text-[#F8A41C] mt-1">{getSchoolAddress()}</p>
-                <p className="text-[10px] uppercase tracking-[0.2em] opacity-90 mt-3">Admission Fee Receipt</p>
-              </div>
-
-              <div className="flex justify-between gap-4 px-6 py-4 bg-slate-50 border-b border-slate-200 text-xs">
-                <div>
-                  <span className="block text-[10px] uppercase tracking-widest text-school-muted font-bold">Receipt No</span>
-                  <span className="font-black text-[#F8A41C]">{receipt.receiptNumber}</span>
-                </div>
-                <div className="text-right">
-                  <span className="block text-[10px] uppercase tracking-widest text-school-muted font-bold">Date</span>
-                  <span className="font-black text-[#F8A41C]">{formatReceiptDate(receipt.issuedAt)}</span>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4 text-xs text-[#26338B]">
-                <div className="grid grid-cols-2 gap-3">
-                  <p><span className="block text-[10px] uppercase text-school-muted font-bold">Form Serial</span>{receipt.formSerial}</p>
-                  <p><span className="block text-[10px] uppercase text-school-muted font-bold">Academic Year</span>{receipt.academicYear}</p>
-                  <p><span className="block text-[10px] uppercase text-school-muted font-bold">Student</span>{receipt.studentName}</p>
-                  <p>
-                    <span className="block text-[10px] uppercase text-school-muted font-bold">Class</span>
-                    {receipt.classApplied}{receipt.section ? ` (${receipt.section})` : ''}
-                  </p>
-                  <p><span className="block text-[10px] uppercase text-school-muted font-bold">Guardian</span>{receipt.guardianName}</p>
-                  <p><span className="block text-[10px] uppercase text-school-muted font-bold">Contact</span>{receipt.guardianContact}</p>
-                  <p className="col-span-2">
-                    <span className="block text-[10px] uppercase text-school-muted font-bold">Received In Account</span>
-                    {receipt.accountName}
-                  </p>
-                </div>
-
-                <div className="rounded-xl overflow-hidden border border-slate-100">
-                  <table className="w-full text-[11px]">
-                    <thead>
-                      <tr className="bg-[#26338B] text-white text-[10px] uppercase tracking-wider">
-                        <th className="p-3 text-left font-black">Fee Item</th>
-                        <th className="p-3 text-right font-black">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {receipt.feeItems.map((item) => (
-                        <tr key={item.key} className="even:bg-slate-50">
-                          <td className="p-3 font-bold">{item.label}</td>
-                          <td className="p-3 text-right">{formatCurrency(item.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="text-right space-y-1 p-4 rounded-xl border-2 border-[#F8A41C] bg-gradient-to-r from-amber-50 to-white">
-                  <p className="text-[10px] text-school-muted uppercase font-bold">Gross: {formatCurrency(receipt.grossTotal)}</p>
-                  {receipt.totalDiscount > 0 && (() => {
-                    const overall = receipt.discounts.find((d) => d.itemKey === 'overall');
-                    return (
-                      <p className="text-[10px] text-red-500 uppercase font-bold">
-                        Concession: − {formatCurrency(receipt.totalDiscount)}
-                        {overall?.reason ? ` (${overall.reason})` : ''}
-                      </p>
-                    );
-                  })()}
-                  <p className="text-lg font-black text-[#26338B]">Grand Total: {formatCurrency(receipt.grandTotal)}</p>
-                </div>
-
-                <div className="p-3 bg-amber-50 border-l-4 border-[#F8A41C] rounded-r-xl text-[11px] font-bold text-amber-900">
-                  {receipt.statusNote}
-                </div>
-              </div>
-
-              <div className="bg-[#26338B] text-white text-center py-3 text-[10px] uppercase tracking-widest font-bold">
-                Thank you — {getSchoolName()}
-              </div>
-            </div>
+          <div className="p-4 bg-slate-100">
+            <p className="text-[10px] font-bold text-school-muted uppercase tracking-widest mb-2 text-center">
+              A4 — Guardian Copy + Office Copy (মাঝখান থেকে কেটে দিন)
+            </p>
+            <iframe
+              title="Receipt preview"
+              srcDoc={previewHtml}
+              className="w-full h-[62vh] bg-white rounded-xl border border-slate-200"
+            />
           </div>
 
           <div className="p-6 border-t border-school-border flex flex-wrap items-center justify-between gap-3">
