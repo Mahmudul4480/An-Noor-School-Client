@@ -15,7 +15,7 @@ import {
 import { getCurrentActorLabel } from '../lib/actor';
 import { cn } from '../lib/utils';
 import type { ParsedStudentRow, Student } from '../types';
-import { CLASS_OPTIONS, GENDER_OPTIONS } from '../lib/schoolConstants';
+import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../lib/schoolConstants';
 import {
   ACCEPTED_STUDENT_FILE_TYPES,
   downloadStudentTemplate,
@@ -518,8 +518,10 @@ export function StudentManagement() {
               <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Student Name *" value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
-                  <Field label="Class *" value={editForm.class} onChange={(v) => setEditForm({ ...editForm, class: v })} selectOptions={[...CLASS_OPTIONS]} />
-                  <Field label="Section" value={editForm.section} onChange={(v) => setEditForm({ ...editForm, section: v })} />
+                  <Field label="Class *" value={editForm.class} onChange={(v) => setEditForm({ ...editForm, class: v, section: sectionsForClass(v).includes(editForm.section) ? editForm.section : '' })} selectOptions={[...CLASS_OPTIONS]} />
+                  {sectionsForClass(editForm.class).length > 0 && (
+                    <Field label="Section" value={editForm.section} onChange={(v) => setEditForm({ ...editForm, section: v })} selectOptions={[...sectionsForClass(editForm.class)]} />
+                  )}
                   <Field label="Roll" value={editForm.roll} onChange={(v) => setEditForm({ ...editForm, roll: v })} />
                   <Field label="Guardian Name" value={editForm.guardianName} onChange={(v) => setEditForm({ ...editForm, guardianName: v })} />
                   <Field label="Guardian Contact *" value={editForm.guardianContact} onChange={(v) => setEditForm({ ...editForm, guardianContact: v })} />

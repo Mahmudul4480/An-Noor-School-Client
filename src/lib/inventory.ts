@@ -34,6 +34,7 @@ export const INVENTORY_CLASS_OPTIONS = [
   'Class 3',
   'Class 4',
   'Class 5',
+  'Class 6',
 ];
 
 export const INVENTORY_UNIT_OPTIONS = ['pcs', 'copy', 'set', 'packet', 'ream', 'box', 'dozen'];

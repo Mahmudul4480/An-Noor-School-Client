@@ -16,7 +16,7 @@ import {
 import { getFirebaseOperationErrorMessage } from '../../lib/auth';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
 import { fetchAccounts } from '../../lib/ledger';
-import { CLASS_OPTIONS, GENDER_OPTIONS } from '../../lib/schoolConstants';
+import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
 import type { Admission, AdmissionDiscount, FeeStructureItem, LedgerAccount } from '../../types';
 
 const DISCOUNT_REASON_PRESETS = [
@@ -262,12 +262,21 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                 <FormSelect
                   label="Class Applied *"
                   value={form.classApplied}
-                  onChange={(v) => setForm({ ...form, classApplied: v })}
+                  onChange={(v) => setForm({ ...form, classApplied: v, section: sectionsForClass(v).includes(form.section) ? form.section : '' })}
                   options={CLASS_OPTIONS}
                   placeholder="Select class..."
                   required
                 />
-                <FormInput label="Section" value={form.section} onChange={(v) => setForm({ ...form, section: v })} placeholder="e.g. Sapphire" />
+                {sectionsForClass(form.classApplied).length > 0 && (
+                  <FormSelect
+                    label="Section *"
+                    value={form.section}
+                    onChange={(v) => setForm({ ...form, section: v })}
+                    options={sectionsForClass(form.classApplied)}
+                    placeholder="Select section..."
+                    required
+                  />
+                )}
                 <FormInput label="Academic Year *" value={form.academicYear} onChange={(v) => setForm({ ...form, academicYear: v })} />
               </div>
             </section>

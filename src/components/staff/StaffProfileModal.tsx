@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Loader2, UserRound, X } from 'lucide-react';
-import { CLASS_OPTIONS } from '../../lib/schoolConstants';
+import { CLASS_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
 import { getCurrentActorLabel } from '../../lib/actor';
 import {
   activeDuties,
@@ -177,17 +177,22 @@ export function StaffProfileModal({
               {needsClass && (
                 <label className="block">
                   <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Class</span>
-                  <select className={`${inputClass} mt-2`} value={className} onChange={(event) => setClassName(event.target.value)}>
+                  <select className={`${inputClass} mt-2`} value={className} onChange={(event) => { setClassName(event.target.value as typeof className); setSection(''); }}>
                     {CLASS_OPTIONS.map((item) => (
                       <option key={item} value={item}>{item}</option>
                     ))}
                   </select>
                 </label>
               )}
-              {needsClass && kind !== 'coordinator' && (
+              {needsClass && kind !== 'coordinator' && sectionsForClass(className).length > 0 && (
                 <label className="block">
                   <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Section</span>
-                  <input className={`${inputClass} mt-2`} value={section} onChange={(event) => setSection(event.target.value)} placeholder="A" />
+                  <select className={`${inputClass} mt-2`} value={section} onChange={(event) => setSection(event.target.value)}>
+                    <option value="">All sections</option>
+                    {sectionsForClass(className).map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
                 </label>
               )}
               <label className="block md:col-span-2">
