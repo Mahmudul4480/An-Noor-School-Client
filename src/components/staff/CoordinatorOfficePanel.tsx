@@ -1,7 +1,7 @@
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { Loader2, School } from 'lucide-react';
-import { CLASS_OPTIONS } from '../../lib/schoolConstants';
+import { CLASS_SECTION_OPTIONS, parseClassSection } from '../../lib/schoolConstants';
 import { getCurrentActorLabel } from '../../lib/actor';
 import {
   actionLabel,
@@ -22,7 +22,7 @@ export function CoordinatorOfficePanel() {
   const [people, setPeople] = React.useState<StaffMember[]>([]);
   const [evaluations, setEvaluations] = React.useState<CoordinatorEvaluation[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [className, setClassName] = React.useState(CLASS_OPTIONS[0]);
+  const [classLabel, setClassLabel] = React.useState(CLASS_SECTION_OPTIONS[0].label);
   const [teacherId, setTeacherId] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -51,7 +51,9 @@ export function CoordinatorOfficePanel() {
     [people],
   );
   const assigned = coordinatorByClass(people);
-  const currentForClass = assigned.find((row) => row.className === className);
+  const currentForClass = assigned.find((row) => row.label === classLabel);
+  // Legacy class-only coordinators for a sectioned class (e.g. "Play") keep their own card.
+  const legacyRows = assigned.filter((row) => !CLASS_SECTION_OPTIONS.some((option) => option.label === row.label));
 
   React.useEffect(() => {
     if (!teacherId && teachers[0]) setTeacherId(teachers[0].id);
@@ -68,10 +70,10 @@ export function CoordinatorOfficePanel() {
       await assignDutyDirect({
         person,
         kind: 'coordinator',
-        className,
+        ...(() => { const parsed = parseClassSection(classLabel); return { className: parsed.className, section: parsed.section || undefined }; })(),
         actorName: getCurrentActorLabel('Principal Office'),
       });
-      setMessage(`${person.name} is now Class Coordinator for ${className}.`);
+      setMessage(`${person.name} এখন ${classLabel}-এর Class Coordinator।`);
       await load();
     } catch (err) {
       setError(userErrorMessage(err, 'Coordinator assign করা যায়নি।'));
@@ -116,11 +118,11 @@ export function CoordinatorOfficePanel() {
             <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Class</span>
             <select
               className="mt-2 w-full rounded-2xl border border-school-border px-4 py-3 text-sm font-bold text-school-blue outline-none"
-              value={className}
-              onChange={(event) => setClassName(event.target.value)}
+              value={classLabel}
+              onChange={(event) => setClassLabel(event.target.value)}
             >
-              {CLASS_OPTIONS.map((item) => (
-                <option key={item} value={item}>{item}</option>
+              {CLASS_SECTION_OPTIONS.map((item) => (
+                <option key={item.label} value={item.label}>{item.label}</option>
               ))}
             </select>
           </label>
@@ -148,15 +150,15 @@ export function CoordinatorOfficePanel() {
         </form>
         {currentForClass && (
           <p className="mt-3 text-xs font-bold text-school-blue">
-            Current: {currentForClass.person.name} · {className}
+            Current: {currentForClass.person.name} · {classLabel}
           </p>
         )}
         {error && <p className="mt-3 text-xs font-bold text-red-500">{error}</p>}
         {message && <p className="mt-3 text-xs font-bold text-emerald-600">{message}</p>}
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-3">
-          {CLASS_OPTIONS.map((item) => {
-            const row = assigned.find((entry) => entry.className === item);
+          {[...new Set([...CLASS_SECTION_OPTIONS.map((option) => option.label), ...legacyRows.map((row) => row.label)])].map((item) => {
+            const row = assigned.find((entry) => entry.label === item);
             return (
               <div key={item} className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/70">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-school-blue flex items-center justify-center">

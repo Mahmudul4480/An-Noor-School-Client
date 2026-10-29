@@ -1,3 +1,4 @@
+import { classSectionLabel } from '../../lib/schoolConstants';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
@@ -221,7 +222,7 @@ function MarkModal({
 }
 
 export function CoordinatorHub({ coordinator }: { coordinator: StaffMember }) {
-  const classes = coordinatorDuties(coordinator).map((duty) => duty.className as string);
+  const classes = coordinatorDuties(coordinator).map((duty) => classSectionLabel(duty.className, duty.section));
   const [className, setClassName] = React.useState(classes[0] || '');
   const [people, setPeople] = React.useState<StaffMember[]>([]);
   const [evaluations, setEvaluations] = React.useState<CoordinatorEvaluation[]>([]);
