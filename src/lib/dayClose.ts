@@ -40,6 +40,30 @@ function sumEntries(entries: LedgerEntry[], type: 'credit' | 'debit'): number {
     .reduce((sum, entry) => sum + entry.amount, 0);
 }
 
+/**
+ * Income / expense between two yyyy-mm-dd dates (inclusive) — the exact Day Close logic:
+ * income = ledger credits; expense = ledger debits + expenses not yet posted to the ledger.
+ * Shared with the Principal dashboard so both screens always match.
+ */
+export function rangeIncomeExpense(
+  entries: LedgerEntry[],
+  expenses: { id: string; date: string; amount: number }[],
+  from: string,
+  to: string,
+): { totalIncome: number; totalExpense: number; unpostedExpenses: { id: string; date: string; amount: number }[] } {
+  const inRange = (value: string) => value.slice(0, 10) >= from && value.slice(0, 10) <= to;
+  const rangeEntries = entries.filter((entry) => inRange(entry.date));
+  const ledgerExpenseIds = new Set(
+    entries.filter((entry) => entry.relatedType === 'expense' && entry.relatedId).map((entry) => entry.relatedId as string),
+  );
+  const unpostedExpenses = expenses.filter((expense) => inRange(expense.date) && !ledgerExpenseIds.has(expense.id));
+  return {
+    totalIncome: sumEntries(rangeEntries, 'credit'),
+    totalExpense: sumEntries(rangeEntries, 'debit') + unpostedExpenses.reduce((s, e) => s + e.amount, 0),
+    unpostedExpenses,
+  };
+}
+
 export async function getDailySummary(date: string): Promise<Omit<DayCloseRecord, 'id' | 'closedBy' | 'closedAt' | 'note'>> {
   const [accounts, entries, expenses] = await Promise.all([
     fetchAccounts(),
@@ -48,18 +72,7 @@ export async function getDailySummary(date: string): Promise<Omit<DayCloseRecord
   ]);
 
   const todayEntries = entries.filter((entry) => isSameDay(entry.date, date));
-  const todayExpenses = expenses.filter((expense) => isSameDay(expense.date, date));
-
-  const totalIncome = sumEntries(todayEntries, 'credit');
-  // Approved expenses already post a ledger debit (relatedType 'expense', relatedId = expense.id).
-  // Only add expenses that have no matching ledger entry, so nothing is counted twice.
-  const ledgerExpenseIds = new Set(
-    entries.filter((entry) => entry.relatedType === 'expense' && entry.relatedId).map((entry) => entry.relatedId as string),
-  );
-  const unpostedExpenseTotal = todayExpenses
-    .filter((expense) => !ledgerExpenseIds.has(expense.id))
-    .reduce((s, e) => s + e.amount, 0);
-  const totalExpense = sumEntries(todayEntries, 'debit') + unpostedExpenseTotal;
+  const { totalIncome, totalExpense } = rangeIncomeExpense(entries, expenses, date, date);
   const balances = computeAllBalances(accounts, entries);
 
   const accountSnapshots = balances.map(({ account, balance }) => {

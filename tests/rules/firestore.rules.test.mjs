@@ -212,3 +212,11 @@ describe('day close needs principal approval', () => {
   });
   it('teacher cannot read day close', () => assertFails(getDocs(collection(ctx.teacher, 'dayCloseRecords'))));
 });
+
+describe('principal live dashboard reads', () => {
+  for (const col of ['students', 'studentInvoices', 'incomeEntries', 'expenses', 'ledgerAccounts', 'ledgerEntries', 'schoolAssets', 'admissions']) {
+    it(`principal can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.principal, col))));
+    it(`super_admin can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.admin, col))));
+    it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
+  }
+});
