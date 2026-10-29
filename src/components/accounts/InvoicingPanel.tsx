@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -29,7 +30,7 @@ import { fetchInvoiceItemCategories } from '../../lib/invoiceItems';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import { fetchStudents } from '../../lib/students';
 import { isPaymentGatewayConfigured } from '../../lib/payments';
-import { CLASS_OPTIONS } from '../../lib/schoolConstants';
+import { CLASS_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
 import { InvoiceReceiptModal } from '../InvoiceReceiptModal';
 import { FeeStructureModal } from './FeeStructureModal';
 import { InvoiceItemCatalogModal } from './InvoiceItemCatalogModal';
@@ -115,6 +116,7 @@ export function InvoicingPanel() {
   const [catalog, setCatalog] = React.useState<InvoiceItemCategory[]>([]);
   const [showItemCatalog, setShowItemCatalog] = React.useState(false);
   const [manualClass, setManualClass] = React.useState('');
+  const [manualSection, setManualSection] = React.useState('');
   const [manualForm, setManualForm] = React.useState({ studentId: '', dueDate: '', note: '' });
   const [manualLines, setManualLines] = React.useState<ManualLine[]>([blankLine()]);
   const [manualError, setManualError] = React.useState('');
@@ -135,7 +137,7 @@ export function InvoicingPanel() {
       setCatalog(catalogData);
       setPayAccountId((prev) => prev || accountData.find((account) => account.id === 'main-cash')?.id || accountData[0]?.id || '');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices.');
+      setError(userErrorMessage(err, 'Failed to load invoices.'));
     } finally {
       setLoading(false);
     }
@@ -178,7 +180,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invoice generation failed.');
+      setError(userErrorMessage(err, 'Invoice generation failed.'));
     } finally {
       setGenerating(false);
     }
@@ -230,7 +232,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setPayError(err instanceof Error ? err.message : 'Payment recording failed.');
+      setPayError(userErrorMessage(err, 'Payment recording failed.'));
     } finally {
       setPayingId(null);
     }
@@ -240,28 +242,29 @@ export function InvoicingPanel() {
     setManualLines([blankLine()]);
     setManualForm({ studentId: '', dueDate: '', note: '' });
     setManualClass('');
+    setManualSection('');
     setManualError('');
     setShowManual(true);
   };
 
-  // only classes that actually have active students, in the school's own order
+  // every school class (Play → Class 6), plus any legacy class names still on students
   const classesWithStudents = React.useMemo(() => {
-    const present = new Set(students.map((student) => student.class));
-    const ordered = CLASS_OPTIONS.filter((option) => present.has(option));
+    const present = new Set(students.map((student) => student.class).filter(Boolean));
     const extras = [...present].filter((name) => !CLASS_OPTIONS.includes(name as never)).sort();
-    return [...ordered, ...extras];
+    return [...CLASS_OPTIONS, ...extras];
   }, [students]);
 
   const classStudents = React.useMemo(
     () =>
       students
-        .filter((student) => student.class === manualClass)
+        .filter((student) => student.class === manualClass && (!manualSection || student.section === manualSection))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [students, manualClass],
+    [students, manualClass, manualSection],
   );
 
   const handleManualClassChange = (className: string) => {
     setManualClass(className);
+    setManualSection('');
     setManualForm((prev) => ({ ...prev, studentId: '' }));
     setManualError('');
   };
@@ -332,7 +335,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setManualError(err instanceof Error ? err.message : 'Manual invoice failed.');
+      setManualError(userErrorMessage(err, 'Manual invoice failed.'));
     } finally {
       setGenerating(false);
     }
@@ -698,6 +701,21 @@ export function InvoicingPanel() {
                       </option>
                     ))}
                   </select>
+                  {sectionsForClass(manualClass).length > 0 && (
+                    <select
+                      value={manualSection}
+                      onChange={(e) => {
+                        setManualSection(e.target.value);
+                        setManualForm((prev) => ({ ...prev, studentId: '' }));
+                      }}
+                      className="w-full mt-2 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+                    >
+                      <option value="">All sections</option>
+                      {sectionsForClass(manualClass).map((sec) => (
+                        <option key={sec} value={sec}>{sec}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -721,7 +739,7 @@ export function InvoicingPanel() {
                     ))}
                   </select>
                   {manualClass && classStudents.length === 0 && (
-                    <p className="text-[10px] font-bold text-red-500">এই class-এ কোনো active student নেই।</p>
+                    <p className="text-[11px] font-bold text-amber-600">এই ক্লাসে এখনো কোনো শিক্ষার্থী নেই</p>
                   )}
                 </div>
 

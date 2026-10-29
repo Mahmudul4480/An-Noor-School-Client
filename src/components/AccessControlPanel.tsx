@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import { KeyRound, Loader2, Mail, ShieldCheck, UserMinus, UserPlus } from 'lucide-react';
 import { getCurrentActorLabel } from '../lib/actor';
@@ -21,7 +22,7 @@ export function AccessControlPanel() {
     try {
       setGrants(await fetchStaffAccessList());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Access list load করতে পারিনি।');
+      setError(userErrorMessage(err, 'Access list load করতে পারিনি।'));
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export function AccessControlPanel() {
       setForm({ email: '', name: '', note: '', password: '' });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Access দিতে পারিনি।');
+      setError(userErrorMessage(err, 'Access দিতে পারিনি।'));
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +64,7 @@ export function AccessControlPanel() {
       setMessage(`${grant.email} এর Accounts access revoke করা হয়েছে।`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Revoke করতে পারিনি।');
+      setError(userErrorMessage(err, 'Revoke করতে পারিনি।'));
     } finally {
       setActingEmail('');
     }
@@ -238,7 +239,7 @@ export function AccessControlPanel() {
                                   await sendLoginResetEmail(grant.email);
                                   setMessage(`${grant.email}-এ password reset email পাঠানো হয়েছে।`);
                                 } catch {
-                                  setError(err instanceof Error ? err.message : 'Password set করা যায়নি।');
+                                  setError(userErrorMessage(err, 'Password set করা যায়নি।'));
                                 }
                               } finally {
                                 setActingEmail('');

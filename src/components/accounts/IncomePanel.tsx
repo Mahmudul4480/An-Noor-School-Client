@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, TrendingUp, Tag, X, FileText, Wallet, Clock, CheckCircle2 } from 'lucide-react';
@@ -73,7 +74,7 @@ export function IncomePanel() {
         category: prev.category || categoryList[0] || '',
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load income entries.');
+      setError(userErrorMessage(err, 'Failed to load income entries.'));
     } finally {
       setLoading(false);
     }
@@ -111,7 +112,7 @@ export function IncomePanel() {
       setMessage(`"${name}" income category Principal approval-এর জন্য পাঠানো হয়েছে।`);
       await load();
     } catch (err) {
-      setCategoryError(err instanceof Error ? err.message : 'Category request failed.');
+      setCategoryError(userErrorMessage(err, 'Category request failed.'));
     } finally {
       setCategoryBusy(false);
     }
@@ -146,7 +147,7 @@ export function IncomePanel() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Income entry failed.');
+      setError(userErrorMessage(err, 'Income entry failed.'));
     } finally {
       setSubmitting(false);
     }

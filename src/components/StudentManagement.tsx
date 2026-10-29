@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -59,7 +60,7 @@ export function StudentManagement() {
       const data = await fetchStudents();
       setStudents(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load students.');
+      setError(userErrorMessage(err, 'Failed to load students.'));
     } finally {
       setLoading(false);
     }
@@ -85,7 +86,7 @@ export function StudentManagement() {
       setPreviewRows(rows);
       setShowPreview(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not read the uploaded file.');
+      setError(userErrorMessage(err, 'Could not read the uploaded file.'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -118,7 +119,7 @@ export function StudentManagement() {
           (result.updated > 0 ? `, ${result.updated} updated.` : '.'),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import failed.');
+      setError(userErrorMessage(err, 'Import failed.'));
     } finally {
       setImporting(false);
     }
@@ -175,7 +176,7 @@ export function StudentManagement() {
       setSuccess('Student information corrected successfully.');
       await loadStudents();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed.');
+      setError(userErrorMessage(err, 'Update failed.'));
     } finally {
       setSavingEdit(false);
     }

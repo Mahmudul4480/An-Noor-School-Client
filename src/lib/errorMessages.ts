@@ -43,3 +43,21 @@ export function friendlyErrorText(error: unknown): string {
   const f = toFriendlyError(error);
   return `${f.bn}\n${f.en}`;
 }
+
+/**
+ * For catch blocks: Firebase errors (with a code) become the friendly Bangla +
+ * English text; plain app validation errors keep their own message.
+ */
+export function userErrorMessage(error: unknown, fallback?: string): string {
+  const raw = error as { code?: string; message?: string; name?: string } | null;
+  const isFirebase = !!raw?.code || raw?.name === 'FirebaseError' || /firebase|storage\/|setDoc|addDoc|updateDoc/i.test(raw?.message ?? '');
+  if (isFirebase || !(error instanceof Error) || !error.message) {
+    if (!isFirebase && fallback && !(error instanceof Error)) {
+      console.error('[app error]', error);
+      return fallback;
+    }
+    return friendlyErrorText(error);
+  }
+  console.error('[app error]', error);
+  return error.message;
+}

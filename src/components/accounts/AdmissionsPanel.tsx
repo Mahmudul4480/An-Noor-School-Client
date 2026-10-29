@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -48,7 +49,7 @@ export function AdmissionsPanel() {
       setAdmissions(admissionData);
       setAccounts(accountData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load admissions.');
+      setError(userErrorMessage(err, 'Failed to load admissions.'));
     } finally {
       setLoading(false);
     }
@@ -183,7 +184,7 @@ function AdmissionRow({
       setCancelReason('');
       onRefresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Cancellation failed.');
+      alert(userErrorMessage(err, 'Cancellation failed.'));
     } finally {
       setActing(false);
     }

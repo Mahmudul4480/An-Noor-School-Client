@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { Loader2, School } from 'lucide-react';
 import { CLASS_OPTIONS } from '../../lib/schoolConstants';
@@ -73,7 +74,7 @@ export function CoordinatorOfficePanel() {
       setMessage(`${person.name} is now Class Coordinator for ${className}.`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Coordinator assign করা যায়নি।');
+      setError(userErrorMessage(err, 'Coordinator assign করা যায়নি।'));
     } finally {
       setBusy(false);
     }
@@ -88,7 +89,7 @@ export function CoordinatorOfficePanel() {
       setOpenId(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action save করা যায়নি।');
+      setError(userErrorMessage(err, 'Action save করা যায়নি।'));
     } finally {
       setBusy(false);
     }
