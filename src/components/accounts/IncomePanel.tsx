@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
@@ -42,7 +43,7 @@ export function IncomePanel() {
   const [categoryError, setCategoryError] = React.useState('');
 
   const [form, setForm] = React.useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
     category: '',
     source: '',
     description: '',
@@ -423,7 +424,7 @@ export function IncomePanel() {
                 <tbody className="divide-y divide-slate-50">
                   {filtered.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-4 font-bold text-school-blue">{entry.date}</td>
+                      <td className="py-4 font-bold text-school-blue">{formatEntryDateTime(entry.date, entry.createdAt)}</td>
                       <td className="py-4 font-black text-school-gold">{entry.receiptNumber}</td>
                       <td className="py-4 font-black text-school-blue uppercase">{entry.category}</td>
                       <td className="py-4 text-slate-500 font-medium">

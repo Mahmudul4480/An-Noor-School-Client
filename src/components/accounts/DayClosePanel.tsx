@@ -3,16 +3,17 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Lock, Loader2, Wallet, ArrowDownRight, ArrowUpRight, AlertTriangle } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
-import { closeDay, getDailySummary, isDayClosed } from '../../lib/dayClose';
-import { cn, formatSignedBdt } from '../../lib/utils';
+import { closeDay, fetchDayCloseRecords, getDailySummary, isDayClosed } from '../../lib/dayClose';
+import { cn, formatDateTime, formatSignedBdt } from '../../lib/utils';
 
 export function DayClosePanel() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const [date, setDate] = React.useState(today);
   const [loading, setLoading] = React.useState(true);
   const [closing, setClosing] = React.useState(false);
   const [closed, setClosed] = React.useState(false);
   const [note, setNote] = React.useState('');
+  const [closedInfo, setClosedInfo] = React.useState<{ closedAt: string; closedBy: string } | null>(null);
   const [error, setError] = React.useState('');
   const [summary, setSummary] = React.useState<Awaited<ReturnType<typeof getDailySummary>> | null>(null);
 
@@ -20,7 +21,9 @@ export function DayClosePanel() {
     setLoading(true);
     setError('');
     try {
-      const [data, dayClosed] = await Promise.all([getDailySummary(date), isDayClosed(date)]);
+      const [data, dayClosed, records] = await Promise.all([getDailySummary(date), isDayClosed(date), fetchDayCloseRecords().catch(() => [])]);
+      const record = records.find((item) => item.date === date);
+      setClosedInfo(record ? { closedAt: record.closedAt, closedBy: record.closedBy } : null);
       setSummary(data);
       setClosed(dayClosed);
     } catch (err) {
@@ -154,6 +157,9 @@ export function DayClosePanel() {
                 {closing ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
                 {closed ? 'Day Already Closed' : 'Close Day'}
               </button>
+              {closed && closedInfo && (
+                <p className="text-[10px] font-bold text-school-muted mt-2">Closed {formatDateTime(closedInfo.closedAt)} • {closedInfo.closedBy}</p>
+              )}
             </div>
           </>
         ) : null}

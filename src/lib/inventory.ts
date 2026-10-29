@@ -403,7 +403,7 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
   await persistItem(item);
 
   if (openingQty > 0) {
-    const openingDate = new Date().toISOString().slice(0, 10);
+    const openingDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     await persistLot(
       buildLot({
         item,
@@ -469,7 +469,7 @@ export async function restockInventoryItem(input: RestockInput): Promise<Invento
   await ensureLegacyLots(item);
 
   const unitCost = input.unitCost && input.unitCost > 0 ? input.unitCost : item.costRate;
-  const date = input.date || new Date().toISOString().slice(0, 10);
+  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const totalAmount = quantity * unitCost;
 
   if (input.recordAsExpense) {
@@ -573,7 +573,7 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
         : 0
       : item.studentPrice;
   const totalAmount = Math.round(quantity * unitPrice * 100) / 100;
-  const date = input.date || new Date().toISOString().slice(0, 10);
+  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const fifoNote = fifoSlices.map((slice) => `${slice.lotDate}×${slice.quantity}@${slice.unitCost}`).join(', ');
 
   const movement = normalizeMovement({
@@ -652,7 +652,7 @@ export async function issueInventoryStock(input: InventoryIssueInput): Promise<I
 
   const fifoSlices = await consumeFifoLots(item, quantity);
   const fifoCost = fifoCostTotal(fifoSlices);
-  const date = input.date || new Date().toISOString().slice(0, 10);
+  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const fifoNote = fifoSlices.map((slice) => `${slice.lotDate}×${slice.quantity}@${slice.unitCost}`).join(', ');
 
   const movement = normalizeMovement({
@@ -718,7 +718,7 @@ export async function adjustInventoryStock(input: {
         quantity,
         unitPrice: item.costRate,
         totalAmount: fifoCostTotal(fifoSlices),
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
         note: input.reason.trim(),
         createdBy: input.createdBy ?? getCurrentActorLabel('Accounts Department'),
         createdAt: new Date().toISOString(),
@@ -728,7 +728,7 @@ export async function adjustInventoryStock(input: {
     return updated;
   }
 
-  const date = new Date().toISOString().slice(0, 10);
+  const date = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const updated = normalizeItem({
     ...item,
     purchasedQty: item.purchasedQty + quantity,

@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
@@ -396,7 +397,7 @@ function ApprovalSection({
                       <p className="text-sm font-black text-school-blue uppercase tracking-tight">{item.title}</p>
                       <p className="text-[11px] text-school-muted font-medium mt-1">{item.subtitle}</p>
                       <p className="text-[10px] text-school-muted font-bold uppercase mt-2 flex items-center gap-1">
-                        <Clock size={12} /> {item.requestedBy} • {new Date(item.requestedAt).toLocaleDateString('en-BD')}
+                        <Clock size={12} /> {item.requestedBy} • {formatDateTime(item.requestedAt)}
                       </p>
                     </div>
                   </div>

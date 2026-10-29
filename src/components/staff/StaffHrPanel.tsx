@@ -28,7 +28,7 @@ export function StaffHrPanel() {
     fatherName: '',
     education: '',
     experience: '',
-    joiningDate: new Date().toISOString().slice(0, 10),
+    joiningDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
   });
   const [photo, setPhoto] = React.useState<File | undefined>();
   const [cv, setCv] = React.useState<File | undefined>();

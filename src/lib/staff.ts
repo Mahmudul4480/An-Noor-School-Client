@@ -133,7 +133,7 @@ function normalizeStaff(raw: Partial<StaffMember>, fallbackId?: string): StaffMe
     fatherName: raw.fatherName,
     education: raw.education,
     experience: raw.experience,
-    joiningDate: raw.joiningDate || new Date().toISOString().slice(0, 10),
+    joiningDate: raw.joiningDate || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
     photoUrl: raw.photoUrl,
     documents: Array.isArray(raw.documents) ? raw.documents : [],
     duties: Array.isArray(raw.duties) ? raw.duties.map((duty) => normalizeDuty(duty)) : [],

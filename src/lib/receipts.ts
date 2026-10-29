@@ -1,3 +1,4 @@
+import { formatDateTime } from './utils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -36,7 +37,7 @@ export const BRAND = {
 
 export function generateReceiptNumber(): string {
   const now = new Date();
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const datePart = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10).replace(/-/g, '');
   const seq = String(now.getTime()).slice(-4);
   return `RCP-${datePart}-${seq}`;
 }
@@ -46,11 +47,7 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatReceiptDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-BD', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return formatDateTime(iso);
 }
 
 export interface AdmissionReceiptData {

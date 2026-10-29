@@ -101,7 +101,7 @@ export async function createIncomeEntry(input: CreateIncomeInput): Promise<Incom
   if (!input.amount || input.amount <= 0) throw new Error('Valid amount দিন।');
   if (!input.accountId) throw new Error('Receiving account select করুন।');
 
-  const date = input.date || new Date().toISOString().slice(0, 10);
+  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const entry: IncomeEntry = normalizeIncome({
     id: generateId('inc'),
     receiptNumber: incomeReceiptNumber(date),

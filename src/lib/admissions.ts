@@ -616,7 +616,7 @@ export async function actOnApproval(params: {
         amount: paidNow,
         reference: `Admission Fee — ${updated.studentName} (${updated.formSerial})`,
         relatedId: updated.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       });
       updated.paymentRecorded = true;
     }

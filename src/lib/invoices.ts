@@ -53,9 +53,24 @@ export function formatBillingMonthLabel(billingMonth: string): string {
   return new Date(year, month - 1, 1).toLocaleDateString('en-BD', { month: 'long', year: 'numeric' });
 }
 
-export function computeDueDate(billingMonth: string): string {
-  const [year, month] = billingMonth.split('-').map(Number);
-  return new Date(year, month - 1, 15).toISOString().slice(0, 10);
+function localIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Due date = the 15th of the billing month (built as a plain string — the old
+ * `new Date(...).toISOString()` shifted it to the 14th in UTC+6). An invoice raised
+ * late in the month (e.g. a new admission on the 29th) gets at least 7 days, so it is
+ * never "overdue" the moment it is created.
+ */
+export function computeDueDate(billingMonth: string, now: Date = new Date()): string {
+  const fifteenth = `${billingMonth}-15`;
+  const grace = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+  const graceIso = localIsoDate(grace);
+  return graceIso > fifteenth && billingMonth <= localIsoDate(now).slice(0, 7) ? graceIso : fifteenth;
 }
 
 function normalizeInvoice(data: StudentInvoice): StudentInvoice {
@@ -65,7 +80,7 @@ function normalizeInvoice(data: StudentInvoice): StudentInvoice {
   if (status !== 'cancelled') {
     if (paidAmount >= totalAmount && totalAmount > 0) status = 'paid';
     else if (paidAmount > 0) status = 'partial';
-    else if (data.dueDate && data.dueDate < new Date().toISOString().slice(0, 10)) status = 'overdue';
+    else if (data.dueDate && data.dueDate < new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)) status = 'overdue';
     else status = 'pending';
   }
 
@@ -150,7 +165,7 @@ async function generateInvoiceNumber(billingMonth: string): Promise<string> {
 
 function generateReceiptNumber(): string {
   const now = new Date();
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const datePart = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10).replace(/-/g, '');
   const seq = String(now.getTime()).slice(-4);
   return `FEE-${datePart}-${seq}`;
 }
@@ -294,7 +309,8 @@ export async function syncClassTuitionInvoices(params: {
   ]);
 
   const classStudents = students.filter(
-    (student) => student.status === 'Active' && student.class === params.className,
+    (student) =>
+      student.status === 'Active' && student.class === params.className,
   );
 
   let created = 0;

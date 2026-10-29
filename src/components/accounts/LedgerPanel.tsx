@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
@@ -409,7 +410,7 @@ export function LedgerPanel() {
                   const pendingReverse = hasPendingReverseRequest(entry.id, reverseRequests);
                   return (
                   <tr key={entry.id} className={cn('hover:bg-slate-50 transition-colors', reversed && 'opacity-60')}>
-                    <td className="py-3 font-bold text-school-blue">{entry.date.slice(0, 10)}</td>
+                    <td className="py-3 font-bold text-school-blue">{formatEntryDateTime(entry.date.slice(0, 10), entry.createdAt)}</td>
                     <td className="py-3 text-slate-500 font-medium">
                       {accounts.find((a) => a.id === entry.accountId)?.name || entry.accountId}
                     </td>

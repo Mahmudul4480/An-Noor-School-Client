@@ -76,7 +76,7 @@ export function AssetRegistryPanel() {
   const [valueLogs, setValueLogs] = React.useState<AssetValueLog[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [statusFilter, setStatusFilter] = React.useState<'active' | AssetStatus | 'all'>('active');
-  const [moveForm, setMoveForm] = React.useState({ toLocation: '', date: new Date().toISOString().slice(0, 10), reason: '' });
+  const [moveForm, setMoveForm] = React.useState({ toLocation: '', date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10), reason: '' });
   const [revalueForm, setRevalueForm] = React.useState({ percent: '', note: '' });
   const [removeForm, setRemoveForm] = React.useState({
     mode: 'sold' as 'sold' | 'destroyed',
@@ -91,7 +91,7 @@ export function AssetRegistryPanel() {
     name: '',
     description: '',
     purchaseValue: '',
-    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
     location: '',
     usefulLifeYears: '',
     condition: 'good' as AssetCondition,
@@ -229,7 +229,7 @@ export function AssetRegistryPanel() {
     setMovingAsset(asset);
     setMoveForm({
       toLocation: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       reason: '',
     });
   };

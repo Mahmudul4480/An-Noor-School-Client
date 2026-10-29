@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -211,6 +212,7 @@ function AdmissionRow({
               {admission.classApplied} {admission.section ? `• ${admission.section}` : ''} • ৳{' '}
               {(admission.grandTotal ?? 0).toLocaleString()}
               {admission.studentId ? ` • Student ID: ${admission.studentId}` : ''}
+              {admission.createdAt ? ` • Submitted ${formatDateTime(admission.createdAt)}` : ''}
               {admission.createdBy ? ` • By ${admission.createdBy}` : ''}
             </p>
           </div>
@@ -343,7 +345,7 @@ function AdmissionRow({
                         {step.actionedBy && (
                           <p className="text-[9px] text-school-muted font-bold uppercase mt-1">
                             By {step.actionedBy}
-                            {step.actionedAt ? ` • ${new Date(step.actionedAt).toLocaleString('en-BD')}` : ''}
+                            {step.actionedAt ? ` • ${formatDateTime(step.actionedAt)}` : ''}
                           </p>
                         )}
                       </div>
