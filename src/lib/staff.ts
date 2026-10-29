@@ -1,3 +1,4 @@
+import { classSectionLabel, parseClassSection } from './schoolConstants';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -393,10 +394,10 @@ export async function assignDutyDirect(params: {
 
   if (params.kind === 'coordinator' && params.className) {
     const already = params.person.duties.some(
-      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && duty.className === params.className,
+      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && sameClassSection(duty, params.className, params.section),
     );
-    if (already) throw new Error('This teacher is already coordinator for this class.');
-    await endOtherCoordinatorsForClass(params.className, params.person.id);
+    if (already) throw new Error('এই teacher আগেই এই ক্লাস/সেকশনের coordinator।');
+    await endOtherCoordinatorsForClass(params.className, params.person.id, params.section);
   }
 
   const duty: DutyAssignment = {
@@ -434,7 +435,7 @@ export async function reviewDutyAssignment(params: {
 
   const now = new Date().toISOString();
   if (params.action === 'approved' && duty.kind === 'coordinator' && duty.className) {
-    await endOtherCoordinatorsForClass(duty.className, params.person.id);
+    await endOtherCoordinatorsForClass(duty.className, params.person.id, duty.section);
   }
 
   const updated: StaffMember = {
@@ -485,11 +486,13 @@ export async function fetchStaffMemberForCurrentUser(): Promise<StaffMember | nu
   return null;
 }
 
+/** `classLabel` may be "Play – Rawdah"; teachers of that section or of the whole class match. */
 export function teachersUnderClass(
   people: StaffMember[],
-  className: string,
+  classLabel: string,
   excludeId?: string,
 ): StaffMember[] {
+  const { className, section } = parseClassSection(classLabel);
   return people
     .filter((person) => {
       if (excludeId && person.id === excludeId) return false;
@@ -497,34 +500,41 @@ export function teachersUnderClass(
       return activeDuties(person).some(
         (duty) =>
           (duty.kind === 'class_teacher' || duty.kind === 'subject_teacher') &&
-          duty.className === className,
+          duty.className === className &&
+          (!section || !duty.section || duty.section === section),
       );
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function coordinatorByClass(people: StaffMember[]): { className: string; person: StaffMember; duty: DutyAssignment }[] {
-  const rows: { className: string; person: StaffMember; duty: DutyAssignment }[] = [];
+function sameClassSection(duty: DutyAssignment, className: string, section?: string): boolean {
+  return duty.className === className && (duty.section ?? '') === (section ?? '');
+}
+
+/** Rows keyed by class+section label ("Play – Rawdah"); legacy class-only duties keep their class name. */
+export function coordinatorByClass(people: StaffMember[]): { className: string; section: string; label: string; person: StaffMember; duty: DutyAssignment }[] {
+  const rows: { className: string; section: string; label: string; person: StaffMember; duty: DutyAssignment }[] = [];
   for (const person of people) {
     for (const duty of coordinatorDuties(person)) {
-      rows.push({ className: duty.className as string, person, duty });
+      const section = duty.section ?? '';
+      rows.push({ className: duty.className as string, section, label: classSectionLabel(duty.className, section), person, duty });
     }
   }
   return rows.sort((a, b) => a.className.localeCompare(b.className));
 }
 
-async function endOtherCoordinatorsForClass(className: string, exceptPersonId: string): Promise<void> {
+async function endOtherCoordinatorsForClass(className: string, exceptPersonId: string, section?: string): Promise<void> {
   const people = await fetchStaffMembers();
   for (const person of people) {
     if (person.id === exceptPersonId) continue;
     const touched = person.duties.some(
-      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && duty.className === className,
+      (duty) => duty.kind === 'coordinator' && duty.status === 'active' && sameClassSection(duty, className, section),
     );
     if (!touched) continue;
     await persistStaff({
       ...person,
       duties: person.duties.map((duty) =>
-        duty.kind === 'coordinator' && duty.status === 'active' && duty.className === className
+        duty.kind === 'coordinator' && duty.status === 'active' && sameClassSection(duty, className, section)
           ? { ...duty, status: 'ended' }
           : duty,
       ),
