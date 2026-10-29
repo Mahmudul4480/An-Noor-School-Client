@@ -24,6 +24,46 @@ export interface PrincipalData {
   assets: SchoolAsset[];
 }
 
+/** Firestore Timestamp / Date / string / millis -> ISO string ('' when unusable). */
+export function toIso(value: unknown): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : value.toISOString();
+  if (typeof value === 'number') return new Date(value).toISOString();
+  if (typeof value === 'object') {
+    const v = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    if (typeof v.toDate === 'function') { try { return v.toDate().toISOString(); } catch { return ''; } }
+    const secs = v.seconds ?? v._seconds;
+    if (typeof secs === 'number') return new Date(secs * 1000).toISOString();
+  }
+  return '';
+}
+const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const str = (v: unknown, d = '') => (typeof v === 'string' ? v : v == null ? d : String(v));
+/** Dhaka yyyy-mm-dd from any date-ish value. */
+export function dayOf(value: unknown): string {
+  const iso = toIso(value);
+  if (!iso) return '';
+  if (!iso.includes('T')) return iso.slice(0, 10);
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : new Date(d.getTime() + 6 * 3600000).toISOString().slice(0, 10);
+}
+
+/** Coerces real Firestore shapes (Timestamps, missing ids/amounts) into safe values. */
+export function sanitizePrincipalData(raw: PrincipalData): PrincipalData {
+  const arr = <T,>(a: T[] | undefined) => (Array.isArray(a) ? a.filter(Boolean) : []);
+  return {
+    accounts: arr(raw.accounts).map((a, i) => ({ ...a, id: str(a.id, `acc-${i}`), name: str(a.name, str(a.id, 'Account')), openingBalance: num(a.openingBalance) })),
+    entries: arr(raw.entries).map((e, i) => ({ ...e, id: str(e.id, `entry-${i}`), date: dayOf(e.date) || dayOf(e.createdAt), createdAt: toIso(e.createdAt) || undefined, amount: num(e.amount), reference: str(e.reference) })),
+    expenses: arr(raw.expenses).map((e, i) => ({ ...e, id: str(e.id, `exp-${i}`), date: dayOf(e.date) || dayOf(e.createdAt), createdAt: toIso(e.createdAt) || undefined, amount: num(e.amount), category: str(e.category, 'Expense'), description: str(e.description) })) as Expense[],
+    incomeEntries: arr(raw.incomeEntries).map((e, i) => ({ ...e, id: str(e.id, `inc-${i}`), category: str(e.category, 'Income') })) as IncomeEntry[],
+    invoices: arr(raw.invoices).map((v, i) => ({ ...v, id: str(v.id, `inv-${i}`), studentId: str(v.studentId, `unknown-${i}`), studentName: str(v.studentName, '—'), className: str(v.className, '—'), invoiceNumber: str(v.invoiceNumber, '—'), totalAmount: num(v.totalAmount), paidAmount: num(v.paidAmount), lineItems: Array.isArray(v.lineItems) ? v.lineItems : [] })),
+    admissions: arr(raw.admissions).map((a) => ({ ...a, studentName: str(a.studentName, '—'), classApplied: str(a.classApplied, '—'), formSerial: str(a.formSerial, '') })),
+    students: arr(raw.students),
+    assets: arr(raw.assets).map((a, i) => ({ ...a, id: str(a.id, `asset-${i}`), name: str(a.name, '—'), categoryName: str(a.categoryName, '—'), purchaseValue: num(a.purchaseValue) })),
+  };
+}
+
 /** Loads everything the Principal overview needs (each source fails soft to empty). */
 export async function fetchPrincipalData(): Promise<PrincipalData> {
   const r = await Promise.allSettled([
@@ -31,10 +71,10 @@ export async function fetchPrincipalData(): Promise<PrincipalData> {
     fetchInvoices(), fetchAdmissions(), fetchStudents(), fetchAssets(),
   ]);
   const v = <T,>(i: number): T[] => (r[i].status === 'fulfilled' ? (r[i] as PromiseFulfilledResult<T[]>).value : []);
-  return {
+  return sanitizePrincipalData({
     accounts: v<LedgerAccount>(0), entries: v<LedgerEntry>(1), expenses: v<Expense>(2), incomeEntries: v<IncomeEntry>(3),
     invoices: v<StudentInvoice>(4), admissions: v<Admission>(5), students: v<Student>(6), assets: v<SchoolAsset>(7),
-  };
+  });
 }
 
 export function netLiquidity(data: PrincipalData) {
@@ -97,7 +137,7 @@ export function moneyRows(data: PrincipalData, from: string, to: string): MoneyR
       accountName: accountName(full?.accountId), amount: ex.amount, enteredBy: full?.createdBy ?? '—',
     });
   }
-  return rows.sort((a, b) => (b.createdAt ?? b.date).localeCompare(a.createdAt ?? a.date));
+  return rows.sort((a, b) => String(b.createdAt || b.date || '').localeCompare(String(a.createdAt || a.date || '')));
 }
 
 export interface DueRow { studentId: string; studentName: string; className: string; items: string; due: number; overdue: boolean }
@@ -115,7 +155,7 @@ export function uncollectedDues(data: PrincipalData): { total: number; rows: Due
   for (const inv of data.invoices) {
     if (!['pending', 'partial', 'overdue'].includes(inv.status)) continue;
     add(inv.studentId, inv.studentName, `${inv.className}${inv.section ? ` – ${inv.section}` : ''}`,
-      `${inv.invoiceNumber} (${inv.lineItems.map((l) => l.label).join(', ')})`, inv.totalAmount - inv.paidAmount, inv.status === 'overdue');
+      `${inv.invoiceNumber} (${inv.lineItems.map((l) => l?.label ?? '').join(', ')})`, inv.totalAmount - inv.paidAmount, inv.status === 'overdue');
   }
   for (const adm of data.admissions) {
     if (adm.status !== 'approved' || adm.dueInvoiceId || !adm.studentId) continue;

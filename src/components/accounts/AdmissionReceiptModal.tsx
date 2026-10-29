@@ -124,9 +124,9 @@ interface IdCardModalProps {
 export function IdCardModal({ admission, onClose }: IdCardModalProps) {
   const printCard = () => {
     const photo = admission.studentPhotoUrl ?? '';
-    const html = `<!DOCTYPE html><html><head><title>ID Card ${admission.studentId}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" /><title>ID Card ${admission.studentId}</title>
       <style>
-        body { font-family: Arial, sans-serif; display:flex; justify-content:center; padding:24px; }
+        body { font-family: Arial, 'Anek Bangla', sans-serif; display:flex; justify-content:center; padding:24px; }
         .card { width:340px; border:3px solid #1e3a8a; border-radius:16px; overflow:hidden; }
         .head { background:#1e3a8a; color:#fff; padding:12px; text-align:center; }
         .body { display:flex; gap:12px; padding:16px; }
@@ -149,7 +149,7 @@ export function IdCardModal({ admission, onClose }: IdCardModalProps) {
         </div>
         <div class="foot">Issued after admission approval • Valid for ${admission.academicYear} session</div>
       </div>
-      <script>window.onload=()=>window.print()</script>
+      <script>window.onload=()=>(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>window.print())</script>
       </body></html>`;
     const win = window.open('', '_blank', 'width=420,height=560');
     if (!win) return;

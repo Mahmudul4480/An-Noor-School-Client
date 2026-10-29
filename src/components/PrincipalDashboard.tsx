@@ -26,6 +26,7 @@ import { StaffDirectoryPanel } from './staff/StaffDirectoryPanel';
 import { LowStockAlertCard } from './LowStockAlertCard';
 import { fetchApprovalStats } from '../lib/approvals';
 import { getCurrentActorLabel } from '../lib/actor';
+import { ErrorBoundary } from './ErrorBoundary';
 import { PrincipalDetailModal, type DetailKind } from './principal/PrincipalDetailModal';
 import {
   assetSummary, enrollment, fetchPrincipalData, incomeExpense, localToday, netLiquidity, uncollectedDues, type PrincipalData,
@@ -35,7 +36,13 @@ const tk = (n: number) => `৳ ${Math.round(n).toLocaleString('en-IN')}`;
 const BAR_COLORS = ['#1E3A8A', '#FBBF24'];
 
 
-export const PrincipalDashboard = () => {
+export const PrincipalDashboard = () => (
+  <ErrorBoundary label="PrincipalDashboard">
+    <PrincipalDashboardInner />
+  </ErrorBoundary>
+);
+
+const PrincipalDashboardInner = () => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
   const [pendingCount, setPendingCount] = React.useState(0);
   const [data, setData] = React.useState<PrincipalData | null>(null);
@@ -117,7 +124,11 @@ export const PrincipalDashboard = () => {
           );
         })}
       </div>
-      {detail && data && canDrill && <PrincipalDetailModal kind={detail} data={data} onClose={() => setDetail(null)} />}
+      {detail && data && canDrill && (
+        <ErrorBoundary label="PrincipalDetail" onReset={() => setDetail(null)}>
+          <PrincipalDetailModal kind={detail} data={data} onClose={() => setDetail(null)} />
+        </ErrorBoundary>
+      )}
 
       {/* Sub-Navigation */}
       <div className="flex items-center gap-2 bg-white/40 backdrop-blur-md p-2 rounded-[1.5rem] border border-school-border sticky top-20 z-20">
