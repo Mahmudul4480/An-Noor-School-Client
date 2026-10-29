@@ -31,6 +31,8 @@ import { GuardianDashboard } from './components/GuardianDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AccountsDashboard } from './components/AccountsDashboard';
 import { PrincipalDashboard } from './components/PrincipalDashboard';
+import { PrincipalAnalyticsPage, PrincipalOpsPage, PrincipalStaffPage } from './components/principal/PrincipalPages';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SettingsPanel } from './components/SettingsPanel';
 
 const DashboardPage = () => {
@@ -184,6 +186,14 @@ const DashboardPage = () => {
 
     if (activeTab === 'settings') {
       return <SettingsPanel portal={currentView} />;
+    }
+
+    if (currentView === 'principal' && (role === 'principal' || role === 'super_admin') && ['analytics', 'staff', 'ops'].includes(activeTab)) {
+      return (
+        <ErrorBoundary key={activeTab} label={`principal-${activeTab}`}>
+          {activeTab === 'analytics' ? <PrincipalAnalyticsPage /> : activeTab === 'staff' ? <PrincipalStaffPage /> : <PrincipalOpsPage />}
+        </ErrorBoundary>
+      );
     }
 
     if (activeTab !== 'overview' && !isAccountsSidebarTab) {
