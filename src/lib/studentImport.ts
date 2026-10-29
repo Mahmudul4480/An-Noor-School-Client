@@ -3,7 +3,7 @@ import type { ParsedStudentRow, Student } from '../types';
 
 type StudentField = keyof Omit<
   Student,
-  'status' | 'admissionId' | 'inactiveReason' | 'photoUrl' | 'idCardIssuedAt' | 'academicYear' | 'dob' | 'gender' | 'fatherName'
+  'status' | 'admissionId' | 'inactiveReason' | 'photoUrl' | 'idCardIssuedAt' | 'academicYear' | 'dob' | 'gender' | 'fatherName' | 'tuitionReduction'
 >;
 
 const COLUMN_ALIASES: Record<StudentField, string[]> = {

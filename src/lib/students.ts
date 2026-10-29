@@ -112,6 +112,7 @@ export async function fetchStudents(): Promise<Student[]> {
         dob: data.dob,
         gender: data.gender,
         fatherName: data.fatherName,
+        tuitionReduction: data.tuitionReduction,
       } satisfies Student;
     })
     .sort((a, b) => a.studentId.localeCompare(b.studentId));

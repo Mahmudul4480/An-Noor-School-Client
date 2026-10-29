@@ -15,6 +15,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { addStudent, getNextStudentId, updateStudentStatus } from './students';
 import { recordCollection, recordReversal } from './ledger';
 import { generateReceiptNumber } from './receipts';
+import { cancelInvoice, createManualInvoice, formatBillingMonth } from './invoices';
 import { omitUndefined } from './utils';
 import { normalizeMobile, provisionGuardianLogin } from './guardians';
 import type {
@@ -26,6 +27,7 @@ import type {
   FeeStructure,
   FeeStructureItem,
   Student,
+  TuitionReduction,
 } from '../types';
 
 const ADMISSIONS_COLLECTION = 'admissions';
@@ -169,6 +171,10 @@ function normalizeAdmission(id: string, data: Record<string, unknown>): Admissio
     grossTotal: Number(data.grossTotal) || 0,
     totalDiscount: Number(data.totalDiscount) || 0,
     grandTotal: Number(data.grandTotal) || 0,
+    paidAmount: data.paidAmount === undefined || data.paidAmount === null ? undefined : Number(data.paidAmount) || 0,
+    dueAmount: data.dueAmount === undefined || data.dueAmount === null ? undefined : Number(data.dueAmount) || 0,
+    dueInvoiceId: data.dueInvoiceId ? String(data.dueInvoiceId) : undefined,
+    tuitionReduction: data.tuitionReduction && typeof data.tuitionReduction === 'object' ? (data.tuitionReduction as TuitionReduction) : undefined,
     receivedInAccountId: data.receivedInAccountId ? String(data.receivedInAccountId) : undefined,
     scannedFormUrl: data.scannedFormUrl ? String(data.scannedFormUrl) : undefined,
     scannedFormName: data.scannedFormName ? String(data.scannedFormName) : undefined,
@@ -328,6 +334,16 @@ export function computeTotals(feeItems: FeeStructureItem[], discounts: Admission
   return { grossTotal, totalDiscount, grandTotal };
 }
 
+/** Money actually received at admission (older records without paidAmount = full grand total). */
+export function admissionPaidAmount(admission: Pick<Admission, 'grandTotal' | 'paidAmount'>): number {
+  if (admission.paidAmount === undefined || admission.paidAmount === null) return admission.grandTotal;
+  return Math.max(0, Math.min(admission.grandTotal, admission.paidAmount));
+}
+
+export function admissionDueAmount(admission: Pick<Admission, 'grandTotal' | 'paidAmount'>): number {
+  return Math.max(0, admission.grandTotal - admissionPaidAmount(admission));
+}
+
 export function maxDiscountableAmount(feeItems: FeeStructureItem[]): number {
   return feeItems.filter((item) => item.discountable).reduce((sum, item) => sum + item.amount, 0);
 }
@@ -468,12 +484,20 @@ export interface CreateAdmissionInput {
   scannedFormName?: string;
   studentPhotoUrl?: string;
   receivedInAccountId: string;
+  /** Paid today; defaults to grand total */
+  paidAmount?: number;
+  tuitionReduction?: TuitionReduction;
 }
 
 export async function createAdmission(input: CreateAdmissionInput): Promise<Admission> {
   const formSerial = await getNextFormSerial(input.academicYear);
   const { grossTotal, totalDiscount, grandTotal } = computeTotals(input.feeItems, input.discounts);
   const now = new Date().toISOString();
+  const rawPaid = input.paidAmount === undefined ? grandTotal : Number(input.paidAmount);
+  if (!Number.isFinite(rawPaid) || rawPaid < 0) throw new Error('জমার টাকার পরিমাণ সঠিক নয়।');
+  if (rawPaid > grandTotal) throw new Error('জমার টাকা মোট টাকার (Grand Total) চেয়ে বেশি হতে পারে না।');
+  const paidAmount = Math.round(rawPaid * 100) / 100;
+  const dueAmount = Math.round((grandTotal - paidAmount) * 100) / 100;
 
   const admission: Admission = {
     id: generateId('adm'),
@@ -498,6 +522,9 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     grossTotal,
     totalDiscount,
     grandTotal,
+    paidAmount,
+    dueAmount,
+    tuitionReduction: input.tuitionReduction,
     scannedFormUrl: input.scannedFormUrl,
     scannedFormName: input.scannedFormName,
     studentPhotoUrl: input.studentPhotoUrl,
@@ -582,10 +609,11 @@ export async function actOnApproval(params: {
   const allApproved = updatedApprovals.every((step) => step.status === 'approved');
 
   if (allApproved) {
-    if (updated.receivedInAccountId && updated.grandTotal > 0 && !updated.paymentRecorded) {
+    const paidNow = admissionPaidAmount(updated);
+    if (updated.receivedInAccountId && paidNow > 0 && !updated.paymentRecorded) {
       await recordCollection({
         accountId: updated.receivedInAccountId,
-        amount: updated.grandTotal,
+        amount: paidNow,
         reference: `Admission Fee — ${updated.studentName} (${updated.formSerial})`,
         relatedId: updated.id,
         date: new Date().toISOString().slice(0, 10),
@@ -609,6 +637,7 @@ export async function actOnApproval(params: {
       dob: admission.dob,
       gender: admission.gender,
       fatherName: admission.fatherName,
+      tuitionReduction: admission.tuitionReduction,
       idCardIssuedAt: new Date().toISOString(),
     };
 
@@ -619,6 +648,23 @@ export async function actOnApproval(params: {
       guardianName: admission.guardianName,
       studentId,
     });
+
+    // Remaining admission due -> a pending student invoice, so it shows in the
+    // student's / guardian's dues and is collected through the normal invoice flow.
+    const dueNow = admissionDueAmount(updated);
+    if (dueNow > 0 && !updated.dueInvoiceId) {
+      try {
+        const dueInvoice = await createManualInvoice({
+          studentId,
+          billingMonth: formatBillingMonth(),
+          lineItems: [{ key: 'admissionDue', label: `Admission Fee Due (বাকি) — ${admission.formSerial}`, amount: dueNow }],
+          note: `ভর্তির সময় ৳ ${paidNow.toLocaleString('en-BD')} জমা, ৳ ${dueNow.toLocaleString('en-BD')} বাকি`,
+        });
+        updated.dueInvoiceId = dueInvoice.id;
+      } catch (invoiceErr) {
+        console.error('Admission due invoice could not be created', invoiceErr);
+      }
+    }
 
     updated = {
       ...updated,
@@ -646,10 +692,18 @@ export async function cancelAdmission(admission: Admission, reason: string, acto
     await updateStudentStatus(admission.studentId, 'Inactive', `Admission cancelled: ${reason}`);
   }
 
-  if (admission.status === 'approved' && admission.receivedInAccountId) {
+  if (admission.dueInvoiceId) {
+    try {
+      await cancelInvoice(admission.dueInvoiceId);
+    } catch (invoiceErr) {
+      console.error('Admission due invoice could not be cancelled', invoiceErr);
+    }
+  }
+
+  if (admission.status === 'approved' && admission.receivedInAccountId && admissionPaidAmount(admission) > 0) {
     await recordReversal({
       accountId: admission.receivedInAccountId,
-      amount: admission.grandTotal,
+      amount: admissionPaidAmount(admission),
       reference: `Admission Cancelled — Refund/Reversal (${admission.formSerial})`,
       relatedId: admission.id,
       note: `Cancelled by ${actorName}: ${reason}`,

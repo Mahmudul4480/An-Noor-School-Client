@@ -176,6 +176,12 @@ async function saveInvoice(invoice: StudentInvoice, options?: { isNew?: boolean 
   return normalized;
 }
 
+/** A student's special (reduced) monthly tuition, set at admission, overrides the class tuition. */
+export function studentTuitionAmount(student: Student, classTuition: number): number {
+  const reduced = student.tuitionReduction?.reducedAmount;
+  return typeof reduced === 'number' && reduced >= 0 && reduced < classTuition ? reduced : classTuition;
+}
+
 function buildInvoiceForStudent(params: {
   student: Student;
   billingMonth: string;
@@ -227,7 +233,7 @@ export async function ensureMonthlyTuitionInvoices(billingMonth = formatBillingM
   let updated = 0;
 
   for (const student of activeStudents) {
-    const tuitionAmount = tuitionFromItems(resolveClassFeeItems(structures, student.class));
+    const tuitionAmount = studentTuitionAmount(student, tuitionFromItems(resolveClassFeeItems(structures, student.class)));
     const existing = existingInvoices.find(
       (invoice) => invoiceHasTuition(invoice, billingMonth) && invoice.studentId === student.studentId,
     );
@@ -305,7 +311,7 @@ export async function syncClassTuitionInvoices(params: {
       const invoice = buildInvoiceForStudent({
         student,
         billingMonth,
-        tuitionAmount: params.tuitionAmount,
+        tuitionAmount: studentTuitionAmount(student, params.tuitionAmount),
         invoiceNumber,
         academicYear: student.academicYear,
       });
@@ -319,12 +325,13 @@ export async function syncClassTuitionInvoices(params: {
       continue;
     }
 
+    const studentTuition = studentTuitionAmount(student, params.tuitionAmount);
     const currentTuition = existing.lineItems.find((item) => item.key === 'tuitionFee')?.amount ?? 0;
-    if (currentTuition === params.tuitionAmount) continue;
+    if (currentTuition === studentTuition) continue;
 
     const lineItems = existing.lineItems.map((item) =>
       item.key === 'tuitionFee'
-        ? { ...item, amount: params.tuitionAmount, label: `Tuition Fee — ${formatBillingMonthLabel(billingMonth)}` }
+        ? { ...item, amount: studentTuition, label: `Tuition Fee — ${formatBillingMonthLabel(billingMonth)}` }
         : item,
     );
     const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0);

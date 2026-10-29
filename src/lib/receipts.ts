@@ -66,6 +66,9 @@ export interface AdmissionReceiptData {
   grossTotal: number;
   totalDiscount: number;
   grandTotal: number;
+  paidAmount: number;
+  dueAmount: number;
+  tuitionNote?: string;
   feeItems: Admission['feeItems'];
   discounts: Admission['discounts'];
   issuedAt: string;
@@ -89,6 +92,11 @@ export function buildAdmissionReceipt(
     grossTotal: admission.grossTotal,
     totalDiscount: admission.totalDiscount,
     grandTotal: admission.grandTotal,
+    paidAmount: admission.paidAmount ?? admission.grandTotal,
+    dueAmount: Math.max(0, admission.grandTotal - (admission.paidAmount ?? admission.grandTotal)),
+    tuitionNote: admission.tuitionReduction
+      ? `Special monthly tuition: ${formatCurrency(admission.tuitionReduction.reducedAmount)} (standard ${formatCurrency(admission.tuitionReduction.standardAmount)}) — ${admission.tuitionReduction.reason}; by ${admission.tuitionReduction.reducedBy}`
+      : undefined,
     feeItems: admission.feeItems,
     discounts: admission.discounts,
     issuedAt: admission.createdAt ?? new Date().toISOString(),
@@ -211,11 +219,17 @@ export function admissionToDocument(data: AdmissionReceiptData): SchoolReceiptDo
     totalsHtml: `
         <p>Gross Total: ${formatCurrency(data.grossTotal)}</p>
         ${concession ? `<p class="discount">${escapeHtml(concession)}</p>` : ''}
-        <p class="grand">Grand Total: ${formatCurrency(data.grandTotal)}</p>`,
+        <p class="grand">Grand Total: ${formatCurrency(data.grandTotal)}</p>
+        <p>Paid (জমা): ${formatCurrency(data.paidAmount)}</p>
+        <p class="${data.dueAmount > 0 ? 'discount' : ''}">Due (বাকি): ${formatCurrency(data.dueAmount)}</p>
+        ${data.tuitionNote ? `<p class="discount">${escapeHtml(data.tuitionNote)}</p>` : ''}`,
     totalsPdf: [
       { label: 'Gross Total', value: formatCurrency(data.grossTotal), tone: 'muted' },
       ...(concession ? [{ label: 'Concession', value: concession, tone: 'discount' as const }] : []),
       { label: 'Grand Total', value: formatCurrency(data.grandTotal), tone: 'grand' },
+      { label: 'Paid', value: formatCurrency(data.paidAmount), tone: 'muted' },
+      { label: 'Due', value: formatCurrency(data.dueAmount), tone: data.dueAmount > 0 ? 'discount' : 'muted' },
+      ...(data.tuitionNote ? [{ label: 'Tuition', value: data.tuitionNote, tone: 'discount' as const }] : []),
     ],
     statusNote: data.statusNote,
   };

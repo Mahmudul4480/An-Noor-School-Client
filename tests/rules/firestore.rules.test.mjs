@@ -74,6 +74,14 @@ describe('admissions', () => {
   });
   it('master admin approves admission', () =>
     assertSucceeds(updateDoc(doc(ctx.admin, 'admissions/adm-1'), { status: 'approved' })));
+  it('accounts can create admission with partial payment + tuition reduction', () =>
+    assertSucceeds(setDoc(doc(ctx.accounts, 'admissions/adm-4'), { status: 'pending_approval', approvals: [], grandTotal: 1000, paidAmount: 600, dueAmount: 400,
+      tuitionReduction: { standardAmount: 4500, reducedAmount: 4000, reason: 'x', reducedBy: 'y', reducedAt: 'z' } })));
+  it('accounts cannot change paid/due/tuition reduction after submit', async () => {
+    await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { paidAmount: 1 }));
+    await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { dueAmount: 0 }));
+    await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { tuitionReduction: { reducedAmount: 1 } }));
+  });
   it('teacher cannot read admissions', () => assertFails(getDoc(doc(ctx.teacher, 'admissions/adm-1'))));
 });
 
