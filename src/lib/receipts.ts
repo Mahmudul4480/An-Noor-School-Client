@@ -402,7 +402,7 @@ function buildExpenseVoucherViewHtml(data: ExpenseVoucherData, logoSrc?: string 
       </div>`
     : '';
 
-  return `<div style="width:680px;border:3px solid #26338B;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.12);background:#fff;font-family:Inter,Segoe UI,Arial,sans-serif">
+  return `<div style="width:680px;border:3px solid #26338B;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.12);background:#fff;font-family:Inter,Segoe UI,Arial,'Anek Bangla',sans-serif">
     <div style="background:linear-gradient(160deg,#26338B 0%,#1a2560 100%);color:#fff;text-align:center;padding:22px 24px;border-bottom:4px solid #F8A41C">
       <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;margin:0 auto 12px;background:#fff;border:3px solid #F8A41C">
         <img src="${logo}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />
@@ -519,11 +519,11 @@ export function printExpenseVoucher(data: ExpenseVoucherData): void {
   const win = window.open('', '_blank', 'width=800,height=960');
   if (!win) return;
   getSchoolLogoCircle().then((logo) => {
-    win.document.write(`<!doctype html><html><head><title>${escapeHtml(data.voucherNumber)}</title>
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" /><title>${escapeHtml(data.voucherNumber)}</title>
       <style>@page{margin:12mm}body{margin:0;padding:16px;background:#fff}</style></head>
       <body>${buildExpenseVoucherViewHtml(data, logo)}</body></html>`);
     win.document.close();
-    win.onload = () => win.print();
+    win.onload = () => { void (win.document.fonts ? win.document.fonts.ready : Promise.resolve()).then(() => win.print()); };
   });
 }
 
@@ -584,13 +584,14 @@ function buildSchoolReceiptHtml(
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <title>Receipt ${escapeHtml(doc.receiptNumber)}</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 32px;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Segoe UI', Arial, 'Anek Bangla', sans-serif;
       color: ${BRAND.blue};
       background: #fff;
     }
@@ -768,7 +769,7 @@ function buildSchoolReceiptHtml(
     </div>
     <div class="footer">Thank you — ${getSchoolName()}</div>
   </div>
-  ${autoPrint ? '<script>window.onload=()=>window.print()</script>' : ''}
+  ${autoPrint ? '<script>window.onload=()=>(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>window.print())</script>' : ''}
 </body>
 </html>`;
 }

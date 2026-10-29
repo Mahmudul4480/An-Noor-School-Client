@@ -65,7 +65,7 @@ const css = () => `
 @page { size: A4 portrait; margin: ${PAGE_MARGIN_MM}mm; }
 * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 html, body { margin: 0; padding: 0; background: #fff; }
-body { font-family: Inter, 'Segoe UI', 'Noto Sans Bengali', 'Hind Siliguri', Arial, sans-serif; color: ${BRAND.blue}; }
+body { font-family: Inter, 'Segoe UI', 'Anek Bangla', 'Noto Sans Bengali', Arial, sans-serif; color: ${BRAND.blue}; }
 .page { width: ${PAGE_W_MM}mm; height: ${297 - PAGE_MARGIN_MM * 2}mm; overflow: hidden; margin: 0 auto; }
 .copy { height: ${COPY_H_MM}mm; overflow: hidden; font-size: 10px; }
 .card { height: 100%; border: 1.5px solid ${BRAND.blue}; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
@@ -113,11 +113,11 @@ const FIT_SCRIPT = `function __fit(){document.querySelectorAll('.copy').forEach(
 export function buildAdmissionDualReceiptHtml(data: AdmissionReceiptData, logoSrc?: string | null, autoPrint = false): string {
   const logo = logoSrc ?? SCHOOL_LOGO_URL;
   const cut = `<div class="cut"><div class="line"></div>${SCISSORS}<span>এখান থেকে কাটুন</span><div class="line"></div></div>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(data.receiptNumber)}</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" /><title>${escapeHtml(data.receiptNumber)}</title>
 <style>${css()}</style></head><body>
 <div class="page">${copyHtml(data, logo, COPIES[0])}${cut}${copyHtml(data, logo, COPIES[1])}</div>
 <script>${FIT_SCRIPT}
-function __ready(){__fit();window.__fitDone=true;${autoPrint ? 'setTimeout(function(){window.print()},150);' : ''}}
+function __ready(){__fit();window.__fitDone=true;${autoPrint ? '(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print()},150)});' : ''}}
 if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){window.addEventListener('load',__ready);if(document.readyState==='complete')__ready();});}else{window.addEventListener('load',__ready);}
 </script></body></html>`;
 }

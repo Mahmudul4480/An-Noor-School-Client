@@ -58,7 +58,12 @@ const DHAKA_TZ = 'Asia/Dhaka';
  * (old entries stored as yyyy-mm-dd) shows the date only.
  */
 export function formatDateTime(value?: unknown, opts: { fallbackDate?: string } = {}): string {
-  const raw = typeof value === 'string' ? value : value instanceof Date ? value.toISOString() : '';
+  const ts = value as { toDate?: () => Date; seconds?: number } | null;
+  const raw = typeof value === 'string' ? value
+    : value instanceof Date ? value.toISOString()
+    : ts && typeof ts.toDate === 'function' ? ts.toDate().toISOString()
+    : ts && typeof ts.seconds === 'number' ? new Date(ts.seconds * 1000).toISOString()
+    : '';
   const source = raw || opts.fallbackDate || '';
   if (!source) return '—';
   const hasTime = source.includes('T');
@@ -71,7 +76,9 @@ export function formatDateTime(value?: unknown, opts: { fallbackDate?: string } 
 }
 
 /** Entry date (business date) + time it was entered, e.g. "29 Oct 2026, 12:09 PM". */
-export function formatEntryDateTime(date?: string, createdAt?: string): string {
+export function formatEntryDateTime(dateIn?: unknown, createdAtIn?: unknown): string {
+  const date = typeof dateIn === 'string' ? dateIn : dateIn ? formatIsoLoose(dateIn) : undefined;
+  const createdAt = typeof createdAtIn === 'string' ? createdAtIn : createdAtIn ? formatIsoLoose(createdAtIn) : undefined;
   if (createdAt && createdAt.includes('T') && (!date || formatDateTime(createdAt).startsWith(formatDateTime(date)))) {
     return formatDateTime(createdAt);
   }
@@ -79,4 +86,12 @@ export function formatEntryDateTime(date?: string, createdAt?: string): string {
     return `${formatDateTime(date)} (entered ${formatDateTime(createdAt)})`;
   }
   return formatDateTime(date ?? createdAt);
+}
+
+function formatIsoLoose(value: unknown): string | undefined {
+  const ts = value as { toDate?: () => Date; seconds?: number };
+  if (value instanceof Date) return value.toISOString();
+  if (ts && typeof ts.toDate === 'function') return ts.toDate().toISOString();
+  if (ts && typeof ts.seconds === 'number') return new Date(ts.seconds * 1000).toISOString();
+  return undefined;
 }

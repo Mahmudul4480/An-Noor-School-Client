@@ -17,7 +17,7 @@ const pageStyle: React.CSSProperties = {
   minHeight: 760,
   background: '#ffffff',
   color: '#111827',
-  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontFamily: "Arial, Helvetica, 'Anek Bangla', sans-serif",
   border: `1px solid ${NAVY}`,
   boxSizing: 'border-box',
   overflow: 'hidden',

@@ -549,6 +549,7 @@ export async function downloadDirectorBriefingPdf(root: HTMLElement, fileBase: s
     throw new Error('Report pages ready হয়নি। আবার চেষ্টা করুন।');
   }
 
+  if (document.fonts) await document.fonts.ready;
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
