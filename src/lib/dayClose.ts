@@ -50,7 +50,15 @@ export async function getDailySummary(date: string): Promise<Omit<DayCloseRecord
   const todayExpenses = expenses.filter((expense) => isSameDay(expense.date, date));
 
   const totalIncome = sumEntries(todayEntries, 'credit');
-  const totalExpense = sumEntries(todayEntries, 'debit') + todayExpenses.reduce((s, e) => s + e.amount, 0);
+  // Approved expenses already post a ledger debit (relatedType 'expense', relatedId = expense.id).
+  // Only add expenses that have no matching ledger entry, so nothing is counted twice.
+  const ledgerExpenseIds = new Set(
+    entries.filter((entry) => entry.relatedType === 'expense' && entry.relatedId).map((entry) => entry.relatedId as string),
+  );
+  const unpostedExpenseTotal = todayExpenses
+    .filter((expense) => !ledgerExpenseIds.has(expense.id))
+    .reduce((s, e) => s + e.amount, 0);
+  const totalExpense = sumEntries(todayEntries, 'debit') + unpostedExpenseTotal;
   const balances = computeAllBalances(accounts, entries);
 
   const accountSnapshots = balances.map(({ account, balance }) => {
