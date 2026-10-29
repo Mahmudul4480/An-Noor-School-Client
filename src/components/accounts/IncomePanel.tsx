@@ -3,7 +3,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, TrendingUp, Tag, X, FileText, Wallet, Clock, CheckCircle2 } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
-import { computeIncomeStats, createIncomeEntry, fetchIncomeEntries } from '../../lib/income';
+import { admissionIncomeRows, computeIncomeStats, createIncomeEntry, fetchIncomeEntries, isAdmissionIncomeRow } from '../../lib/income';
+import { fetchAdmissions } from '../../lib/admissions';
 import { fetchApprovedCategories, fetchCategoryRequests, requestCategory } from '../../lib/categories';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import { cn } from '../../lib/utils';
@@ -55,14 +56,17 @@ export function IncomePanel() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [entryData, accountData, categoryList, categoryRequests] = await Promise.all([
+      const [entryData, accountData, categoryList, categoryRequests, admissionData] = await Promise.all([
         fetchIncomeEntries(),
         fetchAccounts(),
         fetchApprovedCategories('income'),
         fetchCategoryRequests(),
+        fetchAdmissions().catch(() => []),
       ]);
       const usable = accountData.filter((account) => account.id !== ONLINE_PAYMENT_ACCOUNT_ID);
-      setEntries(entryData);
+      setEntries(
+        [...entryData, ...admissionIncomeRows(admissionData)].sort((a, b) => b.date.localeCompare(a.date)),
+      );
       setAccounts(accountData);
       setCategories(categoryList);
       setPendingCategories(
@@ -442,6 +446,9 @@ export function IncomePanel() {
                         >
                           {entry.approvalStatus}
                         </span>
+                        {isAdmissionIncomeRow(entry) && entry.approvalStatus === 'pending' && (
+                          <span className="block mt-1 text-[9px] font-bold text-school-muted">Approvals ট্যাবে Principal approve করবেন</span>
+                        )}
                       </td>
                       <td className="py-4 text-slate-500 font-medium">{entry.createdBy || '—'}</td>
                       <td className="py-4 text-right font-black text-emerald-600">
