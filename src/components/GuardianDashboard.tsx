@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { 
@@ -105,7 +106,7 @@ export const GuardianDashboard = () => {
       const paid = refreshed.find((item) => item.id === invoice.id);
       if (paid) setReceiptInvoice(paid);
     } catch (err) {
-      setPayMessage(err instanceof Error ? err.message : 'Payment failed.');
+      setPayMessage(userErrorMessage(err, 'Payment failed.'));
     } finally {
       setPayingId(null);
     }

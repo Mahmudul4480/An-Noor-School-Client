@@ -1,15 +1,69 @@
 rules_version = '2';
 
+// Role-based Storage rules for An-Noor ERP.
+// Office roles (super_admin, principal, accounts) can upload/read school files.
+// Role sources mirror the app's login logic (src/lib/auth.ts):
+//   1. Master Admin emails, 2. staffAccess/{email} active grant, 3. users/{uid}.role
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function email() {
+      return request.auth.token.email != null ? request.auth.token.email.lower() : '';
+    }
+    function isMasterAdmin() {
+      return email() in ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
+    }
+    function hasStaffGrant() {
+      return email() != ''
+        && firestore.exists(/databases/(default)/documents/staffAccess/$(email()))
+        && firestore.get(/databases/(default)/documents/staffAccess/$(email())).data.status == 'active'
+        && firestore.get(/databases/(default)/documents/staffAccess/$(email())).data.role in ['accounts', 'principal', 'super_admin'];
+    }
+    function hasOfficeUserRole() {
+      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['accounts', 'principal', 'super_admin'];
+    }
+    function isOffice() {
+      return signedIn() && (isMasterAdmin() || hasStaffGrant() || hasOfficeUserRole());
+    }
+    function validUpload() {
+      return request.resource.size < 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType == 'application/pdf');
+    }
+    function validStaffDoc() {
+      return validUpload()
+        || (request.resource.size < 10 * 1024 * 1024
+            && request.resource.contentType in [
+              'application/msword',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
+    }
+
+    // Staff & Teacher hiring: photos, cv, nid, appointment, certificate, other
+    match /staff-docs/{allPaths=**} {
+      allow read: if isOffice();
+      allow create, update: if isOffice() && validStaffDoc();
+      allow delete: if isOffice();
+    }
+
     match /admission-forms/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isOffice();
+      allow create, update: if isOffice() && validUpload();
+      allow delete: if isOffice();
     }
     match /student-photos/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isOffice();
+      allow create, update: if isOffice() && validUpload();
+      allow delete: if isOffice();
     }
     match /birth-reg-docs/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isOffice();
+      allow create, update: if isOffice() && validUpload();
+      allow delete: if isOffice();
     }
+
+    // Everything else is denied by default.
   }
 }

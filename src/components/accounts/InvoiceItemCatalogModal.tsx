@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Plus, Loader2, Trash2, RotateCcw, Check, Pencil, Tag } from 'lucide-react';
@@ -32,7 +33,7 @@ export function InvoiceItemCatalogModal({ onClose, onChanged }: InvoiceItemCatal
     try {
       setItems(await fetchInvoiceItemCategories({ includeArchived: true }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoice items.');
+      setError(userErrorMessage(err, 'Failed to load invoice items.'));
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export function InvoiceItemCatalogModal({ onClose, onChanged }: InvoiceItemCatal
       setNewAmount('');
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add item.');
+      setError(userErrorMessage(err, 'Could not add item.'));
     } finally {
       setBusyId(null);
     }
@@ -85,7 +86,7 @@ export function InvoiceItemCatalogModal({ onClose, onChanged }: InvoiceItemCatal
       setMessage(`"${editLabel.trim()}" update হয়েছে।`);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save item.');
+      setError(userErrorMessage(err, 'Could not save item.'));
     } finally {
       setBusyId(null);
     }
@@ -99,7 +100,7 @@ export function InvoiceItemCatalogModal({ onClose, onChanged }: InvoiceItemCatal
       setMessage(`"${item.label}" list থেকে সরানো হয়েছে।`);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not remove item.');
+      setError(userErrorMessage(err, 'Could not remove item.'));
     } finally {
       setBusyId(null);
     }

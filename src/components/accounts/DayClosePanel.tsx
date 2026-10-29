@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Lock, Loader2, Wallet, ArrowDownRight, ArrowUpRight, AlertTriangle } from 'lucide-react';
@@ -23,7 +24,7 @@ export function DayClosePanel() {
       setSummary(data);
       setClosed(dayClosed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load daily summary.');
+      setError(userErrorMessage(err, 'Failed to load daily summary.'));
     } finally {
       setLoading(false);
     }
@@ -41,7 +42,7 @@ export function DayClosePanel() {
       setClosed(true);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Day close failed.');
+      setError(userErrorMessage(err, 'Day close failed.'));
     } finally {
       setClosing(false);
     }

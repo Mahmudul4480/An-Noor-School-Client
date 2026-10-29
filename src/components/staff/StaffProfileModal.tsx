@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { FileText, Loader2, UserRound, X } from 'lucide-react';
 import { CLASS_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
@@ -63,7 +64,7 @@ export function StaffProfileModal({
       setNote('');
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Duty save করা যায়নি।');
+      setError(userErrorMessage(err, 'Duty save করা যায়নি।'));
     } finally {
       setBusy(false);
     }

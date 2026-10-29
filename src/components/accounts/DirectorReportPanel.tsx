@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { FileDown, Loader2, CalendarRange } from 'lucide-react';
@@ -58,7 +59,7 @@ export function DirectorReportPanel() {
       setBriefing(result);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Report generate করতে সমস্যা হয়েছে।');
+      setError(userErrorMessage(err, 'Report generate করতে সমস্যা হয়েছে।'));
       return null;
     } finally {
       setLoading(false);
@@ -96,7 +97,7 @@ export function DirectorReportPanel() {
       if (!pack) throw new Error('Report view ready হয়নি।');
       await downloadDirectorBriefingPdf(pack, directorReportFileBase(latest));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'PDF download করতে সমস্যা হয়েছে।');
+      setError(userErrorMessage(err, 'PDF download করতে সমস্যা হয়েছে।'));
     } finally {
       setDownloading(false);
     }

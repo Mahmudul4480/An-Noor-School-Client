@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -124,7 +125,7 @@ export function AssetRegistryPanel() {
         categoryId: prev.categoryId || categoryData[0]?.id || '',
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load asset registry.');
+      setError(userErrorMessage(err, 'Failed to load asset registry.'));
     } finally {
       setLoading(false);
     }
@@ -191,7 +192,7 @@ export function AssetRegistryPanel() {
       setShowRegister(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Asset registration failed.');
+      setError(userErrorMessage(err, 'Asset registration failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +218,7 @@ export function AssetRegistryPanel() {
       await load();
       setForm((prev) => ({ ...prev, categoryId: created.id }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Category add failed.');
+      setError(userErrorMessage(err, 'Category add failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -248,7 +249,7 @@ export function AssetRegistryPanel() {
       setMovingAsset(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Location change failed.');
+      setError(userErrorMessage(err, 'Location change failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -272,7 +273,7 @@ export function AssetRegistryPanel() {
       setRevalueAssetRow(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Revaluation failed.');
+      setError(userErrorMessage(err, 'Revaluation failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -287,7 +288,7 @@ export function AssetRegistryPanel() {
       setDepreciateAsset(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Depreciation failed.');
+      setError(userErrorMessage(err, 'Depreciation failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -309,7 +310,7 @@ export function AssetRegistryPanel() {
       setRemoveTarget(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Remove failed.');
+      setError(userErrorMessage(err, 'Remove failed.'));
     } finally {
       setSubmitting(false);
     }

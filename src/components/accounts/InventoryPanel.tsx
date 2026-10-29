@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -87,7 +88,7 @@ export function InventoryPanel() {
       setAccounts(accountData);
       setStudents(studentData.filter((student) => student.status === 'Active'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load inventory.');
+      setError(userErrorMessage(err, 'Failed to load inventory.'));
     } finally {
       setLoading(false);
     }
@@ -133,7 +134,7 @@ export function InventoryPanel() {
       else await archiveInventoryItem(item);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed.');
+      setError(userErrorMessage(err, 'Action failed.'));
     } finally {
       setBusyId(null);
     }
@@ -626,7 +627,7 @@ function ItemFormModal({
       });
       await onSaved(form.name.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save item.');
+      setError(userErrorMessage(err, 'Could not save item.'));
     } finally {
       setBusy(false);
     }
@@ -838,7 +839,7 @@ function SaleModal({
         `${item.name} × ${qty} বিক্রি হয়েছে — ৳ ${total.toLocaleString('en-BD')} ledger-এ credit হয়েছে।`,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sale failed.');
+      setError(userErrorMessage(err, 'Sale failed.'));
     } finally {
       setBusy(false);
     }
@@ -1016,7 +1017,7 @@ function IssueModal({
       });
       await onIssued(`${item.name} × ${qty} school-এ issue হয়েছে — FIFO cost ৳ ${fifoCost.toLocaleString('en-BD')} (টাকা আসেনি)।`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Issue failed.');
+      setError(userErrorMessage(err, 'Issue failed.'));
     } finally {
       setBusy(false);
     }
@@ -1144,7 +1145,7 @@ function RestockModal({
           : `FIFO lot ${receivedDate}: ${qty} ${item.unit} যোগ হয়েছে।`,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Restock failed.');
+      setError(userErrorMessage(err, 'Restock failed.'));
     } finally {
       setBusy(false);
     }

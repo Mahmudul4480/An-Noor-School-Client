@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe, RotateCcw } from 'lucide-react';
@@ -111,7 +112,7 @@ export function LedgerPanel() {
       await load();
       window.setTimeout(() => confirmBannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reverse request failed.');
+      setError(userErrorMessage(err, 'Reverse request failed.'));
     } finally {
       setReversingId(null);
     }
@@ -135,7 +136,7 @@ export function LedgerPanel() {
       setShowAddAccount(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Add account failed.');
+      setError(userErrorMessage(err, 'Add account failed.'));
     } finally {
       setBusy(false);
     }
@@ -175,7 +176,7 @@ export function LedgerPanel() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Transfer failed.');
+      setError(userErrorMessage(err, 'Transfer failed.'));
     } finally {
       setBusy(false);
     }

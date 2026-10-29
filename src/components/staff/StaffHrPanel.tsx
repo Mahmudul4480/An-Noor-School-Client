@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { Loader2, UserPlus } from 'lucide-react';
 import { GENDER_OPTIONS } from '../../lib/schoolConstants';
@@ -81,7 +82,7 @@ export function StaffHrPanel() {
       setExtraDoc(undefined);
       setRefreshKey((value) => value + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Hire request পাঠানো যায়নি।');
+      setError(userErrorMessage(err, 'Hire request পাঠানো যায়নি।'));
     } finally {
       setSubmitting(false);
     }

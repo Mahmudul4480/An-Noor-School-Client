@@ -14,7 +14,7 @@ import {
   validateDiscount,
 } from '../../lib/admissions';
 import { getFirebaseOperationErrorMessage } from '../../lib/auth';
-import { toFriendlyError } from '../../lib/errorMessages';
+import { toFriendlyError, userErrorMessage } from '../../lib/errorMessages';
 import { showToast } from '../../lib/toast';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
 import { fetchAccounts } from '../../lib/ledger';
@@ -131,7 +131,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       setPhotoFile(stampFile);
       setPhotoPreview(URL.createObjectURL(stampFile));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Photo process করতে সমস্যা হয়েছে।');
+      setError(userErrorMessage(err, 'Photo process করতে সমস্যা হয়েছে।'));
       setPhotoFile(null);
       setPhotoPreview(null);
     } finally {

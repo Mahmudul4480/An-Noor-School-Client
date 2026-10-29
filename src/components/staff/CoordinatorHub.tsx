@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Loader2, School, UserRound, X } from 'lucide-react';
@@ -159,7 +160,7 @@ function MarkModal({
       });
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mark save করা যায়নি।');
+      setError(userErrorMessage(err, 'Mark save করা যায়নি।'));
     } finally {
       setBusy(false);
     }

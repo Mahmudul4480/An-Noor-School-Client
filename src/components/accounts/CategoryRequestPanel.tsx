@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, Tag } from 'lucide-react';
@@ -47,7 +48,7 @@ export function CategoryRequestPanel() {
       setMessage('Category request sent to Principal for approval.');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Request failed.');
+      setError(userErrorMessage(err, 'Request failed.'));
     } finally {
       setSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, Save, Settings } from 'lucide-react';
@@ -68,7 +69,7 @@ export function FeeStructureModal({ onClose }: { onClose: () => void }) {
         `${selectedClass} saved. Admission ৳ ${admissionFeeFromItems(saved.items).toLocaleString('en-BD')}, Tuition ৳ ${tuitionAmount.toLocaleString('en-BD')}. This month: ${sync.created} new invoice(s), ${sync.updated} updated, ${sync.skippedPaid} already paid skipped.`,
       );
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Fee structure save failed.');
+      setMessage(userErrorMessage(err, 'Fee structure save failed.'));
     } finally {
       setSaving(false);
     }

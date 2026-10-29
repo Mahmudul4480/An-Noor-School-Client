@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -135,7 +136,7 @@ export function InvoicingPanel() {
       setCatalog(catalogData);
       setPayAccountId((prev) => prev || accountData.find((account) => account.id === 'main-cash')?.id || accountData[0]?.id || '');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices.');
+      setError(userErrorMessage(err, 'Failed to load invoices.'));
     } finally {
       setLoading(false);
     }
@@ -178,7 +179,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invoice generation failed.');
+      setError(userErrorMessage(err, 'Invoice generation failed.'));
     } finally {
       setGenerating(false);
     }
@@ -230,7 +231,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setPayError(err instanceof Error ? err.message : 'Payment recording failed.');
+      setPayError(userErrorMessage(err, 'Payment recording failed.'));
     } finally {
       setPayingId(null);
     }
@@ -332,7 +333,7 @@ export function InvoicingPanel() {
       );
       await load();
     } catch (err) {
-      setManualError(err instanceof Error ? err.message : 'Manual invoice failed.');
+      setManualError(userErrorMessage(err, 'Manual invoice failed.'));
     } finally {
       setGenerating(false);
     }

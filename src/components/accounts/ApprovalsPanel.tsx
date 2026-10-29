@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import {
@@ -78,7 +79,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
         return next;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load approvals.');
+      setError(userErrorMessage(err, 'Failed to load approvals.'));
     } finally {
       setLoading(false);
     }
@@ -155,7 +156,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
       setMessage(`Approved: ${item.title}`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Approval failed.');
+      setError(userErrorMessage(err, 'Approval failed.'));
     } finally {
       setActingId(null);
     }
@@ -234,7 +235,7 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
       setMessage(`Rejected: ${item.title}`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Rejection failed.');
+      setError(userErrorMessage(err, 'Rejection failed.'));
     } finally {
       setActingId(null);
     }

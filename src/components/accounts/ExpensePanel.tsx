@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, Loader2, ArrowDownRight, Tag, FileText, X } from 'lucide-react';
@@ -56,7 +57,7 @@ export function ExpensePanel() {
         category: prev.category || categoryList[0] || '',
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load expenses.');
+      setError(userErrorMessage(err, 'Failed to load expenses.'));
     } finally {
       setLoading(false);
     }
@@ -88,7 +89,7 @@ export function ExpensePanel() {
       setMessage(`"${name}" category Principal approval-এর জন্য পাঠানো হয়েছে। Approve হলে dropdown-এ যুক্ত হবে।`);
       await load();
     } catch (err) {
-      setCategoryError(err instanceof Error ? err.message : 'Category request failed.');
+      setCategoryError(userErrorMessage(err, 'Category request failed.'));
     } finally {
       setCategoryBusy(false);
     }
@@ -123,7 +124,7 @@ export function ExpensePanel() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Expense entry failed.');
+      setError(userErrorMessage(err, 'Expense entry failed.'));
     } finally {
       setSubmitting(false);
     }

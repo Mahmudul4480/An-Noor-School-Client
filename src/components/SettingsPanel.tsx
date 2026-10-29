@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import {
   Bell,
@@ -65,7 +66,7 @@ export function SettingsPanel({ portal }: { portal?: UserRole | null }) {
   React.useEffect(() => {
     fetchSchoolSettings()
       .then(setSettings)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Settings load করতে পারিনি।'))
+      .catch((err) => setError(userErrorMessage(err, 'Settings load করতে পারিনি।')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -85,7 +86,7 @@ export function SettingsPanel({ portal }: { portal?: UserRole | null }) {
       setSettings(saved);
       setMessage('School settings saved.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Settings save করতে পারিনি।');
+      setError(userErrorMessage(err, 'Settings save করতে পারিনি।'));
     } finally {
       setSaving(false);
     }
