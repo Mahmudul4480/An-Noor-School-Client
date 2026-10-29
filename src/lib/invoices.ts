@@ -108,7 +108,12 @@ export async function fetchInvoices(filters?: {
     invoices = readLocal<StudentInvoice[]>(LOCAL_INVOICES_KEY, []).map(normalizeInvoice);
   } else {
     await waitForAuthUser();
-    const snapshot = await getDocs(query(collection(db, INVOICES_COLLECTION)));
+    // A studentId filter is pushed to Firestore so guardians (who may only read
+    // their own children's invoices) get a query the rules can allow.
+    const base = collection(db, INVOICES_COLLECTION);
+    const snapshot = await getDocs(
+      filters?.studentId ? query(base, where('studentId', '==', filters.studentId)) : query(base),
+    );
     invoices = snapshot.docs.map((document) => normalizeInvoice(document.data() as StudentInvoice));
   }
 

@@ -1,5 +1,6 @@
 import { omitUndefined } from './utils';
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc,
+  getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
 import type { GuardianAccount } from '../types';
@@ -142,9 +143,20 @@ export async function fetchGuardianByMobile(mobile: string): Promise<GuardianAcc
     return guardians.find((g) => g.mobile === normalized) ?? null;
   }
 
-  const snapshot = await getDocs(query(collection(db, GUARDIANS_COLLECTION), where('mobile', '==', normalized)));
-  if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as GuardianAccount;
+  // Read by id first (guardians may only read their own doc); office falls back to a query.
+  try {
+    const own = await getDoc(doc(db, GUARDIANS_COLLECTION, `grd-${normalized}`));
+    if (own.exists()) return own.data() as GuardianAccount;
+  } catch {
+    // not permitted / not found by id — try the query below
+  }
+  try {
+    const snapshot = await getDocs(query(collection(db, GUARDIANS_COLLECTION), where('mobile', '==', normalized)));
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data() as GuardianAccount;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchGuardianByAuthEmail(email: string): Promise<GuardianAccount | null> {

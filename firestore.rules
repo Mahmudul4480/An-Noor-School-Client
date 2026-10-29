@@ -1,9 +1,193 @@
 rules_version = '2';
 
+// Role-based Firestore rules for An-Noor ERP.
+// Roles are resolved exactly like src/lib/auth.ts resolveUserRole():
+//   1. Master Admin emails  -> super_admin
+//   2. guardian login email (g<mobile>@guardians.al-noor-int-school.local) + guardians/grd-<mobile>
+//   3. staffAccess/{email} with status 'active' -> its role
+//   4. users/{uid}.role
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ---------- identity helpers ----------
+    function signedIn() { return request.auth != null; }
+    function email() {
+      return signedIn() && request.auth.token.email != null ? request.auth.token.email.lower() : '';
     }
+    function isMasterAdmin() {
+      return email() in ['chotan4480@gmail.com', 'chotan4480+admin@gmail.com'];
+    }
+    function isGuardianEmail() {
+      return email().matches('^g[0-9]+@guardians\\.al-noor-int-school\\.local$');
+    }
+    function guardianDocId() { return 'grd-' + email().split('@')[0].replace('^g', ''); }
+    function guardianPath() { return /databases/$(database)/documents/guardians/$(guardianDocId()); }
+    function isGuardian() { return isGuardianEmail() && exists(guardianPath()); }
+    function guardianStudentIds() { return get(guardianPath()).data.studentIds; }
+
+    function grantPath() { return /databases/$(database)/documents/staffAccess/$(email()); }
+    function grantRole() {
+      return email() != '' && !isGuardianEmail() && exists(grantPath())
+        && get(grantPath()).data.status == 'active' ? get(grantPath()).data.role : '';
+    }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function userRole() {
+      return signedIn() && !isGuardianEmail() && exists(userPath()) ? get(userPath()).data.get('role', '') : '';
+    }
+    function hasRole(r) { return grantRole() == r || userRole() == r; }
+
+    function isSuperAdmin() { return signedIn() && (isMasterAdmin() || hasRole('super_admin')); }
+    function isPrincipal() { return isSuperAdmin() || hasRole('principal'); }   // approvers
+    function isAccounts() { return signedIn() && hasRole('accounts'); }
+    function isOffice() { return isPrincipal() || isAccounts(); }
+    function isTeacher() { return signedIn() && hasRole('teacher'); }
+    function isStaff() { return isOffice() || isTeacher(); }
+
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function newVal(k, d) { return request.resource.data.get(k, d); }
+    function oldVal(k, d) { return resource.data.get(k, d); }
+
+    // ---------- identity / access ----------
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow read: if isOffice();
+      allow write: if isPrincipal();          // role assignment = Principal / Master Admin only
+    }
+    match /staffAccess/{id} {
+      allow get: if signedIn() && id == email();
+      allow read: if isOffice();
+      allow write: if isPrincipal();
+    }
+    match /guardians/{id} {
+      allow read: if isOffice() || (isGuardianEmail() && (id == guardianDocId() || resource.data.authEmail == email()));
+      allow create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+
+    // ---------- students & billing ----------
+    match /students/{studentId} {
+      allow read: if isOffice() || (isGuardian() && studentId in guardianStudentIds());
+      allow create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    match /studentInvoices/{id} {
+      allow read: if isOffice() || (isGuardian() && resource.data.studentId in guardianStudentIds());
+      allow create: if isPrincipal()
+        || (isAccounts() && newVal('paymentApprovalStatus', '') != 'approved' && newVal('status', '') != 'paid');
+      // Accounts may edit / request payment; only Principal may approve a payment or mark paid.
+      allow update: if isPrincipal()
+        || (isAccounts()
+            && (newVal('paymentApprovalStatus', '') == oldVal('paymentApprovalStatus', '') || newVal('paymentApprovalStatus', '') in ['pending'])
+            && (newVal('status', '') == oldVal('status', '') || newVal('status', '') != 'paid')
+            && !('paidAmount' in changed()));
+      allow delete: if isPrincipal();
+    }
+    match /paymentIntents/{id} {
+      allow read, write: if isOffice();
+    }
+    match /feeStructures/{id} {
+      allow read: if isOffice();
+      allow write: if isOffice();
+    }
+    match /invoiceItemCategories/{id} {
+      allow read, write: if isOffice();
+    }
+
+    // ---------- admissions (Principal approves) ----------
+    match /admissions/{id} {
+      allow read: if isOffice();
+      allow create: if isPrincipal() || (isAccounts() && newVal('status', '') == 'pending_approval');
+      allow update: if isPrincipal()
+        || (isAccounts()
+            && !changed().hasAny(['approvals', 'paymentRecorded', 'studentId', 'idCardIssued'])
+            && oldVal('status', '') in ['pending_approval', 'approved']
+            && newVal('status', '') in [oldVal('status', ''), 'cancelled']);
+      allow delete: if isPrincipal();
+    }
+
+    // ---------- money: income / expense / ledger ----------
+    match /incomeEntries/{id} {
+      allow read: if isOffice();
+      allow create: if isPrincipal() || (isAccounts() && newVal('approvalStatus', '') == 'pending');
+      allow update: if isPrincipal();
+      allow delete: if false;
+    }
+    match /expenses/{id} {
+      allow read: if isOffice();
+      allow create: if isPrincipal()
+        || (isAccounts() && (newVal('approvalStatus', '') == 'pending'
+             || (newVal('approvalStatus', '') == 'approved' && newVal('category', '') == 'Bank / MFS Charge')));
+      allow update: if isPrincipal();
+      allow delete: if false;
+    }
+    match /ledgerAccounts/{id} {
+      allow read: if isOffice();
+      allow create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    // Append-only. The only edit is the Principal marking an entry reversed.
+    match /ledgerEntries/{id} {
+      allow read: if isOffice();
+      allow create: if isOffice();
+      allow update: if isPrincipal() && changed().hasOnly(['reversed']);
+      allow delete: if false;
+    }
+    match /reverseRequests/{id} {
+      allow read: if isOffice();
+      allow create: if isPrincipal() || (isAccounts() && newVal('status', '') == 'pending');
+      allow update: if isPrincipal();
+      allow delete: if false;
+    }
+    match /categoryRequests/{id} {
+      allow read: if isOffice();
+      allow create: if isPrincipal() || (isAccounts() && newVal('status', '') == 'pending');
+      allow update: if isPrincipal();
+      allow delete: if false;
+    }
+    match /dayCloseRecords/{id} {
+      allow read: if isOffice();
+      allow create, update: if isOffice();
+      allow delete: if false;
+    }
+
+    // ---------- assets & inventory ----------
+    match /assetCategories/{id} { allow read, write: if isOffice(); }
+    match /schoolAssets/{id} {
+      allow read, create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    match /assetLocationLogs/{id} { allow read, create: if isOffice(); }   // append-only audit
+    match /assetValueLogs/{id} { allow read, create: if isOffice(); }      // append-only audit
+    match /inventoryItems/{id} {
+      allow read, create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    match /inventoryLots/{id} {
+      allow read, create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    match /inventoryMovements/{id} { allow read, create: if isOffice(); }  // append-only audit
+
+    // ---------- staff / HR ----------
+    match /schoolStaff/{id} {
+      allow read: if isStaff();
+      // Accounts submits hires; only Principal activates/rejects a pending hire.
+      allow create: if isPrincipal() || (isAccounts() && newVal('status', '') == 'pending_approval');
+      allow update: if isPrincipal()
+        || (isAccounts() && !(oldVal('status', '') == 'pending_approval' && newVal('status', '') != 'pending_approval'));
+      allow delete: if isPrincipal();
+    }
+    match /coordinatorEvaluations/{id} {
+      allow read, create, update: if isStaff();
+      allow delete: if isPrincipal();
+    }
+
+    // ---------- settings ----------
+    match /schoolSettings/{id} {
+      allow read: if signedIn();
+      allow write: if isPrincipal();
+    }
+
+    // Everything else is denied by default.
   }
 }
