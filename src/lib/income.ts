@@ -4,7 +4,7 @@ import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { recordCollection } from './ledger';
 import { omitUndefined, toIsoString } from './utils';
-import type { IncomeEntry } from '../types';
+import type { Admission, IncomeEntry } from '../types';
 
 const INCOME_COLLECTION = 'incomeEntries';
 const LOCAL_INCOME_KEY = 'an-noor-income-entries';
@@ -185,4 +185,40 @@ export function computeIncomeStats(entries: IncomeEntry[]) {
       .filter((entry) => entry.date.startsWith(month))
       .reduce((sum, entry) => sum + entry.amount, 0),
   };
+}
+
+/**
+ * Admission fees live in the `admissions` collection and are credited to the
+ * ledger by the Principal's admission approval (actOnApproval). This maps them
+ * into read-only Income rows so the Income tab shows them too, without writing
+ * a second income/ledger record (no double counting).
+ */
+export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
+  return admissions
+    .filter((a) => a.grandTotal > 0 && a.status !== 'cancelled')
+    .map((a) => {
+      const date = (a.createdAt || new Date().toISOString()).slice(0, 10);
+      const principal = a.approvals?.find((s) => s.department === 'principal');
+      return {
+        id: `admission:${a.id}`,
+        receiptNumber: a.receiptNumber || a.formSerial,
+        date,
+        category: 'Admission Fee',
+        source: `${a.studentName} — ${a.guardianName}`,
+        description: `New admission ${a.classApplied}${a.section ? ` (${a.section})` : ''} · ${a.formSerial}`,
+        amount: a.grandTotal,
+        accountId: a.receivedInAccountId || '',
+        paymentMethod: 'cash',
+        createdBy: 'Admissions',
+        createdAt: a.createdAt,
+        approvalStatus: a.status === 'approved' ? 'approved' : a.status === 'rejected' ? 'rejected' : 'pending',
+        reviewedBy: principal?.actionedBy,
+        reviewedAt: principal?.actionedAt,
+        reviewNote: principal?.note,
+      } satisfies IncomeEntry;
+    });
+}
+
+export function isAdmissionIncomeRow(entry: IncomeEntry): boolean {
+  return entry.id.startsWith('admission:');
 }
