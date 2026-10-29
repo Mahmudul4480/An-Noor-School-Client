@@ -144,9 +144,21 @@ service cloud.firestore {
       allow update: if isPrincipal();
       allow delete: if false;
     }
+    // Accounts can only submit/resubmit a close request; only the Principal
+    // (or super_admin) can approve (lock) or reject it.
+    function dayCloseRequestOnly() {
+      return request.resource.data.status == 'pending_approval'
+        && !('approvedBy' in request.resource.data)
+        && !('approvedAt' in request.resource.data)
+        && !('closedBy' in request.resource.data)
+        && !('closedAt' in request.resource.data);
+    }
     match /dayCloseRecords/{id} {
       allow read: if isOffice();
-      allow create, update: if isOffice();
+      allow create: if isPrincipal() || (isAccounts() && dayCloseRequestOnly());
+      allow update: if isPrincipal()
+        || (isAccounts() && dayCloseRequestOnly()
+            && resource.data.get('status', 'approved') == 'rejected');
       allow delete: if false;
     }
 

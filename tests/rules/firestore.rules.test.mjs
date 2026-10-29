@@ -181,3 +181,34 @@ describe('settings & defaults', () => {
   });
   it('unknown collection denied even for admin', () => assertFails(setDoc(doc(ctx.admin, 'randomStuff/x'), { a: 1 })));
 });
+
+describe('day close needs principal approval', () => {
+  const req = { date: '2026-10-29', status: 'pending_approval', requestedBy: 'acc', requestedAt: 'x', totalIncome: 1 };
+  it('accounts submits a pending close request', () =>
+    assertSucceeds(setDoc(doc(ctx.accounts, 'dayCloseRecords/day-2026-10-29'), req)));
+  it('accounts cannot create an approved close', () =>
+    assertFails(setDoc(doc(ctx.accounts, 'dayCloseRecords/day-2026-10-30'), { ...req, status: 'approved' })));
+  it('accounts cannot sneak approvedBy into a request', () =>
+    assertFails(setDoc(doc(ctx.accounts, 'dayCloseRecords/day-2026-10-31'), { ...req, approvedBy: 'acc' })));
+  it('accounts cannot self-approve a pending request', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'dayCloseRecords/d1'), req));
+    await assertFails(updateDoc(doc(ctx.accounts, 'dayCloseRecords/d1'), { status: 'approved', approvedBy: 'acc', approvedAt: 'y' }));
+  });
+  it('accounts resubmits a rejected request', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'dayCloseRecords/d2'), { ...req, status: 'rejected', rejectReason: 'fix' }));
+    await assertSucceeds(updateDoc(doc(ctx.accounts, 'dayCloseRecords/d2'), { status: 'pending_approval', requestedAt: 'z' }));
+  });
+  it('accounts cannot change an approved (legacy) close', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'dayCloseRecords/d3'), { date: '2026-10-01', closedBy: 'x' }));
+    await assertFails(updateDoc(doc(ctx.accounts, 'dayCloseRecords/d3'), { status: 'pending_approval' }));
+  });
+  it('principal approves', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'dayCloseRecords/d4'), req));
+    await assertSucceeds(updateDoc(doc(ctx.principal, 'dayCloseRecords/d4'), { status: 'approved', approvedBy: 'p', approvedAt: 'y', closedBy: 'p', closedAt: 'y' }));
+  });
+  it('master admin rejects', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'dayCloseRecords/d5'), req));
+    await assertSucceeds(updateDoc(doc(ctx.admin, 'dayCloseRecords/d5'), { status: 'rejected', rejectReason: 'r' }));
+  });
+  it('teacher cannot read day close', () => assertFails(getDocs(collection(ctx.teacher, 'dayCloseRecords'))));
+});
