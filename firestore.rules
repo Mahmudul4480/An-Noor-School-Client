@@ -99,7 +99,7 @@ service cloud.firestore {
       allow create: if isPrincipal() || (isAccounts() && newVal('status', '') == 'pending_approval');
       allow update: if isPrincipal()
         || (isAccounts()
-            && !changed().hasAny(['approvals', 'paymentRecorded', 'studentId', 'idCardIssued'])
+            && !changed().hasAny(['approvals', 'paymentRecorded', 'studentId', 'idCardIssued', 'paidAmount', 'dueAmount', 'dueInvoiceId', 'tuitionReduction', 'grandTotal', 'feeItems'])
             && oldVal('status', '') in ['pending_approval', 'approved']
             && newVal('status', '') in [oldVal('status', ''), 'cancelled']);
       allow delete: if isPrincipal();

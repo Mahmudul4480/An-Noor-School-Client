@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fetchAdmissions } from './admissions';
+import { admissionPaidAmount, fetchAdmissions } from './admissions';
 import { bookValue, fetchAssets, isAssetActive } from './assets';
 import { fetchExpenses } from './expenses';
 import { fetchInvoices } from './invoices';
@@ -61,7 +61,7 @@ export async function getFinancialOverview(): Promise<FinancialOverview> {
 
     const admissionRevenue = admissions
       .filter((admission) => admission.status === 'approved' && inRange(admission.updatedAt, from, to))
-      .reduce((sum, admission) => sum + admission.grandTotal, 0);
+      .reduce((sum, admission) => sum + admissionPaidAmount(admission), 0);
 
     const feeRevenue = invoices
       .filter(
@@ -137,7 +137,7 @@ export async function getFinancialSummary(
       (expense.approvalStatus === 'approved' || expense.approvalStatus === undefined),
   );
 
-  const admissionCollections = admissionsInRange.reduce((sum, admission) => sum + admission.grandTotal, 0);
+  const admissionCollections = admissionsInRange.reduce((sum, admission) => sum + admissionPaidAmount(admission), 0);
   const feeCollections = invoicesInRange.reduce((sum, invoice) => sum + invoice.paidAmount, 0);
   const totalCollections = admissionCollections + feeCollections;
   const totalDiscountsGiven = admissionsInRange.reduce((sum, admission) => sum + admission.totalDiscount, 0);

@@ -276,6 +276,19 @@ function AdmissionRow({
                   )}
                   <span className="text-emerald-600">Grand Total: ৳ {(admission.grandTotal ?? 0).toLocaleString()}</span>
                 </div>
+                <div className="flex justify-end gap-6 mt-2 text-xs font-black">
+                  <span className="text-school-blue">জমা (Paid): ৳ {(admission.paidAmount ?? admission.grandTotal ?? 0).toLocaleString()}</span>
+                  <span className={(admission.grandTotal ?? 0) - (admission.paidAmount ?? admission.grandTotal ?? 0) > 0 ? 'text-red-500' : 'text-school-muted'}>
+                    বাকি (Due): ৳ {Math.max(0, (admission.grandTotal ?? 0) - (admission.paidAmount ?? admission.grandTotal ?? 0)).toLocaleString()}
+                  </span>
+                </div>
+                {admission.tuitionReduction && (
+                  <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-bold text-amber-800 space-y-0.5">
+                    <p>বিশেষ মাসিক টিউশন: ৳ {admission.tuitionReduction.reducedAmount.toLocaleString()} (নিয়মিত ৳ {admission.tuitionReduction.standardAmount.toLocaleString()})</p>
+                    <p>কারণ: {admission.tuitionReduction.reason}</p>
+                    <p>কে কমালেন: {admission.tuitionReduction.reducedBy}</p>
+                  </div>
+                )}
               </div>
 
               {/* Birth Registration */}

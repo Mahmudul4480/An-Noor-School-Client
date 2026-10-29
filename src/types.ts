@@ -20,6 +20,16 @@ export interface Student {
   dob?: string;
   gender?: string;
   fatherName?: string;
+  /** Special monthly tuition set at admission (used for monthly tuition invoices) */
+  tuitionReduction?: TuitionReduction;
+}
+
+export interface TuitionReduction {
+  standardAmount: number;
+  reducedAmount: number;
+  reason: string;
+  reducedBy: string;
+  reducedAt: string;
 }
 
 export interface ParsedStudentRow {
@@ -110,6 +120,12 @@ export interface Admission {
   grossTotal: number;
   totalDiscount: number;
   grandTotal: number;
+  /** Amount actually paid at admission. Missing on older records = grandTotal. */
+  paidAmount?: number;
+  /** grandTotal - paidAmount; billed as a student invoice on approval */
+  dueAmount?: number;
+  dueInvoiceId?: string;
+  tuitionReduction?: TuitionReduction;
   receivedInAccountId?: string;
   scannedFormUrl?: string;
   scannedFormName?: string;

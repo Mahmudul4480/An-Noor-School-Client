@@ -1,3 +1,4 @@
+import { admissionPaidAmount } from './admissions';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
@@ -195,7 +196,7 @@ export function computeIncomeStats(entries: IncomeEntry[]) {
  */
 export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
   return admissions
-    .filter((a) => a.grandTotal > 0 && a.status !== 'cancelled')
+    .filter((a) => admissionPaidAmount(a) > 0 && a.status !== 'cancelled')
     .map((a) => {
       const date = (a.createdAt || new Date().toISOString()).slice(0, 10);
       const principal = a.approvals?.find((s) => s.department === 'principal');
@@ -206,7 +207,7 @@ export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
         category: 'Admission Fee',
         source: `${a.studentName} — ${a.guardianName}`,
         description: `New admission ${a.classApplied}${a.section ? ` (${a.section})` : ''} · ${a.formSerial}`,
-        amount: a.grandTotal,
+        amount: admissionPaidAmount(a),
         accountId: a.receivedInAccountId || '',
         paymentMethod: 'cash',
         createdBy: 'Admissions',

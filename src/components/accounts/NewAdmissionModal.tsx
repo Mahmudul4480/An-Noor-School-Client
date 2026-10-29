@@ -18,6 +18,7 @@ import { toFriendlyError, userErrorMessage } from '../../lib/errorMessages';
 import { showToast } from '../../lib/toast';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
 import { fetchAccounts } from '../../lib/ledger';
+import { getCurrentActorLabel } from '../../lib/actor';
 import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
 import type { Admission, AdmissionDiscount, FeeStructureItem, LedgerAccount } from '../../types';
 
@@ -39,6 +40,12 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const [feeItems, setFeeItems] = React.useState<FeeStructureItem[]>(DEFAULT_FEE_ITEMS);
   const [concessionAmount, setConcessionAmount] = React.useState('');
   const [concessionReason, setConcessionReason] = React.useState('');
+  const [paidAmountInput, setPaidAmountInput] = React.useState('');
+  const [paidTouched, setPaidTouched] = React.useState(false);
+  const [reduceOpen, setReduceOpen] = React.useState(false);
+  const [reducedTuition, setReducedTuition] = React.useState('');
+  const [reduceReason, setReduceReason] = React.useState('');
+  const [reduceBy, setReduceBy] = React.useState(() => getCurrentActorLabel(''));
   const [form, setForm] = React.useState({
     studentName: '',
     fatherName: '',
@@ -114,8 +121,27 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     ? [{ itemKey: 'overall', amount: concessionAmountNum, reason: concessionReason }]
     : [];
 
-  const totals = computeTotals(feeItems, activeDiscounts);
-  const maxConcession = maxDiscountableAmount(feeItems);
+  const standardTuition = feeItems.find((item) => item.key === 'tuitionFee')?.amount ?? 0;
+  const reducedTuitionNum = parseFloat(reducedTuition);
+  const tuitionReduced = reduceOpen && reducedTuition.trim() !== '' && Number.isFinite(reducedTuitionNum)
+    && reducedTuitionNum >= 0 && reducedTuitionNum < standardTuition;
+  const effectiveFeeItems: FeeStructureItem[] = tuitionReduced
+    ? feeItems.map((item) => (item.key === 'tuitionFee' ? { ...item, amount: reducedTuitionNum } : item))
+    : feeItems;
+
+  const totals = computeTotals(effectiveFeeItems, activeDiscounts);
+  const maxConcession = maxDiscountableAmount(effectiveFeeItems);
+  const paidNum = paidTouched ? (parseFloat(paidAmountInput) || 0) : totals.grandTotal;
+  const dueNum = Math.max(0, totals.grandTotal - paidNum);
+
+  const focusField = (key: string, message: string) => {
+    setFieldErrors((prev) => ({ ...prev, [key]: message }));
+    const el = document.getElementById(`field-${key}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => (el as HTMLElement | null)?.focus(), 300);
+    setError(message);
+    showToast('error', message, 'Please fix the field marked in red.');
+  };
 
   const handlePhotoSelect = async (selected: File | null) => {
     if (!selected) {
@@ -166,16 +192,44 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       return;
     }
 
+    if (reduceOpen) {
+      if (reducedTuition.trim() === '' || !Number.isFinite(reducedTuitionNum) || reducedTuitionNum < 0) {
+        focusField('reducedTuition', 'কমানো টিউশন ফি কত টাকা হবে লিখুন');
+        return;
+      }
+      if (reducedTuitionNum >= standardTuition) {
+        focusField('reducedTuition', `কমানো টিউশন ফি নিয়মিত ফি (৳ ${standardTuition.toLocaleString()}) থেকে কম হতে হবে`);
+        return;
+      }
+      if (!reduceReason.trim()) {
+        focusField('reduceReason', 'টিউশন ফি কেন কমানো হলো, কারণ লিখুন');
+        return;
+      }
+      if (!reduceBy.trim()) {
+        focusField('reduceBy', 'কে টিউশন ফি কমালেন, তাঁর নাম/পদবি লিখুন');
+        return;
+      }
+    }
+
     if (concessionAmountNum > 0) {
-      const validationError = validateDiscount('overall', concessionAmountNum, feeItems);
+      const validationError = validateDiscount('overall', concessionAmountNum, effectiveFeeItems);
       if (validationError) {
-        setError(validationError);
+        focusField('concessionAmount', `ছাড়ের পরিমাণ বেশি হয়ে গেছে। সর্বোচ্চ ৳ ${maxConcession.toLocaleString()} ছাড় দেওয়া যাবে (টিউশন ফি বাদে)।`);
         return;
       }
       if (!concessionReason.trim()) {
-        setError('Concession/Discount দিলে reason/note লেখা আবশ্যক।');
+        focusField('concessionReason', 'ছাড় (Concession) দিলে তার কারণ লিখুন');
         return;
       }
+    }
+
+    if (paidTouched && (paidAmountInput.trim() === '' || !Number.isFinite(parseFloat(paidAmountInput)) || parseFloat(paidAmountInput) < 0)) {
+      focusField('paidAmount', 'আজ কত টাকা জমা দিলেন লিখুন (কিছু না দিলে 0 লিখুন)');
+      return;
+    }
+    if (paidNum > totals.grandTotal) {
+      focusField('paidAmount', `জমার টাকা মোট টাকার (৳ ${totals.grandTotal.toLocaleString()}) চেয়ে বেশি হতে পারে না`);
+      return;
     }
 
     setSubmitting(true);
@@ -222,8 +276,18 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       const admission = await createAdmission({
         ...form,
         birthRegNo: form.birthRegNo || undefined,
-        feeItems,
+        feeItems: effectiveFeeItems,
         discounts: activeDiscounts,
+        paidAmount: paidNum,
+        tuitionReduction: tuitionReduced
+          ? {
+              standardAmount: standardTuition,
+              reducedAmount: reducedTuitionNum,
+              reason: reduceReason.trim(),
+              reducedBy: reduceBy.trim(),
+              reducedAt: new Date().toISOString(),
+            }
+          : undefined,
         scannedFormUrl,
         scannedFormName,
         birthRegDocUrl,
@@ -424,7 +488,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               </select>
               {fieldErrors.receivedInAccountId && <p className="text-[11px] font-bold text-red-600">{fieldErrors.receivedInAccountId}</p>}
               <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
-                Admission fee ৳ {totals.grandTotal.toLocaleString()} এই account-এ record হবে
+                আজ জমা ৳ {paidNum.toLocaleString()} এই account-এ record হবে
               </p>
             </section>
 
@@ -480,14 +544,52 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                             {!item.discountable && (
                               <span className="ml-2 text-[8px] font-black text-red-400 uppercase">Fixed</span>
                             )}
+                            {item.key === 'tuitionFee' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReduceOpen((open) => !open);
+                                  if (!reduceBy) setReduceBy(getCurrentActorLabel(''));
+                                }}
+                                className="ml-3 px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-[10px] font-black normal-case hover:bg-amber-200"
+                              >
+                                {reduceOpen ? 'কমানো বাতিল' : 'কমান'}
+                              </button>
+                            )}
                           </td>
                           <td className="p-3 text-right font-bold text-school-blue">
-                            ৳ {item.amount.toLocaleString()}
+                            {item.key === 'tuitionFee' && tuitionReduced ? (
+                              <>
+                                <span className="line-through text-school-muted mr-2">৳ {item.amount.toLocaleString()}</span>
+                                <span className="text-amber-700">৳ {reducedTuitionNum.toLocaleString()}</span>
+                              </>
+                            ) : (
+                              <>৳ {item.amount.toLocaleString()}</>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {reduceOpen && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+                  <p className="text-xs font-black text-amber-800">
+                    বিশেষ ক্ষেত্রে মাসিক টিউশন ফি কমানো (নিয়মিত ৳ {standardTuition.toLocaleString()}) — পরের মাসগুলোর টিউশন বিলও এই টাকায় হবে
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <FormInput name="reducedTuition" label="নতুন মাসিক টিউশন ফি (৳) *" type="number" value={reducedTuition}
+                      onChange={(v) => { setReducedTuition(v); setFieldErrors((p) => { const n = { ...p }; delete n.reducedTuition; return n; }); }}
+                      placeholder="যেমন 4000" error={fieldErrors.reducedTuition} />
+                    <FormInput name="reduceReason" label="কমানোর কারণ *" value={reduceReason}
+                      onChange={(v) => { setReduceReason(v); setFieldErrors((p) => { const n = { ...p }; delete n.reduceReason; return n; }); }}
+                      placeholder="যেমন: ভাই-বোন একসাথে পড়ে" error={fieldErrors.reduceReason} />
+                    <FormInput name="reduceBy" label="কে কমালেন (নাম/পদবি) *" value={reduceBy}
+                      onChange={(v) => { setReduceBy(v); setFieldErrors((p) => { const n = { ...p }; delete n.reduceBy; return n; }); }}
+                      placeholder="যেমন: Principal" error={fieldErrors.reduceBy} />
+                  </div>
                 </div>
               )}
 
@@ -512,10 +614,12 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                       type="number"
                       min={0}
                       max={maxConcession}
+                      id="field-concessionAmount"
                       value={concessionAmount}
-                      onChange={(e) => setConcessionAmount(e.target.value)}
+                      onChange={(e) => { setConcessionAmount(e.target.value); setFieldErrors((p) => { const n = { ...p }; delete n.concessionAmount; return n; }); }}
                       placeholder="0"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+                      className={cn('w-full px-4 py-2.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20', fieldErrors.concessionAmount ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'bg-slate-50 border-slate-100')}
+
                     />
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
@@ -523,10 +627,12 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                     <input
                       type="text"
                       list="discount-reason-presets"
+                      id="field-concessionReason"
                       value={concessionReason}
-                      onChange={(e) => setConcessionReason(e.target.value)}
+                      onChange={(e) => { setConcessionReason(e.target.value); setFieldErrors((p) => { const n = { ...p }; delete n.concessionReason; return n; }); }}
                       placeholder="e.g. Sibling Discount, Merit Scholarship..."
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
+                      className={cn('w-full px-4 py-2.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20', fieldErrors.concessionReason ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'bg-slate-50 border-slate-100')}
+
                     />
                     <datalist id="discount-reason-presets">
                       {DISCOUNT_REASON_PRESETS.map((preset) => (
@@ -543,6 +649,31 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   <TotalCard label="Concession" value={concessionAmountNum} accent="text-red-500" />
                 )}
                 <TotalCard label="Grand Total" value={totals.grandTotal} accent="text-emerald-600" emphasize />
+              </div>
+
+              {/* Partial payment */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <FormInput
+                  name="paidAmount"
+                  label="Paid Amount (আজ জমা) ৳ *"
+                  type="number"
+                  value={paidTouched ? paidAmountInput : String(totals.grandTotal)}
+                  onChange={(v) => {
+                    setPaidTouched(true);
+                    setPaidAmountInput(v);
+                    setFieldErrors((p) => { const n = { ...p }; delete n.paidAmount; return n; });
+                  }}
+                  error={fieldErrors.paidAmount}
+                />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">Due (বাকি) ৳</label>
+                  <div className={cn('w-full px-4 py-2.5 rounded-xl text-sm font-black border', dueNum > 0 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100 text-school-muted')}>
+                    ৳ {dueNum.toLocaleString()}
+                  </div>
+                  {dueNum > 0 && (
+                    <p className="text-[10px] font-bold text-school-muted">অনুমোদনের পর বাকি টাকা শিক্ষার্থীর বকেয়া বিল (Invoice) হিসেবে দেখাবে</p>
+                  )}
+                </div>
               </div>
             </section>
 

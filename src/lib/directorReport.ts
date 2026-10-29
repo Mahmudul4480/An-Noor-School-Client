@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { fetchAdmissions } from './admissions';
+import { admissionPaidAmount, fetchAdmissions } from './admissions';
 import { fetchExpenses } from './expenses';
 import { fetchIncomeEntries } from './income';
 import { fetchInvoices } from './invoices';
@@ -417,7 +417,7 @@ export async function getDirectorBriefing(
   let admissionCash = 0;
   let admissionBank = 0;
   for (const admission of approvedAdmissions) {
-    const split = splitByAccount(admission.grandTotal, admission.receivedInAccountId, accountMap, true);
+    const split = splitByAccount(admissionPaidAmount(admission), admission.receivedInAccountId, accountMap, true);
     admissionCash += split.cash;
     admissionBank += split.bank;
   }

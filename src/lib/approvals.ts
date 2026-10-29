@@ -92,7 +92,7 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       id: `adm-${admission.id}`,
       kind: 'admission',
       title: `Admission — ${admission.studentName}`,
-      subtitle: `${admission.formSerial} • ${admission.classApplied} • ৳ ${admission.grandTotal.toLocaleString('en-BD')}`,
+      subtitle: `${admission.formSerial} • ${admission.classApplied} • ৳ ${admission.grandTotal.toLocaleString('en-BD')}${admission.paidAmount !== undefined && admission.paidAmount < admission.grandTotal ? ` (জমা ৳ ${admission.paidAmount.toLocaleString('en-BD')}, বাকি ৳ ${(admission.grandTotal - admission.paidAmount).toLocaleString('en-BD')})` : ''}${admission.tuitionReduction ? ` • বিশেষ টিউশন ৳ ${admission.tuitionReduction.reducedAmount.toLocaleString('en-BD')}` : ''}`,
       requestedBy: admission.createdBy ?? 'Accounts Department',
       requestedAt: toIsoString(admission.createdAt),
       priority: 'high',
