@@ -3,7 +3,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Lock, Loader2, Wallet, ArrowDownRight, ArrowUpRight, AlertTriangle } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
-import { closeDay, fetchDayCloseRecords, getDailySummary, isDayClosed } from '../../lib/dayClose';
+import { dayCloseStatus, getDailySummary, getDayCloseRecord, submitDayClose } from '../../lib/dayClose';
+import type { DayCloseRecord } from '../../types';
 import { showToast } from '../../lib/toast';
 import { cn, formatDateTime, formatSignedBdt } from '../../lib/utils';
 
@@ -14,7 +15,7 @@ export function DayClosePanel() {
   const [closing, setClosing] = React.useState(false);
   const [closed, setClosed] = React.useState(false);
   const [note, setNote] = React.useState('');
-  const [closedInfo, setClosedInfo] = React.useState<{ closedAt: string; closedBy: string } | null>(null);
+  const [record, setRecord] = React.useState<DayCloseRecord | null>(null);
   const [error, setError] = React.useState('');
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [resultPopup, setResultPopup] = React.useState<{ kind: 'success' | 'error' | 'info'; title: string; detail?: string } | null>(null);
@@ -24,11 +25,10 @@ export function DayClosePanel() {
     setLoading(true);
     setError('');
     try {
-      const [data, dayClosed, records] = await Promise.all([getDailySummary(date), isDayClosed(date), fetchDayCloseRecords().catch(() => [])]);
-      const record = records.find((item) => item.date === date);
-      setClosedInfo(record ? { closedAt: record.closedAt, closedBy: record.closedBy } : null);
+      const [data, current] = await Promise.all([getDailySummary(date), getDayCloseRecord(date).catch(() => null)]);
+      setRecord(current);
       setSummary(data);
-      setClosed(dayClosed);
+      setClosed(dayCloseStatus(current) === 'approved');
     } catch (err) {
       setError(userErrorMessage(err, 'Failed to load daily summary.'));
     } finally {
@@ -44,10 +44,15 @@ export function DayClosePanel() {
 
   const openConfirm = async () => {
     setError('');
-    if (closed || (await isDayClosed(date).catch(() => false))) {
+    const current = await getDayCloseRecord(date).catch(() => record);
+    const status = dayCloseStatus(current);
+    if (status === 'approved') {
       setClosed(true);
-      const detail = closedInfo ? `${formatDateTime(closedInfo.closedAt)} • ${closedInfo.closedBy}` : undefined;
-      setResultPopup({ kind: 'info', title: `${dateLabel} তারিখের দিন আগেই ক্লোজ করা হয়েছে।`, detail });
+      setResultPopup({ kind: 'info', title: `${dateLabel} তারিখের দিন আগেই ক্লোজ (লক) করা হয়েছে।`, detail: current?.approvedBy || current?.closedBy ? `অনুমোদন: ${formatDateTime(current?.approvedAt ?? current?.closedAt)} • ${current?.approvedBy ?? current?.closedBy}` : undefined });
+      return;
+    }
+    if (status === 'pending_approval') {
+      setResultPopup({ kind: 'info', title: 'এই দিনের ক্লোজ অনুরোধ আগেই Principal-এর অনুমোদনের অপেক্ষায় আছে।', detail: `জমা: ${formatDateTime(current?.requestedAt)} • ${current?.requestedBy ?? ''}` });
       return;
     }
     setConfirmOpen(true);
@@ -58,16 +63,17 @@ export function DayClosePanel() {
     setClosing(true);
     setError('');
     try {
-      const record = await closeDay({ date, closedBy: getCurrentActorLabel('Accounts Department'), note: note || undefined });
-      setClosed(true);
-      const title = date === today ? 'আজকের দিন সফলভাবে ক্লোজ হয়েছে' : `${dateLabel} তারিখের দিন সফলভাবে ক্লোজ হয়েছে`;
-      const detail = `${formatDateTime(record.closedAt)} • ${record.closedBy}`;
+      const saved = await submitDayClose({ date, requestedBy: getCurrentActorLabel('Accounts Department'), note: note || undefined });
+      const title = `${date === today ? 'আজকের' : dateLabel + ' তারিখের'} দিন ক্লোজের অনুরোধ Principal-এর অনুমোদনের জন্য পাঠানো হয়েছে`;
+      const detail = `${formatDateTime(saved.requestedAt)} • ${saved.requestedBy}। অনুমোদনের পর দিনটি লক হবে।`;
       setResultPopup({ kind: 'success', title, detail });
       showToast('success', title, detail);
       await load();
     } catch (err) {
       const raw = err instanceof Error ? err.message : '';
-      if (raw.includes('already closed')) {
+      if (raw.includes('pending approval')) {
+        setResultPopup({ kind: 'info', title: 'এই দিনের ক্লোজ অনুরোধ আগেই অনুমোদনের অপেক্ষায় আছে।' });
+      } else if (raw.includes('already closed')) {
         setClosed(true);
         setResultPopup({ kind: 'info', title: `${dateLabel} তারিখের দিন আগেই ক্লোজ করা হয়েছে।` });
       } else {
@@ -178,19 +184,35 @@ export function DayClosePanel() {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Cash deposited to City Bank"
                 className="w-full mt-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none"
-                disabled={closed}
+                disabled={closed || dayCloseStatus(record) === 'pending_approval'}
               />
               <button
                 type="button"
-                disabled={closed || closing}
+                disabled={closed || closing || dayCloseStatus(record) === 'pending_approval'}
                 onClick={openConfirm}
                 className="mt-4 px-6 py-3 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
               >
                 {closing ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-                {closed ? 'Day Already Closed' : 'Close Day'}
+                {closed ? 'দিন ক্লোজ (লক) হয়েছে' : dayCloseStatus(record) === 'pending_approval' ? 'অনুমোদনের অপেক্ষায়' : dayCloseStatus(record) === 'rejected' ? 'আবার জমা দিন (Close Day)' : 'Close Day'}
               </button>
-              {closed && closedInfo && (
-                <p className="text-[10px] font-bold text-school-muted mt-2">Closed {formatDateTime(closedInfo.closedAt)} • {closedInfo.closedBy}</p>
+              {record && (
+                <div className="mt-3 space-y-1 text-[10px] font-bold">
+                  {record.requestedAt && (
+                    <p className="text-school-muted">জমা দেওয়া হয়েছে: {formatDateTime(record.requestedAt)} • {record.requestedBy}</p>
+                  )}
+                  {dayCloseStatus(record) === 'pending_approval' && (
+                    <p className="text-amber-600">অনুমোদনের অপেক্ষায় — দিনটি এখনো লক হয়নি</p>
+                  )}
+                  {record.rejectedAt && (
+                    <p className="text-red-600">
+                      ফেরত দেওয়া হয়েছে: {formatDateTime(record.rejectedAt)} • {record.rejectedBy} — কারণ: {record.rejectReason}
+                      {dayCloseStatus(record) === 'rejected' ? ' (ঠিক করে আবার জমা দিন)' : ''}
+                    </p>
+                  )}
+                  {dayCloseStatus(record) === 'approved' && (
+                    <p className="text-emerald-600">অনুমোদিত ও লক: {formatDateTime(record.approvedAt ?? record.closedAt)} • {record.approvedBy ?? record.closedBy}</p>
+                  )}
+                </div>
               )}
             </div>
           </>
@@ -199,8 +221,8 @@ export function DayClosePanel() {
       {confirmOpen && summary && (
         <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h4 className="text-base font-black text-school-blue">দিন ক্লোজ নিশ্চিত করুন</h4>
-            <p className="text-xs text-school-muted mt-1">তারিখ: <b>{dateLabel}</b>। ক্লোজ করার পর এই দিনের হিসাব লক হয়ে যাবে।</p>
+            <h4 className="text-base font-black text-school-blue">দিন ক্লোজের অনুরোধ নিশ্চিত করুন</h4>
+            <p className="text-xs text-school-muted mt-1">তারিখ: <b>{dateLabel}</b>। অনুরোধটি Principal-এর কাছে অনুমোদনের জন্য যাবে; অনুমোদনের পর দিনটি লক হবে।</p>
             <div className="grid grid-cols-3 gap-2 mt-4 text-center">
               <div className="p-3 rounded-xl bg-emerald-50"><p className="text-[10px] text-school-muted">আজকের আয়</p><p className="font-black text-emerald-600">{bdt(summary.totalIncome)}</p></div>
               <div className="p-3 rounded-xl bg-red-50"><p className="text-[10px] text-school-muted">আজকের খরচ</p><p className="font-black text-red-500">{bdt(summary.totalExpense)}</p></div>
@@ -219,7 +241,7 @@ export function DayClosePanel() {
             </table>
             <div className="flex justify-end gap-2 mt-6">
               <button type="button" onClick={() => setConfirmOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-black">বাতিল</button>
-              <button type="button" onClick={handleCloseDay} className="px-5 py-2.5 rounded-xl bg-school-blue text-white text-xs font-black">হ্যাঁ, দিন ক্লোজ করুন</button>
+              <button type="button" onClick={handleCloseDay} className="px-5 py-2.5 rounded-xl bg-school-blue text-white text-xs font-black">হ্যাঁ, অনুমোদনের জন্য পাঠান</button>
             </div>
           </div>
         </div>

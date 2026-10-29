@@ -210,9 +210,19 @@ export interface DayCloseRecord {
     suggestedDeposit: number;
     message: string;
   }[];
-  closedBy: string;
-  closedAt: string;
+  /** Set when the Principal approves (legacy records: set at close time). */
+  closedBy?: string;
+  closedAt?: string;
   note?: string;
+  /** Missing on legacy records = approved/locked. */
+  status?: 'pending_approval' | 'approved' | 'rejected';
+  requestedBy?: string;
+  requestedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
 }
 
 /* ---------------- Expenses ---------------- */

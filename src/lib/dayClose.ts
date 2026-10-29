@@ -1,5 +1,6 @@
 import { omitUndefined } from './utils';
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { toIsoString } from './utils';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
@@ -105,45 +106,101 @@ export async function fetchDayCloseRecords(): Promise<DayCloseRecord[]> {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export async function isDayClosed(date: string): Promise<boolean> {
-  if (isDemoLoginEnabled) {
-    return readLocal<DayCloseRecord[]>(LOCAL_DAY_CLOSE_KEY, []).some((record) => record.date === date);
-  }
-
-  await waitForAuthUser();
-  const snapshot = await getDocs(
-    query(collection(db, DAY_CLOSE_COLLECTION), where('date', '==', date)),
-  );
-  return !snapshot.empty;
+function normalizeRecord(data: DayCloseRecord): DayCloseRecord {
+  return {
+    ...data,
+    requestedAt: data.requestedAt ? toIsoString(data.requestedAt) : undefined,
+    approvedAt: data.approvedAt ? toIsoString(data.approvedAt) : undefined,
+    rejectedAt: data.rejectedAt ? toIsoString(data.rejectedAt) : undefined,
+    closedAt: data.closedAt ? toIsoString(data.closedAt) : undefined,
+  };
 }
 
-export async function closeDay(params: {
-  date: string;
-  closedBy: string;
-  note?: string;
-}): Promise<DayCloseRecord> {
-  const alreadyClosed = await isDayClosed(params.date);
-  if (alreadyClosed) throw new Error('This day is already closed.');
+export function dayCloseStatus(record?: DayCloseRecord | null): 'none' | 'pending_approval' | 'approved' | 'rejected' {
+  if (!record) return 'none';
+  return record.status ?? 'approved';
+}
+
+/** The close record for a date (approved one wins, else the latest request). */
+export async function getDayCloseRecord(date: string): Promise<DayCloseRecord | null> {
+  let records: DayCloseRecord[];
+  if (isDemoLoginEnabled) {
+    records = readLocal<DayCloseRecord[]>(LOCAL_DAY_CLOSE_KEY, []).filter((record) => record.date === date);
+  } else {
+    await waitForAuthUser();
+    const snapshot = await getDocs(query(collection(db, DAY_CLOSE_COLLECTION), where('date', '==', date)));
+    records = snapshot.docs.map((d) => normalizeRecord(d.data() as DayCloseRecord));
+  }
+  if (records.length === 0) return null;
+  return (
+    records.find((record) => dayCloseStatus(record) === 'approved') ??
+    records.sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))[0]
+  );
+}
+
+export async function fetchPendingDayCloses(): Promise<DayCloseRecord[]> {
+  const records = await fetchDayCloseRecords();
+  return records.map(normalizeRecord).filter((record) => record.status === 'pending_approval');
+}
+
+/** A day is locked only after the Principal approves its close. */
+export async function isDayClosed(date: string): Promise<boolean> {
+  return dayCloseStatus(await getDayCloseRecord(date)) === 'approved';
+}
+
+async function writeRecord(record: DayCloseRecord, isNew: boolean) {
+  if (isDemoLoginEnabled) {
+    const existing = readLocal<DayCloseRecord[]>(LOCAL_DAY_CLOSE_KEY, []).filter((r) => r.id !== record.id);
+    writeLocal(LOCAL_DAY_CLOSE_KEY, [...existing, record]);
+    return;
+  }
+  await waitForAuthUser();
+  const ref = doc(db, DAY_CLOSE_COLLECTION, record.id);
+  const data = omitUndefined({ ...record } as Record<string, unknown>);
+  if (isNew) await setDoc(ref, data);
+  else await updateDoc(ref, data);
+}
+
+/** Accounts submits the day close; the Principal must approve before the day is locked. */
+export async function submitDayClose(params: { date: string; requestedBy: string; note?: string }): Promise<DayCloseRecord> {
+  const current = await getDayCloseRecord(params.date);
+  const status = dayCloseStatus(current);
+  if (status === 'approved') throw new Error('This day is already closed.');
+  if (status === 'pending_approval') throw new Error('This day close is already pending approval.');
 
   const summary = await getDailySummary(params.date);
   const record: DayCloseRecord = {
-    id: generateId('day'),
+    id: current?.id ?? `day-${params.date}`,
     ...summary,
-    closedBy: params.closedBy,
-    closedAt: new Date().toISOString(),
     note: params.note,
+    status: 'pending_approval',
+    requestedBy: params.requestedBy,
+    requestedAt: new Date().toISOString(),
+    ...(current?.rejectReason
+      ? { rejectedBy: current.rejectedBy, rejectedAt: current.rejectedAt, rejectReason: current.rejectReason }
+      : {}),
   };
-
-  if (isDemoLoginEnabled) {
-    const existing = readLocal<DayCloseRecord[]>(LOCAL_DAY_CLOSE_KEY, []);
-    writeLocal(LOCAL_DAY_CLOSE_KEY, [...existing, record]);
-    return record;
-  }
-
-  await waitForAuthUser();
-  await setDoc(
-    doc(db, DAY_CLOSE_COLLECTION, record.id),
-    omitUndefined({ ...record, closedAt: serverTimestamp() } as Record<string, unknown>),
-  );
+  await writeRecord(record, !current);
   return record;
+}
+
+export async function reviewDayClose(params: {
+  record: DayCloseRecord;
+  action: 'approved' | 'rejected';
+  reviewedBy: string;
+  note?: string;
+}): Promise<DayCloseRecord> {
+  const now = new Date().toISOString();
+  if (params.action === 'rejected' && !params.note?.trim()) throw new Error('Reject করার জন্য কারণ লিখুন।');
+  const updated: DayCloseRecord =
+    params.action === 'approved'
+      ? { ...params.record, status: 'approved', approvedBy: params.reviewedBy, approvedAt: now, closedBy: params.reviewedBy, closedAt: now }
+      : { ...params.record, status: 'rejected', rejectedBy: params.reviewedBy, rejectedAt: now, rejectReason: params.note?.trim() };
+  await writeRecord(updated, false);
+  return updated;
+}
+
+/** @deprecated use submitDayClose */
+export async function closeDay(params: { date: string; closedBy: string; note?: string }): Promise<DayCloseRecord> {
+  return submitDayClose({ date: params.date, requestedBy: params.closedBy, note: params.note });
 }

@@ -1,3 +1,5 @@
+import { reviewDayClose } from '../../lib/dayClose';
+import { showToast } from '../../lib/toast';
 import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
@@ -138,6 +140,9 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           reviewedBy: actingAs,
           note: notes[item.id],
         });
+      } else if (item.kind === 'dayClose' && item.dayClose) {
+        await reviewDayClose({ record: item.dayClose, action: 'approved', reviewedBy: actingAs, note: notes[item.id] });
+        showToast("success", 'দিন ক্লোজ অনুমোদিত হয়েছে — দিনটি এখন লক', `${item.dayClose.date} • ${actingAs}`);
       } else if (item.kind === 'hire' && item.staffMember) {
         await reviewStaffHire({
           person: item.staffMember,
@@ -217,6 +222,9 @@ export function ApprovalsPanel({ viewerDepartment, actorName }: ApprovalsPanelPr
           reviewedBy: actingAs,
           note,
         });
+      } else if (item.kind === 'dayClose' && item.dayClose) {
+        await reviewDayClose({ record: item.dayClose, action: 'rejected', reviewedBy: actingAs, note: note });
+        showToast("warning", 'দিন ক্লোজ ফেরত পাঠানো হয়েছে', `${item.dayClose.date} • ${actingAs}`);
       } else if (item.kind === 'hire' && item.staffMember) {
         await reviewStaffHire({
           person: item.staffMember,

@@ -1,4 +1,5 @@
 import { fetchAdmissions } from './admissions';
+import { fetchPendingDayCloses } from './dayClose';
 import { fetchCategoryRequests } from './categories';
 import { fetchExpenses } from './expenses';
 import { fetchIncomeEntries } from './income';
@@ -8,6 +9,7 @@ import { fetchPendingDuties, fetchPendingHires } from './staff';
 import { toIsoString } from './utils';
 import type {
   Admission,
+  DayCloseRecord,
   ApprovalDepartment,
   CategoryRequest,
   DutyAssignment,
@@ -18,7 +20,7 @@ import type {
   StudentInvoice,
 } from '../types';
 
-export type ApprovalItemKind = 'admission' | 'category' | 'expense' | 'reversal' | 'invoice' | 'income' | 'hire' | 'duty';
+export type ApprovalItemKind = 'admission' | 'category' | 'expense' | 'reversal' | 'invoice' | 'income' | 'hire' | 'duty' | 'dayClose';
 
 export interface ApprovalQueueItem {
   id: string;
@@ -37,6 +39,7 @@ export interface ApprovalQueueItem {
   invoice?: StudentInvoice;
   staffMember?: StaffMember;
   duty?: DutyAssignment;
+  dayClose?: DayCloseRecord;
   department?: ApprovalDepartment;
 }
 
@@ -64,6 +67,7 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
     fetchIncomeEntries(),
     fetchPendingHires(),
     fetchPendingDuties(),
+    fetchPendingDayCloses(),
   ]);
 
   const admissions = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -75,6 +79,7 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
   const incomeEntries = results[6].status === 'fulfilled' ? results[6].value : [];
   const hires = results[7].status === 'fulfilled' ? results[7].value : [];
   const duties = results[8].status === 'fulfilled' ? results[8].value : [];
+  const dayCloses = results[9].status === 'fulfilled' ? results[9].value : [];
   const accountName = (accountId?: string) =>
     accounts.find((account) => account.id === accountId)?.name ?? accountId ?? '—';
 
@@ -98,6 +103,21 @@ export async function fetchApprovalQueue(department: ApprovalDepartment): Promis
       priority: 'high',
       actionable: department === 'principal',
       admission,
+      department: 'principal',
+    });
+  }
+
+  for (const record of dayCloses) {
+    pending.push({
+      id: `dayclose-${record.id}`,
+      kind: 'dayClose',
+      title: `Day Close — ${record.date}`,
+      subtitle: `আয় ৳ ${record.totalIncome.toLocaleString('en-BD')} • খরচ ৳ ${record.totalExpense.toLocaleString('en-BD')} • নেট ৳ ${record.netCash.toLocaleString('en-BD')} • ${record.accountSnapshots.map((a) => `${a.accountName}: ৳ ${a.balance.toLocaleString('en-BD')}`).join(', ')}${record.note ? ` • Note: ${record.note}` : ''}`,
+      requestedBy: record.requestedBy ?? 'Accounts Department',
+      requestedAt: toIsoString(record.requestedAt),
+      priority: 'high',
+      actionable: department === 'principal',
+      dayClose: record,
       department: 'principal',
     });
   }
