@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Lock, Loader2, Wallet, ArrowDownRight, ArrowUpRight, AlertTriangle } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
 import { closeDay, fetchDayCloseRecords, getDailySummary, isDayClosed } from '../../lib/dayClose';
+import { showToast } from '../../lib/toast';
 import { cn, formatDateTime, formatSignedBdt } from '../../lib/utils';
 
 export function DayClosePanel() {
@@ -15,6 +16,8 @@ export function DayClosePanel() {
   const [note, setNote] = React.useState('');
   const [closedInfo, setClosedInfo] = React.useState<{ closedAt: string; closedBy: string } | null>(null);
   const [error, setError] = React.useState('');
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [resultPopup, setResultPopup] = React.useState<{ kind: 'success' | 'error' | 'info'; title: string; detail?: string } | null>(null);
   const [summary, setSummary] = React.useState<Awaited<ReturnType<typeof getDailySummary>> | null>(null);
 
   const load = React.useCallback(async () => {
@@ -37,19 +40,48 @@ export function DayClosePanel() {
     load();
   }, [load]);
 
+  const dateLabel = formatDateTime(date);
+
+  const openConfirm = async () => {
+    setError('');
+    if (closed || (await isDayClosed(date).catch(() => false))) {
+      setClosed(true);
+      const detail = closedInfo ? `${formatDateTime(closedInfo.closedAt)} • ${closedInfo.closedBy}` : undefined;
+      setResultPopup({ kind: 'info', title: `${dateLabel} তারিখের দিন আগেই ক্লোজ করা হয়েছে।`, detail });
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
   const handleCloseDay = async () => {
+    setConfirmOpen(false);
     setClosing(true);
     setError('');
     try {
-      await closeDay({ date, closedBy: getCurrentActorLabel('Accounts Department'), note: note || undefined });
+      const record = await closeDay({ date, closedBy: getCurrentActorLabel('Accounts Department'), note: note || undefined });
       setClosed(true);
+      const title = date === today ? 'আজকের দিন সফলভাবে ক্লোজ হয়েছে' : `${dateLabel} তারিখের দিন সফলভাবে ক্লোজ হয়েছে`;
+      const detail = `${formatDateTime(record.closedAt)} • ${record.closedBy}`;
+      setResultPopup({ kind: 'success', title, detail });
+      showToast('success', title, detail);
       await load();
     } catch (err) {
-      setError(userErrorMessage(err, 'Day close failed.'));
+      const raw = err instanceof Error ? err.message : '';
+      if (raw.includes('already closed')) {
+        setClosed(true);
+        setResultPopup({ kind: 'info', title: `${dateLabel} তারিখের দিন আগেই ক্লোজ করা হয়েছে।` });
+      } else {
+        const msg = userErrorMessage(err, 'দিন ক্লোজ করা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।');
+        setError(msg);
+        setResultPopup({ kind: 'error', title: 'দিন ক্লোজ করা যায়নি', detail: msg });
+        showToast('error', 'দিন ক্লোজ করা যায়নি', msg);
+      }
     } finally {
       setClosing(false);
     }
   };
+
+  const bdt = (n: number) => `৳ ${n.toLocaleString('en-BD')}`;
 
   return (
     <div className="space-y-6">
@@ -151,7 +183,7 @@ export function DayClosePanel() {
               <button
                 type="button"
                 disabled={closed || closing}
-                onClick={handleCloseDay}
+                onClick={openConfirm}
                 className="mt-4 px-6 py-3 bg-school-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
               >
                 {closing ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
@@ -164,6 +196,45 @@ export function DayClosePanel() {
           </>
         ) : null}
       </div>
+      {confirmOpen && summary && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h4 className="text-base font-black text-school-blue">দিন ক্লোজ নিশ্চিত করুন</h4>
+            <p className="text-xs text-school-muted mt-1">তারিখ: <b>{dateLabel}</b>। ক্লোজ করার পর এই দিনের হিসাব লক হয়ে যাবে।</p>
+            <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+              <div className="p-3 rounded-xl bg-emerald-50"><p className="text-[10px] text-school-muted">আজকের আয়</p><p className="font-black text-emerald-600">{bdt(summary.totalIncome)}</p></div>
+              <div className="p-3 rounded-xl bg-red-50"><p className="text-[10px] text-school-muted">আজকের খরচ</p><p className="font-black text-red-500">{bdt(summary.totalExpense)}</p></div>
+              <div className="p-3 rounded-xl bg-slate-50"><p className="text-[10px] text-school-muted">নেট</p><p className="font-black text-school-blue">{formatSignedBdt(summary.netCash)}</p></div>
+            </div>
+            <p className="text-[11px] font-black text-school-blue mt-4 mb-2">অ্যাকাউন্টভিত্তিক ক্লোজিং ব্যালেন্স</p>
+            <table className="w-full text-[11px]">
+              <tbody className="divide-y divide-slate-100">
+                {summary.accountSnapshots.map((row) => (
+                  <tr key={row.accountId}>
+                    <td className="py-1.5 font-bold">{row.accountName}</td>
+                    <td className="py-1.5 text-right font-black">{formatSignedBdt(row.balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex justify-end gap-2 mt-6">
+              <button type="button" onClick={() => setConfirmOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-black">বাতিল</button>
+              <button type="button" onClick={handleCloseDay} className="px-5 py-2.5 rounded-xl bg-school-blue text-white text-xs font-black">হ্যাঁ, দিন ক্লোজ করুন</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {resultPopup && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-center">
+            <p className={cn('text-base font-black', resultPopup.kind === 'success' ? 'text-emerald-600' : resultPopup.kind === 'error' ? 'text-red-600' : 'text-amber-600')}>
+              {resultPopup.kind === 'success' ? '✓ ' : resultPopup.kind === 'error' ? '✕ ' : 'ℹ '}{resultPopup.title}
+            </p>
+            {resultPopup.detail && <p className="text-xs text-school-muted mt-2">{resultPopup.detail}</p>}
+            <button type="button" onClick={() => setResultPopup(null)} className="mt-5 px-6 py-2.5 rounded-xl bg-school-blue text-white text-xs font-black">ঠিক আছে</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
