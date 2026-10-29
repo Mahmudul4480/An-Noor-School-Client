@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -444,7 +445,7 @@ export function InventoryPanel() {
               <tbody className="divide-y divide-slate-50">
                 {movements.slice(0, 40).map((movement) => (
                   <tr key={movement.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3.5 font-bold text-school-blue">{movement.date}</td>
+                    <td className="py-3.5 font-bold text-school-blue">{formatEntryDateTime(movement.date, movement.createdAt)}</td>
                     <td className="py-3.5 font-black text-school-blue uppercase">{movement.itemName}</td>
                     <td className="py-3.5">
                       <span
@@ -1112,7 +1113,7 @@ function RestockModal({
 }) {
   const [quantity, setQuantity] = React.useState('');
   const [unitCost, setUnitCost] = React.useState(String(item.costRate));
-  const [receivedDate, setReceivedDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [receivedDate, setReceivedDate] = React.useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10));
   const [recordAsExpense, setRecordAsExpense] = React.useState(true);
   const [accountId, setAccountId] = React.useState(
     accounts.find((account) => account.id === 'main-cash')?.id ?? accounts[0]?.id ?? '',

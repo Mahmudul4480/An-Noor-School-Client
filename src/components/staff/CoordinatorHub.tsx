@@ -248,7 +248,7 @@ export function CoordinatorHub({ coordinator }: { coordinator: StaffMember }) {
   }, [className, classes]);
 
   const under = teachersUnderClass(people, className, coordinator.id);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const existingFor = (teacherId: string) =>
     evaluations.find((item) => item.teacherId === teacherId && item.className === className && item.date === today);
 

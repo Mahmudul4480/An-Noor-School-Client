@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion } from 'motion/react';
@@ -26,7 +27,7 @@ export function ExpensePanel() {
   const [categoryError, setCategoryError] = React.useState('');
   const [voucherExpense, setVoucherExpense] = React.useState<Expense | null>(null);
   const [form, setForm] = React.useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
     category: '',
     description: '',
     amount: '',
@@ -332,7 +333,7 @@ export function ExpensePanel() {
               <tbody className="divide-y divide-slate-50">
                 {expenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 font-bold text-school-blue">{expense.date.slice(0, 10)}</td>
+                    <td className="py-4 font-bold text-school-blue">{formatEntryDateTime(expense.date.slice(0, 10), expense.createdAt)}</td>
                     <td className="py-4 font-black text-school-blue uppercase">{expense.category}</td>
                     <td className="py-4 text-slate-500 font-medium">{expense.description}</td>
                     <td className="py-4 text-slate-500 font-medium">

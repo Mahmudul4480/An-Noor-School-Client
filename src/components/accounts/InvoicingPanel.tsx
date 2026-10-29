@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -456,7 +457,11 @@ export function InvoicingPanel() {
                   ) : (
                     filtered.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 font-black text-school-gold">{invoice.invoiceNumber}</td>
+                        <td className="py-4 font-black text-school-gold">
+                          {invoice.invoiceNumber}
+                          <span className="block text-[9px] font-bold text-school-muted normal-case">Created {formatDateTime(invoice.generatedAt)}</span>
+                          {invoice.paidAt && <span className="block text-[9px] font-bold text-emerald-600 normal-case">Paid {formatDateTime(invoice.paidAt)}</span>}
+                        </td>
                         <td className="py-4">
                           <p className="font-black text-school-blue uppercase">{invoice.studentName}</p>
                           <p className="text-[10px] text-school-muted">{invoice.className}{invoice.section ? ` (${invoice.section})` : ''}</p>

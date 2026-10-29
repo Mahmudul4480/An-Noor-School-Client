@@ -1,3 +1,4 @@
+import { formatDateTime, formatEntryDateTime } from '../lib/utils';
 import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import { KeyRound, Loader2, Mail, ShieldCheck, UserMinus, UserPlus } from 'lucide-react';
@@ -213,7 +214,7 @@ export function AccessControlPanel() {
                     <td className="py-4 font-bold text-school-muted">
                       {grant.grantedBy}
                       <p className="text-[10px] mt-1">
-                        {new Date(grant.grantedAt).toLocaleDateString('en-BD')}
+                        {formatDateTime(grant.grantedAt)}
                       </p>
                     </td>
                     <td className="py-4 text-right">
@@ -266,7 +267,7 @@ export function AccessControlPanel() {
                         </div>
                       ) : (
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          Revoked {grant.revokedAt ? new Date(grant.revokedAt).toLocaleDateString('en-BD') : ''}
+                          Revoked {grant.revokedAt ? formatDateTime(grant.revokedAt) : ''}
                         </span>
                       )}
                     </td>
