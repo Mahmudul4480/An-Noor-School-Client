@@ -2,6 +2,7 @@ import { omitUndefined } from './utils';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -299,12 +300,21 @@ export async function fetchStudentById(studentId: string): Promise<Student | nul
 
 export async function fetchStudentsForGuardian(mobile: string): Promise<Student[]> {
   const guardian = await fetchGuardianByMobile(mobile);
-  if (!guardian) {
-    const normalized = normalizeMobile(mobile);
+  if (!guardian) return [];
+  if (isDemoLoginEnabled) {
     const students = await fetchStudents();
-    return students.filter((student) => normalizeMobile(student.guardianContact) === normalized);
+    return students.filter((student) => guardian.studentIds.includes(student.studentId));
   }
-
-  const students = await fetchStudents();
-  return students.filter((student) => guardian.studentIds.includes(student.studentId));
+  // Guardians may only read their own children (Firestore rules), so fetch each by id.
+  const results = await Promise.all(
+    guardian.studentIds.map(async (id) => {
+      try {
+        const snap = await getDoc(doc(db, STUDENTS_COLLECTION, id));
+        return snap.exists() ? ({ ...(snap.data() as Student), studentId: (snap.data() as Student).studentId ?? snap.id, status: (snap.data() as Student).status ?? 'Setup Needed' }) : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((s): s is Student => !!s);
 }

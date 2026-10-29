@@ -99,6 +99,9 @@ export const GuardianDashboard = () => {
         }
       }
 
+      if (!isPaymentGatewayConfigured()) {
+        throw new Error('অনলাইন পেমেন্ট এখনো চালু হয়নি। স্কুল অফিসে ফি পরিশোধ করুন। (Online payment is not available yet. Please pay at the school office.)');
+      }
       await simulateOnlinePayment(invoice);
       setPayMessage('Payment recorded. Receipt is ready to download.');
       const refreshed = await fetchInvoices({ studentId: student!.studentId });
