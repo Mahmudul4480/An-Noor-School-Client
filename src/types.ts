@@ -1,4 +1,11 @@
-export type UserRole = 'guardian' | 'teacher' | 'accounts' | 'principal' | 'super_admin';
+export type UserRole =
+  | 'guardian'
+  | 'teacher'
+  | 'accounts'
+  | 'principal'
+  | 'managing_partner'
+  | 'director'
+  | 'super_admin';
 
 export type StudentStatus = 'Active' | 'Setup Needed' | 'Inactive';
 
@@ -624,7 +631,8 @@ export interface StudentInvoice {
   createdBy?: string;
 }
 
-export type StaffAccessRole = Extract<UserRole, 'accounts'>;
+/** Roles a Principal or Managing Partner can grant. Super Admin stays reserved. */
+export type StaffAccessRole = 'teacher' | 'accounts' | 'principal' | 'managing_partner' | 'director';
 
 export type StaffAccessStatus = 'active' | 'revoked';
 
@@ -637,6 +645,8 @@ export interface StaffAccessGrant {
   status: StaffAccessStatus;
   grantedBy: string;
   grantedByEmail?: string;
+  /** Firebase Auth uid when this grant created the login. Used to mirror role onto users/{uid}. */
+  authUid?: string;
   grantedAt: string;
   revokedBy?: string;
   revokedAt?: string;

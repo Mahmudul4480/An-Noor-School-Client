@@ -14,6 +14,7 @@ import type {
   InventoryPurpose,
   InventoryStockAlert,
 } from '../types';
+import { assertCanMutate } from './permissions';
 
 const ITEMS_COLLECTION = 'inventoryItems';
 const MOVEMENTS_COLLECTION = 'inventoryMovements';
@@ -343,6 +344,7 @@ export interface SaveInventoryItemInput {
 }
 
 export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<InventoryItem> {
+  assertCanMutate();
   const name = input.name.trim();
   if (!name) throw new Error('Item name is required.');
   if (input.costRate < 0 || input.studentPrice < 0) throw new Error('Rate cannot be negative.');
@@ -435,10 +437,12 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
 }
 
 export async function archiveInventoryItem(item: InventoryItem): Promise<void> {
+  assertCanMutate();
   await persistItem(normalizeItem({ ...item, archived: true, updatedAt: new Date().toISOString() }));
 }
 
 export async function restoreInventoryItem(item: InventoryItem): Promise<void> {
+  assertCanMutate();
   await persistItem(normalizeItem({ ...item, archived: false, updatedAt: new Date().toISOString() }));
 }
 
@@ -460,6 +464,7 @@ export interface RestockInput {
  * posted as an expense so the ledger stays in step with the store.
  */
 export async function restockInventoryItem(input: RestockInput): Promise<InventoryItem> {
+  assertCanMutate();
   const quantity = Math.floor(input.quantity);
   if (!quantity || quantity <= 0) throw new Error('Valid quantity দিন।');
 
@@ -547,6 +552,7 @@ export interface InventorySaleResult {
  * The collected amount is credited to the selected account straight away.
  */
 export async function recordInventorySale(input: InventorySaleInput): Promise<InventorySaleResult> {
+  assertCanMutate();
   const quantity = Math.floor(input.quantity);
   if (!quantity || quantity <= 0) throw new Error('Valid quantity দিন।');
   if (!input.buyerName.trim()) throw new Error('Buyer name লিখুন।');
@@ -636,6 +642,7 @@ export interface InventoryIssueInput {
 
 /** Take For School stock off the shelf for office / class use. No money comes in. */
 export async function issueInventoryStock(input: InventoryIssueInput): Promise<InventorySaleResult> {
+  assertCanMutate();
   const quantity = Math.floor(input.quantity);
   if (!quantity || quantity <= 0) throw new Error('Valid quantity দিন।');
   if (!input.issuedTo.trim()) throw new Error('কাদের জন্য issue হচ্ছে লিখুন।');
@@ -689,6 +696,7 @@ export async function adjustInventoryStock(input: {
   reason: string;
   createdBy?: string;
 }): Promise<InventoryItem> {
+  assertCanMutate();
   const quantity = Math.floor(input.quantity);
   if (!quantity || quantity === 0) throw new Error('Valid quantity দিন।');
   if (!input.reason.trim()) throw new Error('Adjustment-এর reason লিখুন।');

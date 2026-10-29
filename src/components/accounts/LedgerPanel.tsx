@@ -20,7 +20,7 @@ const TYPE_STYLE: Record<LedgerAccountType, string> = {
   online: 'bg-violet-50 text-violet-600',
 };
 
-export function LedgerPanel() {
+export function LedgerPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [entries, setEntries] = React.useState<LedgerEntry[]>([]);
   const [reverseRequests, setReverseRequests] = React.useState<ReverseRequest[]>([]);
@@ -186,6 +186,7 @@ export function LedgerPanel() {
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">Bank & MFS Ledger</h3>
+          {!readOnly && (
           <div className="flex gap-3">
             <button
               type="button"
@@ -202,6 +203,7 @@ export function LedgerPanel() {
               <Plus size={14} /> Add Account
             </button>
           </div>
+          )}
         </div>
 
         {error && (
@@ -375,7 +377,9 @@ export function LedgerPanel() {
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
         <h3 className="text-xs font-black text-school-blue uppercase tracking-widest mb-2">Recent Debit / Credit Entries</h3>
         <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mb-6">
-          Reverse করলে Principal approve করার পর ledger update হবে
+          {readOnly
+            ? 'View only — ledger entries cannot be reversed from this login'
+            : 'Reverse করলে Principal approve করার পর ledger update হবে'}
         </p>
         {message && (
           <div className="mb-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-700">
@@ -399,7 +403,7 @@ export function LedgerPanel() {
                   <th className="pb-3">Reference</th>
                   <th className="pb-3">Type</th>
                   <th className="pb-3 text-right">Amount</th>
-                  <th className="pb-3 text-right">Reverse</th>
+                  {!readOnly && <th className="pb-3 text-right">Reverse</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -438,6 +442,7 @@ export function LedgerPanel() {
                     >
                       {entry.type === 'credit' ? '+' : '−'} ৳ {entry.amount.toLocaleString()}
                     </td>
+                    {!readOnly && (
                     <td className="py-3 text-right">
                       {reversed || entry.reference.startsWith('REVERSAL —') ? (
                         <span className="text-[9px] font-bold text-school-muted uppercase">—</span>
@@ -466,6 +471,7 @@ export function LedgerPanel() {
                         </div>
                       )}
                     </td>
+                    )}
                   </tr>
                 );})}
               </tbody>

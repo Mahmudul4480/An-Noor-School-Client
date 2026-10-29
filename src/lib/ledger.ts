@@ -13,6 +13,7 @@ import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { omitUndefined, toIsoString } from './utils';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../types';
+import { assertCanMutate } from './permissions';
 
 const ACCOUNTS_COLLECTION = 'ledgerAccounts';
 const ENTRIES_COLLECTION = 'ledgerEntries';
@@ -80,24 +81,20 @@ async function ensureDefaultAccountsInFirestore(): Promise<LedgerAccount[]> {
   await waitForAuthUser();
   const snapshot = await getDocs(query(collection(db, ACCOUNTS_COLLECTION)));
   const existing = snapshot.docs.map((document) => document.data() as LedgerAccount);
-
-  if (existing.length === 0) {
-    await Promise.all(
-      DEFAULT_ACCOUNTS.map((account) =>
-        setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), omitUndefined({ ...account, createdAt: serverTimestamp() })),
-      ),
-    );
-    return DEFAULT_ACCOUNTS;
-  }
-
-  const merged = mergeDefaultAccounts(existing);
+  const merged = existing.length === 0 ? DEFAULT_ACCOUNTS : mergeDefaultAccounts(existing);
   const missing = merged.filter((account) => !existing.some((item) => item.id === account.id));
-  if (missing.length > 0) {
+  if (missing.length === 0) return merged;
+
+  // View-only sessions can still read. Seeding defaults is optional and must not block the ledger.
+  try {
     await Promise.all(
       missing.map((account) =>
         setDoc(doc(db, ACCOUNTS_COLLECTION, account.id), omitUndefined({ ...account, createdAt: serverTimestamp() })),
       ),
     );
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'permission-denied') throw error;
   }
   return merged;
 }
@@ -129,6 +126,7 @@ function withPettyCashOverdraft(accounts: LedgerAccount[]): LedgerAccount[] {
 }
 
 export async function addAccount(input: { name: string; type: LedgerAccountType; openingBalance: number }): Promise<LedgerAccount> {
+  assertCanMutate();
   const account: LedgerAccount = {
     id: generateId('acc'),
     name: input.name,
@@ -157,6 +155,7 @@ export async function fetchEntries(): Promise<LedgerEntry[]> {
 }
 
 export async function addEntry(input: Omit<LedgerEntry, 'id' | 'createdAt'>): Promise<LedgerEntry> {
+  assertCanMutate();
   const entry: LedgerEntry = {
     ...input,
     id: generateId('led'),
@@ -182,6 +181,7 @@ export async function recordCollection(params: {
   date?: string;
   note?: string;
 }): Promise<LedgerEntry> {
+  assertCanMutate();
   return addEntry({
     accountId: params.accountId,
     type: 'credit',
@@ -202,6 +202,7 @@ export async function recordExpense(params: {
   date?: string;
   note?: string;
 }): Promise<LedgerEntry> {
+  assertCanMutate();
   return addEntry({
     accountId: params.accountId,
     type: 'debit',
@@ -221,6 +222,7 @@ export async function recordReversal(params: {
   relatedId: string;
   note?: string;
 }): Promise<LedgerEntry> {
+  assertCanMutate();
   return addEntry({
     accountId: params.accountId,
     type: 'debit',
@@ -241,6 +243,7 @@ export async function transferBetweenAccounts(params: {
   charge?: number;
   note?: string;
 }): Promise<{ debit: LedgerEntry; credit: LedgerEntry; transferId: string }> {
+  assertCanMutate();
   if (params.fromAccountId === params.toAccountId) {
     throw new Error('From এবং To account আলাদা হতে হবে।');
   }
@@ -376,6 +379,7 @@ export async function requestReverseEntry(params: {
   accountName?: string;
   actorName?: string;
 }): Promise<ReverseRequest> {
+  assertCanMutate();
   const reason = params.reason.trim();
   if (!reason) throw new Error('Reverse entry-র জন্য reason লিখুন।');
   if (params.entry.reference.startsWith('REVERSAL —') || params.entry.relatedType === 'reversal') {
@@ -414,6 +418,7 @@ export async function reviewReverseRequest(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<ReverseRequest> {
+  assertCanMutate();
   if (params.request.approvalStatus !== 'pending') {
     throw new Error('This reverse request is not pending approval.');
   }
@@ -446,6 +451,7 @@ export async function reverseLedgerEntry(params: {
   reason: string;
   actorName?: string;
 }): Promise<LedgerEntry> {
+  assertCanMutate();
   const reason = params.reason.trim();
   if (!reason) throw new Error('Reverse entry-র জন্য reason লিখুন।');
 

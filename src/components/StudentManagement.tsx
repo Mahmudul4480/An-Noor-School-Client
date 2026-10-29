@@ -23,7 +23,7 @@ import {
 } from '../lib/studentImport';
 import { fetchStudents, filterStudents, importStudents, updateStudent } from '../lib/students';
 
-export function StudentManagement() {
+export function StudentManagement({ readOnly = false }: { readOnly?: boolean }) {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -74,7 +74,7 @@ export function StudentManagement() {
   const invalidPreviewRows = previewRows.filter((row) => !row.student);
 
   const handleFile = async (file: File | null) => {
-    if (!file) return;
+    if (readOnly || !file) return;
 
     setUploading(true);
     setError('');
@@ -95,6 +95,7 @@ export function StudentManagement() {
   };
 
   const handleImport = async () => {
+    if (readOnly) return;
     const rowsToImport = validPreviewRows
       .map((row) => row.student)
       .filter((student): student is Student => Boolean(student));
@@ -146,7 +147,7 @@ export function StudentManagement() {
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingStudent) return;
+    if (readOnly || !editingStudent) return;
     if (!editForm.correctionReason.trim()) {
       setError('Correction reason লিখুন — কোন তথ্য ভুল ছিল তা উল্লেখ করুন।');
       return;
@@ -190,7 +191,7 @@ export function StudentManagement() {
               Student Management
             </h3>
             <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
-              Admission Ops & Bulk Import
+              {readOnly ? 'View only — records cannot be imported or edited' : 'Admission Ops & Bulk Import'}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -204,6 +205,8 @@ export function StudentManagement() {
                 className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none focus:ring-2 ring-school-gold/20"
               />
             </div>
+            {!readOnly && (
+              <>
             <button
               type="button"
               onClick={() => downloadStudentTemplate('csv')}
@@ -221,9 +224,12 @@ export function StudentManagement() {
             <button className="px-6 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 flex items-center gap-2">
               <Plus size={14} /> New Admission
             </button>
+              </>
+            )}
           </div>
         </div>
 
+        {!readOnly && (
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -268,6 +274,7 @@ export function StudentManagement() {
             Choose File (.csv, .xlsx, .xls)
           </button>
         </div>
+        )}
 
         {(error || success) && (
           <div
@@ -312,14 +319,14 @@ export function StudentManagement() {
                   <th className="pb-4">Section</th>
                   <th className="pb-4">Guardian Contact</th>
                   <th className="pb-4">Dashboard Status</th>
-                  <th className="pb-4 text-right">Actions</th>
+                  {!readOnly && <th className="pb-4 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {visibleStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-school-muted font-medium">
-                      No students found. Upload a CSV or Excel file to get started.
+                    <td colSpan={readOnly ? 5 : 6} className="py-10 text-center text-school-muted font-medium">
+                      {readOnly ? 'No students found.' : 'No students found. Upload a CSV or Excel file to get started.'}
                     </td>
                   </tr>
                 ) : (
@@ -344,6 +351,7 @@ export function StudentManagement() {
                           {student.status}
                         </span>
                       </td>
+                      {!readOnly && (
                       <td className="py-5 text-right">
                         <div className="flex justify-end gap-2 text-school-blue">
                           <button
@@ -356,6 +364,7 @@ export function StudentManagement() {
                           </button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}

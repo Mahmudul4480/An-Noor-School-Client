@@ -3,6 +3,7 @@ import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } f
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import type { CategoryRequest, CategoryType } from '../types';
+import { assertCanMutate } from './permissions';
 
 const CATEGORIES_COLLECTION = 'categoryRequests';
 const LOCAL_CATEGORIES_KEY = 'an-noor-category-requests';
@@ -73,6 +74,7 @@ export async function requestCategory(input: {
   name: string;
   requestedBy: string;
 }): Promise<CategoryRequest> {
+  assertCanMutate();
   const trimmed = input.name.trim();
   if (!trimmed) throw new Error('Category name is required.');
 
@@ -110,6 +112,7 @@ export async function reviewCategoryRequest(params: {
   reviewedBy: string;
   note?: string;
 }): Promise<CategoryRequest> {
+  assertCanMutate();
   const updated: CategoryRequest = {
     ...params.request,
     status: params.action,

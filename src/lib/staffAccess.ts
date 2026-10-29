@@ -1,7 +1,8 @@
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { isDemoLoginEnabled, waitForAuthUser } from './auth';
+import { isDemoLoginEnabled, isReservedSuperAdminEmail, waitForAuthUser } from './auth';
 import { getCurrentActor, getCurrentActorLabel } from './actor';
+import { assertCanAssignRoles, isAssignableRole } from './permissions';
 import { provisionLoginAccount, type LoginProvisionResult } from './provisionAuth';
 import { omitUndefined, toIsoString } from './utils';
 import type { StaffAccessGrant, StaffAccessRole } from '../types';
@@ -33,10 +34,11 @@ function normalizeGrant(raw: Partial<StaffAccessGrant>, fallbackId?: string): St
     id: raw.id || email,
     email,
     name: raw.name?.trim() || email,
-    role: (raw.role as StaffAccessRole) || 'accounts',
+    role: isAssignableRole(raw.role) ? raw.role : 'accounts',
     status: raw.status === 'revoked' ? 'revoked' : 'active',
     grantedBy: raw.grantedBy || 'Principal Office',
     grantedByEmail: raw.grantedByEmail,
+    authUid: raw.authUid,
     grantedAt: toIsoString(raw.grantedAt),
     revokedBy: raw.revokedBy,
     revokedAt: raw.revokedAt ? toIsoString(raw.revokedAt) : undefined,
@@ -98,9 +100,20 @@ async function persistGrant(grant: StaffAccessGrant): Promise<void> {
   }), { merge: true });
 }
 
-export async function grantAccountsAccess(input: {
+async function mirrorRoleOnUser(uid: string | undefined, grant: StaffAccessGrant): Promise<void> {
+  if (!uid || isDemoLoginEnabled) return;
+  await setDoc(doc(db, 'users', uid), omitUndefined({
+    email: grant.email,
+    name: grant.name,
+    role: grant.status === 'active' ? grant.role : 'revoked',
+    updatedAt: serverTimestamp(),
+  }), { merge: true });
+}
+
+export async function grantStaffAccess(input: {
   email: string;
   name: string;
+  role: StaffAccessRole;
   note?: string;
   password?: string;
 }): Promise<{ grant: StaffAccessGrant; login: LoginProvisionResult }> {
@@ -108,6 +121,13 @@ export async function grantAccountsAccess(input: {
   if (!email || !email.includes('@')) {
     throw new Error('Valid email address দিন।');
   }
+  if (!isAssignableRole(input.role)) {
+    throw new Error('That role cannot be assigned.');
+  }
+  if (isReservedSuperAdminEmail(email)) {
+    throw new Error('This email is reserved and cannot be assigned a role.');
+  }
+  assertCanAssignRoles(email);
 
   const name = input.name.trim() || email;
   const actor = getCurrentActor();
@@ -119,31 +139,58 @@ export async function grantAccountsAccess(input: {
     id: email,
     email,
     name,
-    role: 'accounts',
+    role: input.role,
     status: 'active',
     grantedBy: getCurrentActorLabel('Principal Office'),
     grantedByEmail: actor.email || undefined,
+    authUid: login.uid || existing?.authUid,
     grantedAt: existing?.grantedAt && existing.status === 'active' ? existing.grantedAt : now,
     note: input.note?.trim() || undefined,
   };
 
   await persistGrant(grant);
+  await mirrorRoleOnUser(grant.authUid, grant);
   return { grant, login };
+}
+
+export async function grantAccountsAccess(input: {
+  email: string;
+  name: string;
+  note?: string;
+  password?: string;
+}): Promise<{ grant: StaffAccessGrant; login: LoginProvisionResult }> {
+  return grantStaffAccess({ ...input, role: 'accounts' });
+}
+
+export async function setStaffLoginPassword(
+  email: string,
+  password?: string,
+): Promise<LoginProvisionResult> {
+  assertCanAssignRoles(email);
+  const grant = await fetchStaffAccessByEmail(email);
+  if (!grant || grant.status !== 'active') {
+    throw new Error('Active access grant পাওয়া যায়নি।');
+  }
+  const login = await provisionLoginAccount(grant.email, password);
+  if (login.uid && login.uid !== grant.authUid) {
+    const updated = { ...grant, authUid: login.uid };
+    await persistGrant(updated);
+    await mirrorRoleOnUser(login.uid, updated);
+  }
+  return login;
 }
 
 export async function setAccountsLoginPassword(
   email: string,
   password?: string,
 ): Promise<LoginProvisionResult> {
-  const grant = await fetchStaffAccessByEmail(email);
-  if (!grant || grant.status !== 'active') {
-    throw new Error('Active Accounts access grant পাওয়া যায়নি।');
-  }
-  return provisionLoginAccount(grant.email, password);
+  return setStaffLoginPassword(email, password);
 }
 
 export async function revokeStaffAccess(email: string): Promise<StaffAccessGrant> {
-  const existing = await fetchStaffAccessByEmail(email);
+  const id = accessDocId(email);
+  assertCanAssignRoles(id);
+  const existing = await fetchStaffAccessByEmail(id);
   if (!existing) throw new Error('Access grant পাওয়া যায়নি।');
   if (existing.status === 'revoked') throw new Error('Access already revoked.');
 
@@ -155,5 +202,6 @@ export async function revokeStaffAccess(email: string): Promise<StaffAccessGrant
   };
 
   await persistGrant(updated);
+  await mirrorRoleOnUser(updated.authUid, updated);
   return updated;
 }

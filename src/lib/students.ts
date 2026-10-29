@@ -13,6 +13,7 @@ import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
 import { fetchGuardianByMobile, normalizeMobile } from './guardians';
 import type { Student } from '../types';
+import { assertCanMutate } from './permissions';
 
 const STUDENTS_COLLECTION = 'students';
 const LOCAL_STORAGE_KEY = 'an-noor-students';
@@ -117,6 +118,7 @@ export async function fetchStudents(): Promise<Student[]> {
 }
 
 export async function importStudents(students: Student[]): Promise<{ imported: number; updated: number }> {
+  assertCanMutate();
   if (students.length === 0) {
     return { imported: 0, updated: 0 };
   }
@@ -165,6 +167,7 @@ export async function importStudents(students: Student[]): Promise<{ imported: n
 }
 
 export async function addStudent(student: Student): Promise<void> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const existing = readLocalStudents();
     writeLocalStudents(mergeStudents(existing, [student]));
@@ -197,6 +200,7 @@ export interface UpdateStudentInput {
 }
 
 export async function updateStudent(input: UpdateStudentInput): Promise<Student> {
+  assertCanMutate();
   const students = await fetchStudents();
   const existing = students.find((student) => student.studentId === input.studentId);
   if (!existing) throw new Error('Student not found.');
@@ -248,6 +252,7 @@ export async function updateStudentStatus(
   status: Student['status'],
   reason?: string,
 ): Promise<void> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const existing = readLocalStudents();
     const updated = existing.map((student) =>

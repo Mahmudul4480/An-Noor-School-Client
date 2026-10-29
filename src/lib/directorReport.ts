@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 import { fetchAdmissions } from './admissions';
 import { fetchExpenses } from './expenses';
 import { fetchIncomeEntries } from './income';
@@ -578,6 +579,48 @@ export async function downloadDirectorBriefingPdf(root: HTMLElement, fileBase: s
   }
 
   pdf.save(`${fileBase}.pdf`);
+}
+
+export function downloadDirectorBriefingExcel(briefing: DirectorBriefing): void {
+  const classes = briefing.classRows.map((row) => ({
+    Class: row.displayName,
+    Students: row.totalStudents,
+    New: row.newStudents,
+    Shifted: row.classShifted,
+    Left: row.leftStudents,
+    'Tuition Collected': row.tuitionCollected,
+    'Tuition Dues': row.tuitionDues,
+    'Exam Collected': row.examCollected,
+    'Exam Dues': row.examDues,
+  }));
+  const moneyRows = (rows: DirectorBriefing['receivedRows']) =>
+    rows
+      .filter((row) => !row.isEmpty)
+      .map((row) => ({
+        SL: row.sl,
+        Voucher: row.voucherNo,
+        Particulars: row.label,
+        Folio: row.folio,
+        Cash: row.cash,
+        Bank: row.bank,
+        Total: row.total,
+      }));
+  const totals = [
+    { Item: 'Received', ...briefing.totalReceived },
+    { Item: 'Expenses', ...briefing.totalExpenses },
+    { Item: 'Balance C/D', ...briefing.balanceCd },
+    { Item: 'Today Received', ...briefing.todayReceived },
+    { Item: 'Today Expenses', ...briefing.todayExpenses },
+  ];
+  const banks = briefing.bankLines.map((line) => ({ Account: line.name, Balance: line.balance }));
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(classes), 'Classes');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(moneyRows(briefing.receivedRows)), 'Received');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(moneyRows(briefing.expenseRows)), 'Expenses');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(totals), 'Totals');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(banks), 'Banks');
+  XLSX.writeFile(workbook, `${directorReportFileBase(briefing)}.xlsx`);
 }
 
 export function directorReportFileBase(briefing: DirectorBriefing): string {

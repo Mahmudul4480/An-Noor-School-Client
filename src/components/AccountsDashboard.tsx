@@ -49,8 +49,12 @@ const LEDGER_TYPE_ICON: Record<string, React.ReactNode> = {
 
 export const AccountsDashboard = ({
   activeSection = 'overview',
+  readOnly = false,
+  sections,
 }: {
   activeSection?: string;
+  readOnly?: boolean;
+  sections?: string[];
 }) => {
   const [activeSubTab, setActiveSubTab] = React.useState(activeSection);
   const [overview, setOverview] = React.useState<FinancialOverview | null>(null);
@@ -110,7 +114,7 @@ export const AccountsDashboard = ({
     { id: 'dayclose', label: 'Day Close', icon: <Lock size={16} /> },
     { id: 'categories', label: 'Categories', icon: <Tags size={16} /> },
     { id: 'approvals', label: 'Approvals', icon: <ShieldCheck size={16} /> },
-  ];
+  ].filter((tab) => !sections || sections.includes(tab.id));
 
   return (
     <div className="p-6 space-y-6">
@@ -244,12 +248,14 @@ export const AccountsDashboard = ({
                     ))
                   )}
                 </div>
+                {!readOnly && (
                 <button
                   onClick={() => setActiveSubTab('ledger')}
                   className="mt-6 py-3 bg-slate-50 border border-slate-100 text-school-blue text-[9px] font-black rounded-xl uppercase tracking-widest hover:bg-slate-100 transition-colors"
                 >
                   Manage Accounts & Transfers
                 </button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -261,7 +267,7 @@ export const AccountsDashboard = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <StudentManagement />
+            <StudentManagement readOnly={readOnly} />
           </motion.div>
         )}
 
@@ -283,13 +289,13 @@ export const AccountsDashboard = ({
 
         {activeSubTab === 'billing' && (
           <motion.div key="billing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <InvoicingPanel />
+            <InvoicingPanel readOnly={readOnly} />
           </motion.div>
         )}
 
         {activeSubTab === 'income' && (
           <motion.div key="income" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <IncomePanel />
+            <IncomePanel readOnly={readOnly} />
           </motion.div>
         )}
 
@@ -299,7 +305,7 @@ export const AccountsDashboard = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <ExpensePanel />
+            <ExpensePanel readOnly={readOnly} />
           </motion.div>
         )}
 
@@ -315,7 +321,7 @@ export const AccountsDashboard = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <LedgerPanel />
+            <LedgerPanel readOnly={readOnly} />
           </motion.div>
         )}
 
@@ -331,7 +337,7 @@ export const AccountsDashboard = ({
 
         {activeSubTab === 'dayclose' && (
           <motion.div key="dayclose" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <DayClosePanel />
+            <DayClosePanel readOnly={readOnly} />
           </motion.div>
         )}
 

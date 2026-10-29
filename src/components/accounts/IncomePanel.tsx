@@ -22,7 +22,7 @@ const METHOD_FOR_ACCOUNT: Record<LedgerAccount['type'], NonNullable<IncomeEntry[
   online: 'bank',
 };
 
-export function IncomePanel() {
+export function IncomePanel({ readOnly = false }: { readOnly?: boolean }) {
   const [entries, setEntries] = React.useState<IncomeEntry[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [categories, setCategories] = React.useState<string[]>([]);
@@ -161,7 +161,8 @@ export function IncomePanel() {
         <StatCard label="Pending Entries" value={String(stats.pendingCount)} icon={<Wallet size={18} />} tone="red" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={readOnly ? 'space-y-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}>
+        {!readOnly && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -368,11 +369,12 @@ export function IncomePanel() {
             </button>
           </form>
         </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm lg:col-span-2"
+          className={`bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm ${readOnly ? '' : 'lg:col-span-2'}`}
         >
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <h3 className="text-xs font-black text-school-blue uppercase tracking-widest">Income History</h3>

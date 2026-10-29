@@ -1,9 +1,10 @@
 import React from 'react';
 import { KeyRound, Loader2, Mail, ShieldCheck, UserMinus, UserPlus } from 'lucide-react';
-import { getCurrentActorLabel } from '../lib/actor';
+import { getCurrentActor, getCurrentActorLabel } from '../lib/actor';
 import { sendLoginResetEmail } from '../lib/provisionAuth';
-import { fetchStaffAccessList, grantAccountsAccess, revokeStaffAccess, setAccountsLoginPassword } from '../lib/staffAccess';
-import type { StaffAccessGrant } from '../types';
+import { ASSIGNABLE_ROLES, assertCanAssignRoles, roleLabel } from '../lib/permissions';
+import { fetchStaffAccessList, grantStaffAccess, revokeStaffAccess, setStaffLoginPassword } from '../lib/staffAccess';
+import type { StaffAccessGrant, StaffAccessRole } from '../types';
 
 export function AccessControlPanel() {
   const [grants, setGrants] = React.useState<StaffAccessGrant[]>([]);
@@ -12,7 +13,15 @@ export function AccessControlPanel() {
   const [actingEmail, setActingEmail] = React.useState('');
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
-  const [form, setForm] = React.useState({ email: '', name: '', note: '', password: '' });
+  const [form, setForm] = React.useState({
+    email: '',
+    name: '',
+    note: '',
+    password: '',
+    role: 'accounts' as StaffAccessRole,
+  });
+  const actorEmail = getCurrentActor().email.trim().toLowerCase();
+  const assignsOwnEmail = Boolean(actorEmail) && form.email.trim().toLowerCase() === actorEmail;
   const [issuedPassword, setIssuedPassword] = React.useState('');
 
   const load = React.useCallback(async () => {
@@ -37,15 +46,16 @@ export function AccessControlPanel() {
     setError('');
     setMessage('');
     try {
-      const { grant, login } = await grantAccountsAccess(form);
+      assertCanAssignRoles(form.email);
+      const { grant, login } = await grantStaffAccess(form);
       if (login.status === 'created' || login.status === 'demo') {
         setIssuedPassword(login.password || '');
-        setMessage(`${grant.name} (${grant.email}) Accounts পাবে। Password: ${login.password}`);
+        setMessage(`${grant.name} (${grant.email}) will sign in as ${roleLabel(grant.role)}. Password: ${login.password}`);
       } else {
         setIssuedPassword('');
-        setMessage(`${grant.email} আগে থেকেই Firebase-এ আছে। নিচে Reset email পাঠান, অথবা আগের password দিয়ে login করুক।`);
+        setMessage(`${grant.email} already has a Firebase login and will sign in as ${roleLabel(grant.role)}. Send a reset email, or they can use their existing password.`);
       }
-      setForm({ email: '', name: '', note: '', password: '' });
+      setForm({ email: '', name: '', note: '', password: '', role: 'accounts' });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Access দিতে পারিনি।');
@@ -60,7 +70,7 @@ export function AccessControlPanel() {
     setMessage('');
     try {
       const grant = await revokeStaffAccess(email);
-      setMessage(`${grant.email} এর Accounts access revoke করা হয়েছে।`);
+      setMessage(`${grant.email} no longer has ${roleLabel(grant.role)} access.`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Revoke করতে পারিনি।');
@@ -76,9 +86,9 @@ export function AccessControlPanel() {
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-school-blue to-blue-900 text-white rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden">
         <KeyRound size={48} className="absolute right-8 top-8 opacity-20" />
-        <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Accounts Access</h3>
+        <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Role Access</h3>
         <p className="text-xs font-bold opacity-80 uppercase tracking-widest max-w-2xl">
-          Principal Office ইমেইল দিয়ে আলাদা আলাদা Accounts dashboard access দেয়। ওই ইমেইল দিয়ে login করলেই Accounts পায়, আর প্রতিটি কাজ সেই ID দিয়ে mark হয়।
+          Principal and Managing Partner can grant Teacher, Accounts, Principal, Managing Partner, or Director. A person cannot assign a role to their own email.
         </p>
         <p className="text-[10px] font-bold opacity-70 mt-3">
           Grant করছেন: {getCurrentActorLabel('Principal Office')}
@@ -94,9 +104,9 @@ export function AccessControlPanel() {
             <UserPlus size={18} />
           </div>
           <div>
-            <h4 className="text-sm font-black text-school-blue uppercase tracking-tight">Grant Accounts Access</h4>
+            <h4 className="text-sm font-black text-school-blue uppercase tracking-tight">Grant a Role</h4>
             <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
-              Person-এর Firebase login email দিন — password Principal তৈরি করে দিতে হবে
+              Use the person's login email. Managing Partner has the same powers as Principal. Director is view-only.
             </p>
           </div>
         </div>
@@ -124,6 +134,20 @@ export function AccessControlPanel() {
           </label>
         </div>
         <label className="block">
+          <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Role</span>
+          <select
+            value={form.role}
+            onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value as StaffAccessRole }))}
+            className="mt-2 w-full rounded-2xl border border-school-border px-4 py-3 text-sm font-bold text-school-blue outline-none focus:border-school-gold"
+          >
+            {ASSIGNABLE_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {roleLabel(role)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
           <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">Login password</span>
           <input
             type="text"
@@ -149,12 +173,15 @@ export function AccessControlPanel() {
           />
         </label>
 
+        {assignsOwnEmail && (
+          <p className="text-xs font-bold text-red-500">You cannot assign or change your own role.</p>
+        )}
         {error && <p className="text-xs font-bold text-red-500">{error}</p>}
         {message && <p className="text-xs font-bold text-emerald-600">{message}</p>}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || assignsOwnEmail}
           className="inline-flex items-center gap-2 px-6 py-3 bg-school-gold text-school-blue rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
         >
           {submitting ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
@@ -178,13 +205,14 @@ export function AccessControlPanel() {
             <Loader2 size={16} className="animate-spin" /> Loading access list…
           </div>
         ) : grants.length === 0 ? (
-          <p className="text-sm font-bold text-school-muted">এখনো কাউকে Accounts access দেওয়া হয়নি।</p>
+          <p className="text-sm font-bold text-school-muted">No roles have been granted yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px]">
               <thead>
                 <tr className="text-school-muted font-black border-b border-school-border uppercase tracking-widest">
                   <th className="pb-4">Name & Email</th>
+                  <th className="pb-4">Role</th>
                   <th className="pb-4">Status</th>
                   <th className="pb-4">Granted By</th>
                   <th className="pb-4 text-right">Action</th>
@@ -198,6 +226,7 @@ export function AccessControlPanel() {
                       <p className="text-school-muted font-bold mt-1">{grant.email}</p>
                       {grant.note && <p className="text-[10px] text-school-muted mt-1">{grant.note}</p>}
                     </td>
+                    <td className="py-4 font-black text-school-blue uppercase tracking-tight">{roleLabel(grant.role)}</td>
                     <td className="py-4">
                       <span
                         className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
@@ -225,7 +254,7 @@ export function AccessControlPanel() {
                               setActingEmail(grant.email);
                               setError('');
                               try {
-                                const login = await setAccountsLoginPassword(grant.email);
+                                const login = await setStaffLoginPassword(grant.email);
                                 if (login.password) {
                                   setIssuedPassword(login.password);
                                   setMessage(`${grant.email} এর নতুন password: ${login.password}`);

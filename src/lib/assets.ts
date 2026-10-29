@@ -14,6 +14,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { omitUndefined, toIsoString } from './utils';
 import { createIncomeEntry } from './income';
 import type { AssetCategory, AssetCondition, AssetLocationLog, AssetStatus, AssetValueLog, SchoolAsset } from '../types';
+import { assertCanMutate } from './permissions';
 
 const CATEGORIES_COLLECTION = 'assetCategories';
 const ASSETS_COLLECTION = 'schoolAssets';
@@ -220,6 +221,7 @@ export async function addAssetCategory(input: {
   name: string;
   prefix?: string;
 }): Promise<AssetCategory> {
+  assertCanMutate();
   const name = ensureAnisName(input.name);
   if (!name) throw new Error('Category name is required.');
 
@@ -292,6 +294,7 @@ export interface CreateAssetInput {
 }
 
 export async function createAsset(input: CreateAssetInput): Promise<SchoolAsset> {
+  assertCanMutate();
   const name = input.name.trim();
   const assetNumber = input.assetNumber.trim();
   if (!name) throw new Error('Asset name লিখুন।');
@@ -454,6 +457,7 @@ export async function changeAssetLocation(input: {
   reason?: string;
   recordedBy?: string;
 }): Promise<{ asset: SchoolAsset; log: AssetLocationLog }> {
+  assertCanMutate();
   const toLocation = input.toLocation.trim();
   if (!toLocation) throw new Error('নতুন location লিখুন।');
 
@@ -561,6 +565,7 @@ export async function revalueAsset(input: {
   note?: string;
   recordedBy?: string;
 }): Promise<{ asset: SchoolAsset; log: AssetValueLog }> {
+  assertCanMutate();
   assertActive(input.asset);
   if (Number.isNaN(input.percent)) throw new Error('Revaluation percent দিন।');
 
@@ -597,6 +602,7 @@ export async function applyAnnualDepreciation(input: {
   note?: string;
   recordedBy?: string;
 }): Promise<{ asset: SchoolAsset; log: AssetValueLog }> {
+  assertCanMutate();
   assertActive(input.asset);
   if (!canApplyDepreciation(input.asset)) {
     throw new Error('Depreciation ১ বছর পর apply করা যায়। Rate register-এ সেট থাকতে হবে।');
@@ -637,6 +643,7 @@ export async function removeAsset(input: {
   accountId?: string;
   recordedBy?: string;
 }): Promise<{ asset: SchoolAsset; log: AssetValueLog }> {
+  assertCanMutate();
   assertActive(input.asset);
   const previous = bookValue(input.asset);
   const now = new Date().toISOString();

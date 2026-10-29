@@ -4,6 +4,7 @@ import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { omitUndefined, toIsoString } from './utils';
 import type { InvoiceItemCategory } from '../types';
+import { assertCanMutate } from './permissions';
 
 const ITEM_CATALOG_COLLECTION = 'invoiceItemCategories';
 const LOCAL_ITEM_CATALOG_KEY = 'an-noor-invoice-item-categories';
@@ -113,6 +114,7 @@ export async function saveInvoiceItemCategory(input: {
   defaultAmount: number;
   createdBy?: string;
 }): Promise<InvoiceItemCategory> {
+  assertCanMutate();
   const label = input.label.trim();
   if (!label) throw new Error('Item name is required.');
   if (!Number.isFinite(input.defaultAmount) || input.defaultAmount < 0) {
@@ -159,6 +161,7 @@ export async function saveInvoiceItemCategory(input: {
 
 /** Built-in items are archived (hidden) rather than deleted so old invoices still read fine. */
 export async function removeInvoiceItemCategory(item: InvoiceItemCategory): Promise<void> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const all = readLocal<InvoiceItemCategory[]>(LOCAL_ITEM_CATALOG_KEY, []);
     if (item.builtIn) {
@@ -189,6 +192,7 @@ export async function removeInvoiceItemCategory(item: InvoiceItemCategory): Prom
 }
 
 export async function restoreInvoiceItemCategory(item: InvoiceItemCategory): Promise<void> {
+  assertCanMutate();
   if (isDemoLoginEnabled) {
     const all = readLocal<InvoiceItemCategory[]>(LOCAL_ITEM_CATALOG_KEY, []);
     const index = all.findIndex((entry) => entry.id === item.id);
