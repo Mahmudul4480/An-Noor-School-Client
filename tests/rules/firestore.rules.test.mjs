@@ -220,3 +220,10 @@ describe('principal live dashboard reads', () => {
     it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
   }
 });
+
+describe('principal sidebar pages reads', () => {
+  for (const col of ['users', 'schoolStaff', 'inventoryItems', 'inventoryMovements', 'inventoryLots', 'dayCloseRecords']) {
+    it(`principal can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.principal, col))));
+    it(`super_admin can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.admin, col))));
+  }
+});
