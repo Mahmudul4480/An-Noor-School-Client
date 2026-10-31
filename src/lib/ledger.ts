@@ -320,10 +320,30 @@ export async function transferBetweenAccounts(params: {
  * was skipped and the reversal still counted, so each reversal moved Net Liquidity.
  */
 export function effectiveEntries(entries: LedgerEntry[]): LedgerEntry[] {
-  const reversedIds = new Set(entries.map((e) => e.reversalOfEntryId).filter(Boolean) as string[]);
+  const reversedIds = reversedEntryIds(entries);
   return entries.filter(
-    (e) => !(e.reversed || reversedIds.has(e.id) || e.relatedType === 'reversal' || e.reversalOfEntryId || e.reference?.startsWith('REVERSAL —')),
+    (e) => !(reversedIds.has(e.id) || e.relatedType === 'reversal' || e.reversalOfEntryId || e.reference?.startsWith('REVERSAL —')),
   );
+}
+
+/**
+ * IDs of entries that are cancelled by a reversal. An Internal Transfer has two legs
+ * (Out + In) sharing one transfer id; reversing either leg cancels the whole transfer,
+ * otherwise the un-reversed leg alone would add (or remove) money from Net Liquidity.
+ */
+export function reversedEntryIds(entries: LedgerEntry[]): Set<string> {
+  const ids = new Set<string>();
+  for (const e of entries) {
+    if (e.reversed) ids.add(e.id);
+    if (e.reversalOfEntryId) ids.add(e.reversalOfEntryId);
+  }
+  const reversedTransfers = new Set(
+    entries.filter((e) => ids.has(e.id) && e.relatedType === 'transfer' && e.relatedId).map((e) => e.relatedId as string),
+  );
+  for (const e of entries) {
+    if (e.relatedType === 'transfer' && e.relatedId && reversedTransfers.has(e.relatedId)) ids.add(e.id);
+  }
+  return ids;
 }
 
 export function computeBalance(account: LedgerAccount, entries: LedgerEntry[]): number {
@@ -345,7 +365,7 @@ function normalizeEntry(entry: LedgerEntry): LedgerEntry {
 }
 
 export function isEntryReversed(entry: LedgerEntry, allEntries: LedgerEntry[]): boolean {
-  return Boolean(entry.reversed) || allEntries.some((item) => item.reversalOfEntryId === entry.id);
+  return Boolean(entry.reversed) || reversedEntryIds(allEntries).has(entry.id);
 }
 
 export async function fetchReverseRequests(): Promise<ReverseRequest[]> {
