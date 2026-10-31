@@ -314,8 +314,20 @@ export async function transferBetweenAccounts(params: {
   return { debit, credit, transferId };
 }
 
+/**
+ * Entries that really changed school money. A reversal pair (the reversed original
+ * and its REVERSAL entry) cancels out, so both are dropped. Before, only the original
+ * was skipped and the reversal still counted, so each reversal moved Net Liquidity.
+ */
+export function effectiveEntries(entries: LedgerEntry[]): LedgerEntry[] {
+  const reversedIds = new Set(entries.map((e) => e.reversalOfEntryId).filter(Boolean) as string[]);
+  return entries.filter(
+    (e) => !(e.reversed || reversedIds.has(e.id) || e.relatedType === 'reversal' || e.reversalOfEntryId || e.reference?.startsWith('REVERSAL —')),
+  );
+}
+
 export function computeBalance(account: LedgerAccount, entries: LedgerEntry[]): number {
-  const accountEntries = entries.filter((entry) => entry.accountId === account.id && !entry.reversed);
+  const accountEntries = effectiveEntries(entries).filter((entry) => entry.accountId === account.id);
   const credits = accountEntries.filter((entry) => entry.type === 'credit').reduce((sum, entry) => sum + entry.amount, 0);
   const debits = accountEntries.filter((entry) => entry.type === 'debit').reduce((sum, entry) => sum + entry.amount, 0);
   return account.openingBalance + credits - debits;

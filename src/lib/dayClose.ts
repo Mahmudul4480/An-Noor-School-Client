@@ -3,7 +3,7 @@ import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'fireb
 import { toIsoString } from './utils';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
-import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
+import { computeAllBalances, effectiveEntries, fetchAccounts, fetchEntries } from './ledger';
 import { fetchExpenses } from './expenses';
 import type { DayCloseRecord, LedgerEntry } from '../types';
 
@@ -52,7 +52,8 @@ export function rangeIncomeExpense(
   to: string,
 ): { totalIncome: number; totalExpense: number; unpostedExpenses: { id: string; date: string; amount: number }[] } {
   const inRange = (value: string) => value.slice(0, 10) >= from && value.slice(0, 10) <= to;
-  const rangeEntries = entries.filter((entry) => inRange(entry.date));
+  // Reversal pairs cancel out; internal transfers only move money between school accounts.
+  const rangeEntries = effectiveEntries(entries).filter((entry) => inRange(entry.date) && entry.relatedType !== 'transfer');
   const ledgerExpenseIds = new Set(
     entries.filter((entry) => entry.relatedType === 'expense' && entry.relatedId).map((entry) => entry.relatedId as string),
   );
@@ -71,7 +72,7 @@ export async function getDailySummary(date: string): Promise<Omit<DayCloseRecord
     fetchExpenses(),
   ]);
 
-  const todayEntries = entries.filter((entry) => isSameDay(entry.date, date));
+  const todayEntries = effectiveEntries(entries).filter((entry) => isSameDay(entry.date, date));
   const { totalIncome, totalExpense } = rangeIncomeExpense(entries, expenses, date, date);
   const balances = computeAllBalances(accounts, entries);
 
