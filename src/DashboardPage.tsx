@@ -1,3 +1,4 @@
+import { ClassCountCards } from './components/common/ClassCountCards';
 import React from 'react';
 import { motion } from 'motion/react';
 import { 
@@ -139,6 +140,7 @@ const DashboardPage = () => {
 
   const renderAdminPortal = () => (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
+      <div className="w-full max-w-6xl mb-10"><ClassCountCards /></div>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

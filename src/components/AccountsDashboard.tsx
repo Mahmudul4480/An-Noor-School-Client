@@ -1,3 +1,4 @@
+import { ClassCountCards } from './common/ClassCountCards';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -114,6 +115,7 @@ export const AccountsDashboard = ({
 
   return (
     <div className="p-6 space-y-6">
+      <ClassCountCards />
       {/* Sub-Navigation */}
       <div className="flex items-center gap-2 bg-white p-2 rounded-[1.5rem] border border-school-border shadow-sm overflow-x-auto whitespace-nowrap custom-scrollbar">
         {tabs.map((tab) => (
