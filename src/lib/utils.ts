@@ -53,6 +53,20 @@ export function formatSignedBdt(amount: number): string {
 
 const DHAKA_TZ = 'Asia/Dhaka';
 
+/** Today's date in Bangladesh (Asia/Dhaka) as yyyy-mm-dd, independent of the device timezone. */
+export function dhakaToday(now: Date = new Date()): string {
+  return new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Combine a business date (yyyy-mm-dd) with the current Dhaka clock time,
+ * returning a full ISO timestamp, so the record keeps both date and entry time.
+ */
+export function dhakaDateWithCurrentTime(date: string, now: Date = new Date()): string {
+  const clock = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString().slice(11, 23);
+  return new Date(`${date}T${clock}+06:00`).toISOString();
+}
+
 /**
  * "29 Oct 2026, 12:09 PM" (Asia/Dhaka, 12-hour). A value without a time part
  * (old entries stored as yyyy-mm-dd) shows the date only.
