@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Facebook, Mail, MapPin, Menu, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
-import { GeoPattern } from './Illustrations';
+import { Bounce } from './ui';
 
 export function SiteLayout() {
   const { pathname } = useLocation();
@@ -116,12 +116,14 @@ function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 xl:ml-4">
-          <Link
-            to="/admission"
-            className="shrink-0 whitespace-nowrap rounded-full bg-gold px-3 py-2 text-xs font-bold text-navy-deep shadow-sm transition hover:bg-cream sm:px-4 sm:text-sm"
-          >
-            Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
-          </Link>
+          <Bounce>
+            <Link
+              to="/admission"
+              className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-gold px-3 py-2 text-xs font-bold text-navy-deep shadow-sm transition hover:bg-cream sm:px-4 sm:text-sm"
+            >
+              Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
+            </Link>
+          </Bounce>
           <Link
             to="/login"
             className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-gold hover:text-gold sm:inline-flex"
@@ -187,8 +189,7 @@ function Header() {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative mt-16 overflow-hidden bg-navy-deep text-cream">
-      <GeoPattern className="absolute inset-0 h-full w-full text-white/10" />
+    <footer className="relative mt-16 overflow-hidden bg-gradient-to-b from-navy to-navy-deep text-cream">
       <div className="h-1.5 bg-gradient-to-r from-gold via-cream to-crest" />
       <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>

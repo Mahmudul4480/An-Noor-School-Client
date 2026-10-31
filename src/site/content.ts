@@ -480,6 +480,69 @@ export const about = {
   partnerNote: 'A photograph and a short biography will be added when the school provides them.',
 };
 
+export type JourneyMilestone = {
+  no: string;
+  year: string;
+  title: string;
+  text: string;
+  /** True until the school replaces this card with its own account. */
+  placeholder: boolean;
+};
+
+/**
+ * Our Journey cards. The scroll motion is adapted from the numbered Experience
+ * stack (sticky cards, scroll-scrubbed tilt). Copy below is not a finished history.
+ *
+ * TODO: owner — replace every card marked placeholder with the real year and story.
+ * Keep `no` as 01, 02, 03… so the stack stays numbered. Add or remove cards freely.
+ */
+export const journey = {
+  kicker: 'Our Journey',
+  kickerBn: 'আমাদের পথচলা',
+  title: 'Our Journey',
+  lede: 'A place for the school’s own milestones. Cards marked “to be written” are waiting for dates and stories from the people who were there.',
+  milestones: [
+    {
+      no: '01',
+      year: '2023',
+      title: 'The school is established',
+      text: 'An-Noor International School opens in Chattogram, with the crest’s promise: committed to building a moral foundation.',
+      placeholder: false,
+    },
+    {
+      no: '02',
+      year: '—',
+      title: 'The first classrooms',
+      // TODO: owner — year, and what the first term actually looked like.
+      text: 'To be written by the school: the first rooms, the first children, and the first teachers.',
+      placeholder: true,
+    },
+    {
+      no: '03',
+      year: '—',
+      title: 'Hifz finds its place',
+      // TODO: owner — when the Hifz department began, and how it sits beside the classes.
+      text: 'To be written by the school: when memorisation joined the school day.',
+      placeholder: true,
+    },
+    {
+      no: '04',
+      year: '—',
+      title: 'A day the school remembers',
+      // TODO: owner — a real gathering (sports day, Pitha Utshob, or another) with its date.
+      text: 'To be written by the school: one celebration or first, with the date it happened.',
+      placeholder: true,
+    },
+    {
+      no: '05',
+      year: '2026–27',
+      title: 'Admission is open',
+      text: 'Families can inquire now for Play through Class 6. The next chapter is the one they will write with the school.',
+      placeholder: false,
+    },
+  ] as JourneyMilestone[],
+};
+
 export const academics = {
   kicker: 'Academics',
   title: 'Play to Class 6, in English and Arabic',

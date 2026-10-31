@@ -1,9 +1,6 @@
 import { useId } from 'react';
 import type { PlaceholderKind } from '../content';
 
-const star =
-  '36,8 40.7,27.2 60,18.5 46.2,33.2 64,40 46.2,46.8 60,61.5 40.7,52.8 36,72 31.3,52.8 12,61.5 25.8,46.8 8,40 25.8,33.2 12,18.5 31.3,27.2';
-
 export function Illustration({
   variant,
   title,
@@ -32,7 +29,6 @@ export function Illustration({
       {variant === 'hifz' && <HifzMotif />}
       {variant === 'play' && <PlayMotif />}
       {variant === 'arabic' && <ArabicMotif />}
-      <polygon points={star} fill="#F5C518" transform="translate(520 48) scale(0.7)" />
     </svg>
   );
 }
@@ -94,16 +90,3 @@ function ArabicMotif() {
   );
 }
 
-export function GeoPattern({ className = '' }: { className?: string }) {
-  const id = useId().replace(/:/g, '');
-  return (
-    <svg aria-hidden="true" className={`pointer-events-none ${className}`} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id={id} width="88" height="88" patternUnits="userSpaceOnUse">
-          <polygon points="44,16 47,32 64,26 53,40 68,46 53,52 64,66 47,58 44,74 41,58 24,66 35,52 20,46 35,40 24,26 41,32" fill="currentColor" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} />
-    </svg>
-  );
-}

@@ -13,10 +13,11 @@ import {
   values,
 } from '../content';
 import { Seo } from '../seo';
+import { HeroFloaters } from '../components/HeroFloaters';
 import { InquiryForm } from '../components/InquiryForm';
+import { JourneyTimeline } from '../components/JourneyTimeline';
 import { MomentsCarousel } from '../components/MomentsCarousel';
-import { GeoPattern } from '../components/Illustrations';
-import { CreamCard, Reveal, Ribbon, SectionHeading, StatGrid } from '../components/ui';
+import { Bounce, CreamCard, Reveal, Ribbon, SectionHeading, StatGrid, Wiggle } from '../components/ui';
 
 const programIcons = {
   islamic: MoonStar,
@@ -45,8 +46,8 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/95 via-navy/82 to-navy-deep/25" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#f6f1e4] via-transparent to-navy-deep/30" />
-        <GeoPattern className="absolute inset-0 h-full w-full text-white/10" />
-        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
+        <HeroFloaters />
+        <div className="relative z-10 mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
           <div>
             <motion.p
               lang="ar"
@@ -69,19 +70,23 @@ export default function HomePage() {
             </p>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">{home.lede}</p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/admission"
-                className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-bold text-navy-deep shadow-lg shadow-black/20"
-              >
-                {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-              <Link
-                to="/about"
-                className="inline-flex items-center rounded-full border border-white/35 px-5 py-3 text-sm font-semibold text-white hover:border-gold hover:text-gold"
-              >
-                {home.secondaryCta}
-              </Link>
+              <Bounce>
+                <Link
+                  to="/admission"
+                  className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-bold text-navy-deep shadow-lg shadow-black/20"
+                >
+                  {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </Bounce>
+              <Bounce>
+                <Link
+                  to="/about"
+                  className="inline-flex items-center rounded-full border border-white/35 px-5 py-3 text-sm font-semibold text-white hover:border-gold hover:text-gold"
+                >
+                  {home.secondaryCta}
+                </Link>
+              </Bounce>
             </div>
           </div>
           <motion.blockquote
@@ -118,7 +123,8 @@ export default function HomePage() {
             const Icon = programIcons[program.id as keyof typeof programIcons];
             return (
               <div key={program.id}>
-              <Reveal delay={index * 0.05}>
+              <Reveal delay={index * 0.06}>
+                <Bounce className="h-full">
                 <article className="h-full rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream p-6 shadow-[0_18px_40px_-28px_rgba(20,21,63,0.7)] ring-1 ring-navy/10">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -130,12 +136,13 @@ export default function HomePage() {
                         {program.titleBn}
                       </p>
                     </div>
-                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-navy text-gold">
+                    <Wiggle className="h-11 w-11 items-center justify-center rounded-2xl bg-navy text-gold">
                       <Icon size={20} aria-hidden="true" />
-                    </span>
+                    </Wiggle>
                   </div>
                   <p className="mt-4 text-sm leading-relaxed text-ink/80">{program.text}</p>
                 </article>
+                </Bounce>
               </Reveal>
               </div>
             );
@@ -144,7 +151,6 @@ export default function HomePage() {
       </section>
 
       <section className="relative overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-navy-soft py-16 text-white sm:py-20">
-        <GeoPattern className="absolute inset-0 h-full w-full text-white/10" />
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHeading
             light
@@ -190,6 +196,8 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      <JourneyTimeline />
 
       <section className="py-10" aria-label={home.valuesTitle}>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -253,8 +261,7 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
         <div className="grid overflow-hidden rounded-[2rem] bg-navy-deep shadow-[0_30px_60px_-36px_rgba(20,21,63,0.85)] lg:grid-cols-2">
-          <div className="relative p-7 text-white sm:p-10">
-            <GeoPattern className="absolute inset-0 h-full w-full text-white/10" />
+          <div className="relative bg-gradient-to-br from-navy-deep to-navy-soft p-7 text-white sm:p-10">
             <div className="relative">
               <Ribbon>{home.admissionKicker}</Ribbon>
               <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">{home.admissionTitle}</h2>

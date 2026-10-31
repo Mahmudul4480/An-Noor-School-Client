@@ -1,6 +1,7 @@
 import { about, home, photos, seo, site } from '../content';
 import { Seo } from '../seo';
-import { CreamCard, PageHero } from '../components/ui';
+import { JourneyTimeline } from '../components/JourneyTimeline';
+import { CreamCard, PageHero, Reveal } from '../components/ui';
 
 export default function AboutPage() {
   return (
@@ -32,19 +33,21 @@ export default function AboutPage() {
         </figure>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
-        <CreamCard>
-          <h2 className="text-lg font-semibold text-navy-deep">{about.historyTitle}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.historyNote}</p>
-        </CreamCard>
-        <CreamCard>
-          <h2 className="text-lg font-semibold text-navy-deep">{about.missionTitle}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.missionNote}</p>
-        </CreamCard>
-        <CreamCard>
-          <h2 className="text-lg font-semibold text-navy-deep">{about.visionTitle}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.visionNote}</p>
-        </CreamCard>
+      <JourneyTimeline />
+
+      <section className="mx-auto grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-2">
+        <Reveal>
+          <CreamCard className="h-full">
+            <h2 className="text-lg font-semibold text-navy-deep">{about.missionTitle}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.missionNote}</p>
+          </CreamCard>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <CreamCard className="h-full">
+            <h2 className="text-lg font-semibold text-navy-deep">{about.visionTitle}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.visionNote}</p>
+          </CreamCard>
+        </Reveal>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">

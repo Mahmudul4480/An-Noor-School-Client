@@ -15,8 +15,11 @@ export function PageHero({
   lede: string;
 }) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-navy-soft text-white">
-      <GeoBackdrop />
+      <section className="relative overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-navy-soft text-white">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,24,0.16),transparent_42%)]"
+      />
       <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold">{kicker}</p>
         <h1 className="mt-3 max-w-3xl text-4xl font-semibold leading-[1.12] sm:text-5xl">{title}</h1>
@@ -29,20 +32,6 @@ export function PageHero({
       </div>
       <div className="h-1.5 bg-gradient-to-r from-gold via-cream to-crest" />
     </section>
-  );
-}
-
-export function GeoBackdrop() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 opacity-[0.18]"
-      style={{
-        backgroundImage:
-          'radial-gradient(circle at 20% 20%, rgba(245,197,24,0.55) 0 1px, transparent 1.5px), radial-gradient(circle at 70% 60%, rgba(254,237,175,0.4) 0 1px, transparent 1.5px)',
-        backgroundSize: '28px 28px, 36px 36px',
-      }}
-    />
   );
 }
 
@@ -92,10 +81,10 @@ export function Reveal({
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y: 16 }}
+      initial={reduce ? false : { opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.5, delay, ease: 'easeOut' }}
+      transition={{ type: 'spring', stiffness: 260, damping: 24, delay }}
     >
       {children}
     </motion.div>
@@ -110,14 +99,41 @@ export function Ribbon({ children }: { children: ReactNode }) {
   );
 }
 
+const spring = { type: 'spring' as const, stiffness: 420, damping: 16 };
+
+export function Bounce({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      whileHover={reduce ? undefined : { y: -6, scale: 1.03 }}
+      whileTap={reduce ? undefined : { scale: 0.98 }}
+      transition={spring}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function Wiggle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      className={`inline-flex ${className}`}
+      animate={reduce ? undefined : { rotate: [0, -8, 8, -4, 0] }}
+      transition={reduce ? undefined : { duration: 1.6, repeat: Infinity, repeatDelay: 2.4, ease: 'easeInOut' }}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
 export function StatGrid({ items }: { items: Stat[] }) {
   return (
     <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {items.map((item) => (
-        <div
-          key={item.id}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream px-4 py-5 shadow-[0_18px_40px_-24px_rgba(20,21,63,0.65)] ring-1 ring-navy/10"
-        >
+        <div key={item.id}>
+        <Bounce className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream px-4 py-5 shadow-[0_18px_40px_-24px_rgba(20,21,63,0.65)] ring-1 ring-navy/10">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold via-cream to-crest" />
           <dt className="text-xs font-medium uppercase tracking-wider text-navy/70">
             {item.label}
@@ -134,6 +150,7 @@ export function StatGrid({ items }: { items: Stat[] }) {
               </span>
             )}
           </dd>
+        </Bounce>
         </div>
       ))}
     </dl>
