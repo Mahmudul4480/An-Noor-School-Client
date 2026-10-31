@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Wallet, Landmark, Smartphone, Plus, Loader2, ArrowLeftRight, Globe, RotateCcw } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
-import { cn, formatSignedBdt } from '../../lib/utils';
+import { cn, dhakaToday, formatSignedBdt } from '../../lib/utils';
 import { addAccount, computeAllBalances, fetchAccounts, fetchEntries, fetchReverseRequests, hasPendingReverseRequest, isEntryReversed, isPettyCashAccount, requestReverseEntry, transferBetweenAccounts } from '../../lib/ledger';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../../types';
 
@@ -36,6 +36,7 @@ export function LedgerPanel() {
     amount: '',
     charge: '',
     note: '',
+    date: dhakaToday(),
   });
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -150,11 +151,17 @@ export function LedgerPanel() {
     const amount = parseFloat(transfer.amount);
     const charge = parseFloat(transfer.charge) || 0;
     if (!transfer.fromAccountId || !transfer.toAccountId || transfer.fromAccountId === transfer.toAccountId || !amount || amount <= 0) {
-      setError('From/To account আলাদা হতে হবে এবং valid amount দিতে হবে।');
+      setError('From আর To account আলাদা হতে হবে এবং সঠিক টাকার পরিমাণ দিতে হবে।');
       return;
     }
     if (charge < 0) {
       setError('Cashout / bank charge negative হতে পারে না।');
+      return;
+    }
+    if (!transfer.date) {
+      setTransfer((prev) => ({ ...prev, date: dhakaToday() }));
+    } else if (transfer.date > dhakaToday()) {
+      setError('ভবিষ্যতের তারিখে transfer করা যাবে না। আজকের বা আগের তারিখ দিন।');
       return;
     }
     setBusy(true);
@@ -167,8 +174,9 @@ export function LedgerPanel() {
         amount,
         charge,
         note: transfer.note || undefined,
+        date: transfer.date || dhakaToday(),
       });
-      setTransfer((prev) => ({ ...prev, amount: '', charge: '', note: '' }));
+      setTransfer((prev) => ({ ...prev, amount: '', charge: '', note: '', date: dhakaToday() }));
       setShowTransfer(false);
       setMessage(
         charge > 0
@@ -177,7 +185,7 @@ export function LedgerPanel() {
       );
       await load();
     } catch (err) {
-      setError(userErrorMessage(err, 'Transfer failed.'));
+      setError(userErrorMessage(err, 'Transfer করা যায়নি। আবার চেষ্টা করুন।'));
     } finally {
       setBusy(false);
     }
@@ -206,11 +214,6 @@ export function LedgerPanel() {
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
-            {error}
-          </div>
-        )}
         {message && (
           <div
             ref={confirmBannerRef}
@@ -270,7 +273,7 @@ export function LedgerPanel() {
             <p className="text-[10px] font-bold text-school-muted uppercase tracking-widest">
               Bank → Bank, bKash → Bank, Nagad cashout — charge থাকলে source account থেকে কাটা হবে এবং Expenses-এ যোগ হবে
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
               <select
                 value={transfer.fromAccountId}
                 onChange={(e) => setTransfer({ ...transfer, fromAccountId: e.target.value })}
@@ -293,6 +296,14 @@ export function LedgerPanel() {
                   </option>
                 ))}
               </select>
+              <input
+                type="date"
+                title="Transfer-এর তারিখ (ডিফল্ট: আজ)"
+                value={transfer.date}
+                max={dhakaToday()}
+                onChange={(e) => setTransfer({ ...transfer, date: e.target.value || dhakaToday() })}
+                className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none"
+              />
               <input
                 type="number"
                 min={0}
@@ -384,11 +395,6 @@ export function LedgerPanel() {
             {message}
           </div>
         )}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
-            {error}
-          </div>
-        )}
         {recentEntries.length === 0 ? (
           <p className="text-school-muted text-sm font-medium text-center py-8">কোনো entry নেই।</p>
         ) : (
@@ -410,7 +416,7 @@ export function LedgerPanel() {
                   const pendingReverse = hasPendingReverseRequest(entry.id, reverseRequests);
                   return (
                   <tr key={entry.id} className={cn('hover:bg-slate-50 transition-colors', reversed && 'opacity-60')}>
-                    <td className="py-3 font-bold text-school-blue">{formatEntryDateTime(entry.date.slice(0, 10), entry.createdAt)}</td>
+                    <td className="py-3 font-bold text-school-blue">{formatEntryDateTime(entry.date.includes('T') ? dhakaToday(new Date(entry.date)) : entry.date.slice(0, 10), entry.createdAt)}</td>
                     <td className="py-3 text-slate-500 font-medium">
                       {accounts.find((a) => a.id === entry.accountId)?.name || entry.accountId}
                     </td>
@@ -508,6 +514,15 @@ export function LedgerPanel() {
                 Send to Principal
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl text-center">
+            <p className="text-base font-black text-red-600">✕ সমস্যা হয়েছে</p>
+            <p className="text-xs text-school-muted mt-2">{error}</p>
+            <button type="button" onClick={() => setError('')} className="mt-5 px-6 py-2.5 rounded-xl bg-school-blue text-white text-xs font-black">ঠিক আছে</button>
           </div>
         </div>
       )}

@@ -11,7 +11,7 @@ import {
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
-import { omitUndefined, toIsoString } from './utils';
+import { dhakaDateWithCurrentTime, dhakaToday, omitUndefined, toIsoString } from './utils';
 import type { LedgerAccount, LedgerAccountType, LedgerEntry, ReverseRequest } from '../types';
 
 const ACCOUNTS_COLLECTION = 'ledgerAccounts';
@@ -240,6 +240,8 @@ export async function transferBetweenAccounts(params: {
   /** Cashout / bank charge, deducted from the source account and posted as an expense */
   charge?: number;
   note?: string;
+  /** Business date yyyy-mm-dd (Dhaka). Defaults to today in Dhaka. */
+  date?: string;
 }): Promise<{ debit: LedgerEntry; credit: LedgerEntry; transferId: string }> {
   if (params.fromAccountId === params.toAccountId) {
     throw new Error('From এবং To account আলাদা হতে হবে।');
@@ -256,11 +258,20 @@ export async function transferBetweenAccounts(params: {
   const fromAccount = accounts.find((account) => account.id === params.fromAccountId);
   const toAccount = accounts.find((account) => account.id === params.toAccountId);
   if (!fromAccount || !toAccount) {
-    throw new Error('Account not found.');
+    throw new Error('Account খুঁজে পাওয়া যায়নি। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');
+  }
+
+  const businessDate = params.date?.trim() || dhakaToday();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(businessDate) || Number.isNaN(new Date(`${businessDate}T00:00:00+06:00`).getTime())) {
+    throw new Error('Transfer-এর তারিখ সঠিক নয়। সঠিক তারিখ দিন।');
+  }
+  if (businessDate > dhakaToday()) {
+    throw new Error('ভবিষ্যতের তারিখে transfer করা যাবে না।');
   }
 
   const transferId = generateId('xfer');
-  const date = new Date().toISOString();
+  // Business date + current Dhaka entry time; createdAt (server timestamp) is added by addEntry.
+  const date = dhakaDateWithCurrentTime(businessDate);
   const noteParts = [params.note?.trim(), charge > 0 ? `Charge ৳ ${charge.toLocaleString('en-BD')}` : '']
     .filter(Boolean)
     .join(' • ');
@@ -290,7 +301,7 @@ export async function transferBetweenAccounts(params: {
   if (charge > 0) {
     const { postTransferChargeExpense } = await import('./expenses');
     await postTransferChargeExpense({
-      date: date.slice(0, 10),
+      date: businessDate,
       amount: charge,
       accountId: params.fromAccountId,
       fromAccountName: fromAccount.name,
