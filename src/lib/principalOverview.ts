@@ -4,7 +4,7 @@ import { rangeIncomeExpense } from './dayClose';
 import { fetchExpenses } from './expenses';
 import { fetchIncomeEntries } from './income';
 import { fetchInvoices } from './invoices';
-import { computeAllBalances, fetchAccounts, fetchEntries } from './ledger';
+import { computeAllBalances, effectiveEntries, fetchAccounts, fetchEntries } from './ledger';
 import { fetchStudents } from './students';
 import type { Admission, Expense, IncomeEntry, LedgerAccount, LedgerEntry, SchoolAsset, Student, StudentInvoice } from '../types';
 
@@ -107,7 +107,7 @@ export function moneyRows(data: PrincipalData, from: string, to: string): MoneyR
   const invoiceById = new Map(data.invoices.map((i) => [i.id, i]));
   const inRange = (d: string) => d.slice(0, 10) >= from && d.slice(0, 10) <= to;
 
-  const rows: MoneyRow[] = data.entries.filter((e) => inRange(e.date)).map((entry) => {
+  const rows: MoneyRow[] = effectiveEntries(data.entries).filter((e) => inRange(e.date) && e.relatedType !== 'transfer').map((entry) => {
     let category = 'Other';
     let enteredBy = '—';
     const rel = entry.relatedId;
