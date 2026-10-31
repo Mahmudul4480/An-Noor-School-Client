@@ -1,3 +1,4 @@
+import { ClassCountCards } from './common/ClassCountCards';
 import { userErrorMessage } from '../lib/errorMessages';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -184,6 +185,7 @@ export function StudentManagement() {
 
   return (
     <div className="space-y-6">
+      <ClassCountCards />
       <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
