@@ -4,7 +4,7 @@ import { admissionPaidAmount, fetchAdmissions } from './admissions';
 import { fetchExpenses } from './expenses';
 import { fetchIncomeEntries } from './income';
 import { fetchInvoices } from './invoices';
-import { fetchAccounts, fetchEntries, isEntryReversed } from './ledger';
+import { effectiveEntries, fetchAccounts, fetchEntries } from './ledger';
 import { CLASS_OPTIONS } from './schoolConstants';
 import { getSchoolAddress, getSchoolName } from './receipts';
 import { fetchStudents } from './students';
@@ -191,10 +191,9 @@ function balanceBefore(
   entries: LedgerEntry[],
   beforeDate: string,
 ): number {
-  const relevant = entries.filter(
+  const relevant = effectiveEntries(entries).filter(
     (entry) =>
       entry.accountId === account.id &&
-      !isEntryReversed(entry, entries) &&
       entry.date.slice(0, 10) < beforeDate,
   );
   const credits = relevant.filter((entry) => entry.type === 'credit').reduce((sum, entry) => sum + entry.amount, 0);
@@ -492,8 +491,8 @@ export async function getDirectorBriefing(
     .map((account) => ({
       name: account.name,
       balance: account.openingBalance
-        + entries
-          .filter((entry) => entry.accountId === account.id && !isEntryReversed(entry, entries))
+        + effectiveEntries(entries)
+          .filter((entry) => entry.accountId === account.id)
           .reduce((sum, entry) => sum + (entry.type === 'credit' ? entry.amount : -entry.amount), 0),
     }));
 
