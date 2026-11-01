@@ -89,6 +89,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .site-shell *,
+  .site-shell *::before,
+  .site-shell *::after {
+    scroll-behavior: auto !important;
+  }
   .site-marquee {
     animation: none;
     flex-wrap: wrap;

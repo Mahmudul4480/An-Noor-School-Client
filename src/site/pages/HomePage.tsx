@@ -16,7 +16,7 @@ import {
 import { Seo } from '../seo';
 import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
-import { ArchFrame, BlobFrame, SoftCard, Sticker, Wave } from '../components/kit';
+import { ArchFrame, BlobFrame, Float, JoyLink, SoftCard, Sticker, Wave } from '../components/kit';
 import { Reveal } from '../components/ui';
 
 const factTones = [
@@ -31,7 +31,7 @@ const programArt: Record<string, { art: ArtName; tone: string; border: string }>
   arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky' },
   english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange' },
 };
-const stepColors = ['bg-sun', 'bg-sky', 'bg-leaf', 'bg-orange', 'bg-sun', 'bg-sky', 'bg-leaf', 'bg-orange', 'bg-sun'];
+const stepColors = ['bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun'];
 
 export default function HomePage() {
   return (
@@ -56,13 +56,13 @@ export default function HomePage() {
             </p>
             <p className="mt-4 max-w-lg text-base leading-relaxed text-navy-deep/80">{home.lede}</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
+              <JoyLink
                 to="/admission"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange px-5 py-3 text-base font-bold text-navy-deep shadow-[0_6px_0_0_#2A2C89]"
               >
                 {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
                 <ArrowRight size={18} aria-hidden="true" />
-              </Link>
+              </JoyLink>
               <Link
                 to="/about"
                 className="inline-flex min-h-11 items-center rounded-full border-2 border-navy bg-white px-5 py-3 text-base font-bold text-navy"
@@ -74,6 +74,8 @@ export default function HomePage() {
           <ArchFrame className="mx-auto w-full max-w-md lg:max-w-none">
             <img
               src={photos.hero.src}
+              srcSet="/site/hero-800.webp 800w, /site/hero.webp 1920w"
+              sizes="(max-width: 768px) 100vw, 560px"
               alt={photos.hero.alt}
               width={photos.hero.width}
               height={photos.hero.height}
@@ -119,7 +121,7 @@ export default function HomePage() {
                 </div>
                 <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy">{program.titleAr}</p>
                 <h3 className="text-2xl font-semibold text-navy-deep">{program.title}</h3>
-                <p lang="bn" className="font-bn text-sm text-leaf">{program.titleBn}</p>
+                <p lang="bn" className="font-bn text-sm font-semibold text-navy">{program.titleBn}</p>
                 <p className="mt-2 text-sm leading-relaxed text-navy-deep/75">{program.text}</p>
               </article>
             );
@@ -134,7 +136,7 @@ export default function HomePage() {
           <ol className="mt-8 space-y-3">
             {classes.map((item, index) => (
               <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
-                <div className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]} ${item.stage === 'Primary' && index % 2 === 0 ? '' : ''}`}>
+                <div className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]}`}>
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-sm font-bold">{String(index + 1).padStart(2, '0')}</span>
                     <h3 className="text-xl font-semibold">{item.name}</h3>
@@ -142,7 +144,7 @@ export default function HomePage() {
                   {item.sections.length > 0 && (
                     <p className="mt-1 text-sm font-semibold">{item.sections.join(' · ')}</p>
                   )}
-                  <p className="mt-1 text-sm leading-relaxed text-navy-deep/80">{item.text}</p>
+                  <p className="mt-1 text-sm leading-relaxed opacity-90">{item.text}</p>
                 </div>
               </li>
             ))}
@@ -154,12 +156,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <Sticker rotate={1.5}>Placeholder</Sticker>
         <h2 className="mt-4 text-3xl font-semibold text-navy-deep">{dayAtSchool.title}</h2>
-        <p lang="bn" className="font-bn text-lg text-leaf">{dayAtSchool.kickerBn}</p>
+        <p lang="bn" className="font-bn text-lg font-semibold text-navy">{dayAtSchool.kickerBn}</p>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-navy-deep/75">{dayAtSchool.note}</p>
         <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {dayAtSchool.steps.map((step, index) => (
             <li key={step.label} className="rounded-[24px] border-4 border-dashed border-navy/30 bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-orange">0{index + 1}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-navy">0{index + 1}</p>
               <h3 className="mt-1 text-lg font-semibold text-navy-deep">{step.label}</h3>
               <p className="mt-1 text-sm text-navy-deep/70">{step.text}</p>
             </li>
@@ -170,7 +172,7 @@ export default function HomePage() {
       <section className="bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-3xl font-semibold text-navy-deep">{home.momentsTitle}</h2>
-          <p lang="bn" className="font-bn text-lg text-leaf">{home.momentsKickerBn}</p>
+          <p lang="bn" className="font-bn text-lg font-semibold text-navy">{home.momentsKickerBn}</p>
           <div className="mt-6">
             <MomentsCarousel />
           </div>
@@ -189,9 +191,9 @@ export default function HomePage() {
           />
         </BlobFrame>
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-navy/60">{home.principalKicker}</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-navy">{home.principalKicker}</p>
           <h2 className="mt-1 text-3xl font-semibold text-navy-deep">{home.principalTitle}</h2>
-          <p className="text-sm font-semibold text-leaf">{site.principal.title}</p>
+          <p className="text-sm font-semibold text-navy">{site.principal.title}</p>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-navy-deep/80">{home.principalNote}</p>
         </div>
       </section>
@@ -229,7 +231,7 @@ export default function HomePage() {
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
           {noticesPage.notices.map((notice) => (
             <li key={notice.id} className="rotate-[-1deg] rounded-[24px] bg-sun p-5 shadow-[6px_6px_0_0_#2A2C89]">
-              <p className="text-xs font-bold uppercase tracking-wide text-navy/70">{notice.date}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-navy">{notice.date}</p>
               <h3 className="mt-1 text-xl font-semibold text-navy-deep">{notice.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-navy-deep/80">{notice.body}</p>
               {notice.href && (
@@ -252,10 +254,18 @@ export default function HomePage() {
 function Decorations() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <Art name="cloud" className="absolute left-2 top-4 h-12 w-12 text-navy sm:h-16 sm:w-16" />
-      <Art name="star" className="absolute right-6 top-6 hidden h-10 w-10 text-navy sm:block" />
-      <Art name="balloon" className="absolute bottom-16 right-4 hidden h-14 w-14 text-navy md:block" />
-      <Art name="crescent" className="absolute bottom-20 left-6 hidden h-12 w-12 text-navy lg:block" />
+      <Float duration={8} className="absolute left-2 top-4">
+        <Art name="cloud" className="h-12 w-12 text-navy sm:h-16 sm:w-16" />
+      </Float>
+      <Float duration={7} className="absolute right-6 top-8 hidden md:inline-block">
+        <Art name="star" className="h-10 w-10 text-navy" />
+      </Float>
+      <Float duration={9} className="absolute bottom-16 right-4 hidden md:inline-block">
+        <Art name="balloon" className="h-14 w-14 text-navy" />
+      </Float>
+      <Float duration={6} className="absolute right-24 top-6 hidden lg:inline-block">
+        <Art name="crescent" className="h-12 w-12 text-navy" />
+      </Float>
     </div>
   );
 }

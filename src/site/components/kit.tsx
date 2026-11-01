@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'motion/react';
 
 export type SiteTone = 'navy' | 'leaf' | 'orange' | 'sky' | 'sun' | 'coral';
 
@@ -44,13 +46,57 @@ export function Sticker({
   className?: string;
   rotate?: number;
 }) {
+  const reduce = useReducedMotion();
   return (
-    <span
+    <motion.span
       className={`inline-flex items-center rounded-full border-2 border-navy-deep bg-sun px-3 py-1 text-sm font-bold text-navy-deep shadow-[4px_4px_0_0_#2A2C89] ${className}`}
-      style={{ transform: `rotate(${rotate}deg)` }}
+      style={{ rotate }}
+      whileHover={reduce ? undefined : { rotate: rotate - 3 }}
+      transition={{ duration: 0.35 }}
     >
       {children}
-    </span>
+    </motion.span>
+  );
+}
+
+export function Float({
+  children,
+  className = '',
+  duration = 7,
+}: {
+  children: ReactNode;
+  className?: string;
+  duration?: number;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      aria-hidden="true"
+      className={`inline-block ${className}`}
+      animate={reduce ? undefined : { y: [0, -8, 0] }}
+      transition={reduce ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+export function JoyLink({
+  to,
+  className = '',
+  children,
+}: {
+  to: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span className="inline-flex" whileHover={reduce ? undefined : { rotate: -2 }} transition={{ duration: 0.3 }}>
+      <Link to={to} className={className}>
+        {children}
+      </Link>
+    </motion.span>
   );
 }
 

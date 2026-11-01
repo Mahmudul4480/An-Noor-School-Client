@@ -81,10 +81,12 @@ export function MomentsCarousel() {
                 aria-selected={itemIndex === index}
                 aria-label={item.caption}
                 onClick={() => setIndex(itemIndex)}
-                className={`h-2.5 rounded-full transition ${
-                  itemIndex === index ? 'w-6 bg-gold' : 'w-2.5 bg-navy/25'
-                }`}
-              />
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
+                <span
+                  className={`block h-2.5 rounded-full ${itemIndex === index ? 'w-6 bg-navy' : 'w-2.5 bg-navy/30'}`}
+                />
+              </button>
             ))}
           </div>
         </div>
