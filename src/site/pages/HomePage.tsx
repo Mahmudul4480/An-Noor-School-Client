@@ -1,266 +1,261 @@
 import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRight, BookOpen, GraduationCap, Languages, MoonStar } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { Art, type ArtName } from '../art';
 import {
   admission,
   classes,
+  dayAtSchool,
   home,
+  noticesPage,
+  photos,
   programs,
   seo,
   site,
   stats,
-  values,
 } from '../content';
 import { Seo } from '../seo';
-import { HeroSlideshow } from '../components/HeroSlideshow';
 import { InquiryForm } from '../components/InquiryForm';
-import { JourneyTimeline } from '../components/JourneyTimeline';
 import { MomentsCarousel } from '../components/MomentsCarousel';
-import { CreamCard, Lift, Reveal, Ribbon, SectionHeading, StatGrid } from '../components/ui';
+import { ArchFrame, BlobFrame, SoftCard, Sticker, Wave } from '../components/kit';
+import { Reveal } from '../components/ui';
 
-const programIcons = {
-  islamic: MoonStar,
-  hifz: BookOpen,
-  arabic: Languages,
-  english: GraduationCap,
-} as const;
+const factTones = [
+  { bg: 'bg-sun', text: 'text-navy-deep' },
+  { bg: 'bg-sky', text: 'text-navy-deep' },
+  { bg: 'bg-leaf', text: 'text-white' },
+  { bg: 'bg-sun', text: 'text-navy-deep' },
+] as const;
+const programArt: Record<string, { art: ArtName; tone: string; border: string }> = {
+  islamic: { art: 'crescent', tone: 'bg-sun', border: 'border-sun' },
+  hifz: { art: 'quran', tone: 'bg-[#e7f6ee]', border: 'border-leaf' },
+  arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky' },
+  english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange' },
+};
+const stepColors = ['bg-sun', 'bg-sky', 'bg-leaf', 'bg-orange', 'bg-sun', 'bg-sky', 'bg-leaf', 'bg-orange', 'bg-sun'];
 
 export default function HomePage() {
-  const reduce = useReducedMotion();
-  const early = classes.filter((item) => item.stage === 'Early years');
-  const primary = classes.filter((item) => item.stage === 'Primary');
-
   return (
     <>
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
-      <section className="relative min-h-[88svh] overflow-hidden bg-navy text-white md:min-h-[78vh]">
-        <HeroSlideshow />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-deep via-navy-deep/70 to-navy-deep/25 md:bg-gradient-to-r md:from-navy-deep/90 md:via-navy-deep/55 md:to-navy-deep/15" />
-        <div className="relative z-10 mx-auto flex min-h-[88svh] max-w-6xl flex-col justify-end gap-10 px-4 pb-16 pt-28 sm:px-6 md:min-h-[78vh] md:justify-center md:py-24 lg:grid lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+      <section className="relative overflow-hidden bg-gradient-to-b from-sky to-cream">
+        <Decorations />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-4 pb-8 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:pb-4">
           <div>
-            <motion.p
-              lang="ar"
-              dir="rtl"
-              className="font-arabic text-2xl text-gold sm:text-3xl"
-              initial={reduce ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
+            <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy sm:text-3xl">
               {site.bismillah}
-            </motion.p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-cream">{home.kicker}</p>
-            <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-              An-Noor
-              <span className="mt-1 block text-3xl font-medium text-cream sm:text-5xl">International School</span>
+            </p>
+            <div className="mt-4">
+              <Sticker rotate={-2}>{site.sessionLabel}</Sticker>
+            </div>
+            <h1 className="mt-4 max-w-xl text-4xl font-semibold leading-[1.05] text-navy-deep sm:text-6xl">
+              {site.name}
             </h1>
-            <p className="mt-4 max-w-xl text-lg text-white/90">{site.tagline}</p>
-            <p lang="bn" className="font-bn mt-1 text-base text-cream/90">
+            <p className="mt-3 max-w-lg text-lg font-semibold text-navy">{site.tagline}</p>
+            <p lang="bn" className="font-bn mt-1 text-base text-navy/80">
               {site.taglineBn}
             </p>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">{home.lede}</p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-navy-deep/80">{home.lede}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 to="/admission"
-                className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-navy-deep transition-colors hover:bg-cream"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange px-5 py-3 text-base font-bold text-navy-deep shadow-[0_6px_0_0_#2A2C89]"
               >
                 {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
-                <ArrowRight size={16} aria-hidden="true" />
+                <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <Link
                 to="/about"
-                className="inline-flex items-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white/10"
+                className="inline-flex min-h-11 items-center rounded-full border-2 border-navy bg-white px-5 py-3 text-base font-bold text-navy"
               >
                 {home.secondaryCta}
               </Link>
             </div>
           </div>
-          <motion.blockquote
-            className="relative rounded-2xl bg-white/95 p-6 text-navy-deep shadow-[0_18px_40px_-24px_rgba(0,0,0,0.45)] sm:p-8"
-            initial={reduce ? false : { opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-          >
-            <Ribbon>Session {site.sessionShort}</Ribbon>
-            <p lang="ar" dir="rtl" className="font-arabic mt-4 text-4xl leading-relaxed sm:text-5xl">
-              {site.verse.arabic}
-            </p>
-            <p className="mt-3 text-base font-medium">{site.verse.translation}</p>
-            <footer className="mt-2 text-xs uppercase tracking-[0.18em] text-navy/60">{site.verse.source}</footer>
-          </motion.blockquote>
+          <ArchFrame className="mx-auto w-full max-w-md lg:max-w-none">
+            <img
+              src={photos.hero.src}
+              alt={photos.hero.alt}
+              width={photos.hero.width}
+              height={photos.hero.height}
+              fetchPriority="high"
+              decoding="async"
+              className="aspect-[4/5] w-full object-cover sm:aspect-[5/4]"
+            />
+          </ArchFrame>
         </div>
+        <Wave fill="#FFF7E3" />
       </section>
 
-      <div className="relative z-10 mx-auto -mt-8 max-w-6xl px-4 sm:px-6">
-        <StatGrid items={stats} />
-      </div>
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {stats.map((item, index) => (
+            <li key={item.id}>
+              <Reveal delay={index * 0.04}>
+                <div className={`flex min-h-28 flex-col justify-center rounded-full px-4 py-5 text-center shadow-[0_8px_0_0_rgba(42,44,137,0.15)] ${factTones[index].bg} ${factTones[index].text}`}>
+                  <p className="text-2xl font-semibold sm:text-3xl">
+                    {item.value === null ? item.pending : item.value}
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
+                  <p lang="bn" className="font-bn text-sm">{item.bn}</p>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
         <Reveal>
-          <SectionHeading
-            kicker={home.programsKicker}
-            kickerBn={home.programsKickerBn}
-            title={home.programsTitle}
-            text={home.programsText}
-          />
+          <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">{home.programsTitle}</h2>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-navy-deep/75">{home.programsText}</p>
         </Reveal>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {programs.map((program, index) => {
-            const Icon = programIcons[program.id as keyof typeof programIcons];
+          {programs.map((program) => {
+            const look = programArt[program.id] ?? programArt.english;
             return (
-              <div key={program.id}>
-              <Reveal delay={index * 0.04}>
-                <Lift className="h-full">
-                <article className="h-full rounded-2xl bg-white p-6 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy">
-                        {program.titleAr}
-                      </p>
-                      <h3 className="mt-1 text-xl font-semibold tracking-tight text-navy-deep">{program.title}</h3>
-                      <p lang="bn" className="font-bn text-sm text-crest">
-                        {program.titleBn}
-                      </p>
-                    </div>
-                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-gold">
-                      <Icon size={20} aria-hidden="true" />
-                    </span>
-                  </div>
-                  <p className="mt-4 text-sm leading-relaxed text-ink/75">{program.text}</p>
-                </article>
-                </Lift>
-              </Reveal>
-              </div>
+              <article key={program.id} className={`rounded-[28px] border-4 bg-white p-5 ${look.border}`}>
+                <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
+                  <Art name={look.art} className="h-12 w-12 text-navy" />
+                </div>
+                <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy">{program.titleAr}</p>
+                <h3 className="text-2xl font-semibold text-navy-deep">{program.title}</h3>
+                <p lang="bn" className="font-bn text-sm text-leaf">{program.titleBn}</p>
+                <p className="mt-2 text-sm leading-relaxed text-navy-deep/75">{program.text}</p>
+              </article>
             );
           })}
         </div>
       </section>
 
-      <section className="bg-white py-16 sm:py-24">
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-          <SectionHeading
-            kicker={home.pathKicker}
-            kickerBn={home.pathKickerBn}
-            title={home.pathTitle}
-            text={home.pathText}
-          />
-          <ol className="mt-10 space-y-4">
-            {early.map((item, index) => (
-              <li key={item.id} className="grid gap-4 rounded-2xl bg-[#f7f6f2] p-5 sm:grid-cols-[auto_1fr] sm:items-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-navy text-sm font-semibold text-white">
-                  {index + 1}
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h3 className="text-xl font-semibold tracking-tight text-navy-deep">{item.name}</h3>
-                    <span className="text-xs uppercase tracking-[0.16em] text-navy/45">{item.stage}</span>
+      <section className="bg-white py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">{home.pathTitle}</h2>
+          <p className="mt-3 max-w-2xl text-navy-deep/75">{home.pathText}</p>
+          <ol className="mt-8 space-y-3">
+            {classes.map((item, index) => (
+              <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
+                <div className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]} ${item.stage === 'Primary' && index % 2 === 0 ? '' : ''}`}>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-sm font-bold">{String(index + 1).padStart(2, '0')}</span>
+                    <h3 className="text-xl font-semibold">{item.name}</h3>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {item.sections.map((section) => (
-                      <span key={section} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-navy ring-1 ring-navy/10">
-                        {section}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink/70">{item.text}</p>
+                  {item.sections.length > 0 && (
+                    <p className="mt-1 text-sm font-semibold">{item.sections.join(' · ')}</p>
+                  )}
+                  <p className="mt-1 text-sm leading-relaxed text-navy-deep/80">{item.text}</p>
                 </div>
               </li>
             ))}
           </ol>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {primary.map((item) => (
-              <div key={item.id} className="rounded-2xl bg-[#f7f6f2] px-3 py-4 text-center">
-                <p className="text-sm font-semibold text-navy-deep">{item.name}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-wider text-navy/45">Primary</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-sm text-ink/60">{home.pathFootnote}</p>
-          <Link to="/academics" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-navy">
-            See the classes <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          <p className="mt-4 text-sm text-navy-deep/60">{home.pathFootnote}</p>
         </div>
       </section>
 
-      <JourneyTimeline />
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <Sticker rotate={1.5}>Placeholder</Sticker>
+        <h2 className="mt-4 text-3xl font-semibold text-navy-deep">{dayAtSchool.title}</h2>
+        <p lang="bn" className="font-bn text-lg text-leaf">{dayAtSchool.kickerBn}</p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-navy-deep/75">{dayAtSchool.note}</p>
+        <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {dayAtSchool.steps.map((step, index) => (
+            <li key={step.label} className="rounded-[24px] border-4 border-dashed border-navy/30 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-orange">0{index + 1}</p>
+              <h3 className="mt-1 text-lg font-semibold text-navy-deep">{step.label}</h3>
+              <p className="mt-1 text-sm text-navy-deep/70">{step.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <section className="py-10" aria-label={home.valuesTitle}>
+      <section className="bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <SectionHeading kicker={home.valuesKicker} title={home.valuesTitle} />
-        </div>
-        <div className="mt-6 overflow-hidden">
-          <p className="sr-only">{values.map((value) => `${value.en}, ${value.bn}`).join('. ')}</p>
-          <div className="overflow-hidden" aria-hidden="true">
-            <div className="site-marquee flex w-max gap-3 py-2">
-              {[0, 1].map((copy) => (
-                <div key={copy} className={copy === 1 ? 'site-marquee-copy flex gap-3 pr-3' : 'flex gap-3 pr-3'}>
-                  {values.map((value) => (
-                    <span
-                      key={`${copy}-${value.en}`}
-                      className="inline-flex items-center gap-3 rounded-full bg-white px-5 py-3 text-navy shadow-sm ring-1 ring-navy/10"
-                    >
-                      <span lang="ar" className="font-arabic text-xl text-navy">
-                        {value.ar}
-                      </span>
-                      <span className="text-sm font-semibold">{value.en}</span>
-                      <span lang="bn" className="font-bn text-sm text-ink/60">
-                        {value.bn}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <h2 className="text-3xl font-semibold text-navy-deep">{home.momentsTitle}</h2>
+          <p lang="bn" className="font-bn text-lg text-leaf">{home.momentsKickerBn}</p>
+          <div className="mt-6">
+            <MomentsCarousel />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-        <SectionHeading kicker={home.momentsKicker} kickerBn={home.momentsKickerBn} title={home.momentsTitle} />
-        <div className="mt-8">
-          <MomentsCarousel />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <CreamCard className="grid items-center gap-8 lg:grid-cols-[240px_1fr]">
+      <section className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[240px_1fr]">
+        <BlobFrame className="mx-auto w-56">
           <img
             src={site.principal.photo}
-            alt={`Portrait of ${site.principal.name}, ${site.principal.title} of ${site.name}.`}
+            alt={`Portrait of ${site.principal.name}, ${site.principal.title}.`}
             width={site.principal.photoWidth}
             height={site.principal.photoHeight}
-            className="mx-auto aspect-[3/4] w-full max-w-[240px] rounded-2xl object-cover object-top ring-1 ring-navy/10"
+            className="aspect-[3/4] w-full object-cover object-top"
             loading="lazy"
           />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-navy-soft">{home.principalKicker}</p>
-            <h2 className="mt-2 text-3xl font-semibold text-navy-deep">{home.principalTitle}</h2>
-            <p className="mt-1 text-sm text-crest">{site.principal.title}</p>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-ink/80">{home.principalNote}</p>
-            <Link to="/about" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-navy">
-              About the school <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-        </CreamCard>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="grid overflow-hidden rounded-2xl bg-navy shadow-[0_18px_40px_-24px_rgba(20,21,63,0.45)] lg:grid-cols-2">
-          <div className="bg-navy p-7 text-white sm:p-10">
-            <div className="relative">
-              <Ribbon>{home.admissionKicker}</Ribbon>
-              <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">{home.admissionTitle}</h2>
-              <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80 sm:text-base">{home.admissionText}</p>
-              <p className="mt-6 text-sm text-cream/80">{site.address.line}</p>
-            </div>
-          </div>
-          <div className="bg-white p-7 sm:p-10">
-            <h3 className="text-xl font-semibold text-navy-deep">{admission.formTitle}</h3>
-            <div className="mt-4">
-              <InquiryForm />
-            </div>
-          </div>
+        </BlobFrame>
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-navy/60">{home.principalKicker}</p>
+          <h2 className="mt-1 text-3xl font-semibold text-navy-deep">{home.principalTitle}</h2>
+          <p className="text-sm font-semibold text-leaf">{site.principal.title}</p>
+          <p className="mt-3 max-w-xl text-base leading-relaxed text-navy-deep/80">{home.principalNote}</p>
         </div>
       </section>
+
+      <section className="bg-orange/20 py-12 sm:py-16">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-2">
+          <div>
+            <h2 className="text-3xl font-semibold text-navy-deep">{home.admissionTitle}</h2>
+            <p className="mt-3 text-navy-deep/80">{home.admissionText}</p>
+            <ol className="mt-6 space-y-3">
+              {admission.steps.map((step, index) => (
+                <li key={step.title} className="flex gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange text-base font-bold text-navy-deep">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-semibold text-navy-deep">{step.title}</h3>
+                    <p className="text-sm leading-relaxed text-navy-deep/75">{step.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <SoftCard accent="orange">
+            <h3 className="text-2xl font-semibold text-navy-deep">{admission.formTitle}</h3>
+            <div className="mt-3">
+              <InquiryForm />
+            </div>
+          </SoftCard>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <h2 className="text-3xl font-semibold text-navy-deep">{noticesPage.title}</h2>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+          {noticesPage.notices.map((notice) => (
+            <li key={notice.id} className="rotate-[-1deg] rounded-[24px] bg-sun p-5 shadow-[6px_6px_0_0_#2A2C89]">
+              <p className="text-xs font-bold uppercase tracking-wide text-navy/70">{notice.date}</p>
+              <h3 className="mt-1 text-xl font-semibold text-navy-deep">{notice.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-navy-deep/80">{notice.body}</p>
+              {notice.href && (
+                <Link to={notice.href} className="mt-3 inline-flex min-h-11 items-center font-bold text-navy">
+                  Admission details
+                </Link>
+              )}
+            </li>
+          ))}
+          <li className="rotate-[1.5deg] rounded-[24px] bg-coral/15 p-5">
+            <h3 className="text-xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h3>
+            <p className="mt-2 text-sm text-navy-deep/75">{noticesPage.eventsNote}</p>
+          </li>
+        </ul>
+      </section>
     </>
+  );
+}
+
+function Decorations() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <Art name="cloud" className="absolute left-2 top-4 h-12 w-12 text-navy sm:h-16 sm:w-16" />
+      <Art name="star" className="absolute right-6 top-6 hidden h-10 w-10 text-navy sm:block" />
+      <Art name="balloon" className="absolute bottom-16 right-4 hidden h-14 w-14 text-navy md:block" />
+      <Art name="crescent" className="absolute bottom-20 left-6 hidden h-12 w-12 text-navy lg:block" />
+    </div>
   );
 }

@@ -28,24 +28,25 @@ export function MomentsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative overflow-hidden rounded-2xl bg-navy shadow-[0_14px_36px_-22px_rgba(20,21,63,0.45)] ring-1 ring-navy/10">
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={photo.src}
-            src={photo.src}
-            alt={photo.alt}
-            width={photo.width}
-            height={photo.height}
-            className="aspect-[16/10] w-full object-cover"
-            initial={reduce ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduce ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
-          />
-        </AnimatePresence>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy-deep/90 to-transparent p-5 pt-16 text-white">
-          <p className="max-w-lg text-sm font-medium sm:text-base">{photo.caption}</p>
+      <div className="rotate-[-1deg] rounded-[28px] bg-white p-3 shadow-[0_12px_0_0_#5CB8F5] sm:p-4">
+        <div className="relative overflow-hidden rounded-[20px] bg-sky/20">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={photo.src}
+              src={photo.src}
+              alt={photo.alt}
+              width={photo.width}
+              height={photo.height}
+              className="aspect-[16/10] w-full object-cover"
+              loading="lazy"
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduce ? undefined : { opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+            />
+          </AnimatePresence>
         </div>
+        <p className="px-2 py-3 text-center text-sm font-semibold text-navy-deep">{photo.caption}</p>
       </div>
       <div>
         <p className="font-arabic text-3xl text-navy" lang="ar" dir="rtl">

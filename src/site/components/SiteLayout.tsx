@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Facebook, Mail, MapPin, Menu, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
+import { Wave } from './kit';
 
 export function SiteLayout() {
   const { pathname } = useLocation();
@@ -40,7 +41,7 @@ function Ticker() {
   ];
   const line = `${items.join('   ·   ')}   ·   ${items.join('   ·   ')}   ·   `;
   return (
-    <div className="bg-navy-deep text-cream">
+    <div className="bg-navy text-white">
       <p className="sr-only">{items.join('. ')}</p>
       <div className="overflow-hidden" aria-hidden="true">
         <div className="site-marquee flex w-max py-2 text-[12px] font-medium tracking-wide">
@@ -78,8 +79,8 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b border-white/10 bg-navy/95 text-white backdrop-blur-md ${
-        scrolled ? 'shadow-[0_12px_30px_-18px_rgba(8,8,30,0.85)]' : ''
+      className={`sticky top-0 z-40 border-b-4 border-sun bg-cream text-navy-deep ${
+        scrolled ? 'shadow-[0_10px_0_0_rgba(42,44,137,0.08)]' : ''
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
@@ -93,7 +94,7 @@ function Header() {
           />
           <span className="hidden min-[1680px]:block">
             <span className="block text-sm font-semibold leading-tight">{site.name}</span>
-            <span lang="bn" className="font-bn block text-xs text-cream/90">
+            <span lang="bn" className="font-bn block text-xs text-navy/70">
               {site.nameBn}
             </span>
           </span>
@@ -106,7 +107,7 @@ function Header() {
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `text-[13px] font-medium transition hover:text-gold ${isActive ? 'text-gold' : 'text-white/85'}`
+                `min-h-11 text-[13px] font-bold transition hover:text-orange ${isActive ? 'text-orange' : 'text-navy'}`
               }
             >
               {item.label}
@@ -117,19 +118,19 @@ function Header() {
         <div className="ml-auto flex items-center gap-2 xl:ml-4">
           <Link
             to="/admission"
-            className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-gold px-3 py-2 text-xs font-semibold text-navy-deep transition-colors hover:bg-cream sm:px-4 sm:text-sm"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-orange px-3 py-2 text-xs font-bold text-navy-deep shadow-[0_4px_0_0_#2A2C89] sm:px-4 sm:text-sm"
           >
             Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
           </Link>
           <Link
             to="/login"
-            className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-gold hover:text-gold sm:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border-2 border-navy px-4 py-2 text-sm font-bold text-navy sm:inline-flex"
           >
             Portal Login
           </Link>
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-navy text-navy xl:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
@@ -186,8 +187,8 @@ function Header() {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative mt-16 overflow-hidden bg-gradient-to-b from-navy to-navy-deep text-cream">
-      <div className="h-1.5 bg-gradient-to-r from-gold via-cream to-crest" />
+    <footer className="relative mt-8 overflow-hidden bg-navy-deep text-white">
+      <Wave fill="#14153F" flip className="bg-cream" />
       <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>
           <img src={site.logo} alt="" width={720} height={720} className="h-20 w-20 object-contain" />
