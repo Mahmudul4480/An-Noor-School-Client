@@ -1,8 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;500;600;700&family=Anek+Bangla:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Poppins", "Anek Bangla", ui-sans-serif, system-ui, sans-serif;
+  --font-bn: "Anek Bangla", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
   --color-school-blue: #1E3A8A;
   --color-school-gold: #FBBF24;
   --color-school-light-gray: #F9FAFB;
@@ -10,6 +12,13 @@
   --color-school-text: #1e293b;
   --color-school-muted: #64748b;
   --color-school-success: #22c55e;
+  --color-navy: #2A2C89;
+  --color-navy-soft: #3F4190;
+  --color-navy-deep: #14153F;
+  --color-gold: #F5C518;
+  --color-cream: #FEEDAF;
+  --color-crest: #1F8F4A;
+  --color-ink: #1B1C3A;
 }
 
 @layer base {
@@ -17,3 +26,44 @@
     @apply font-sans text-school-text bg-white;
   }
 }
+
+/* Public site only. Portal pages keep the body styles above. */
+.site-shell {
+  background: #f7f6f2;
+  color: #1b1c3a;
+}
+
+.site-shell ::selection {
+  background: #f5c518;
+  color: #14153f;
+}
+
+.site-shell :focus-visible {
+  outline: 2px solid #f5c518;
+  outline-offset: 3px;
+}
+
+.site-marquee {
+  animation: site-marquee 46s linear infinite;
+}
+
+.site-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes site-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-marquee {
+    animation: none;
+    flex-wrap: wrap;
+    width: 100% !important;
+  }
+  .site-marquee-copy {
+    display: none;
+  }
+}
+
