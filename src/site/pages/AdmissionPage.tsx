@@ -7,7 +7,7 @@ export default function AdmissionPage() {
   return (
     <>
       <Seo title={seo.admission.title} description={seo.admission.description} path={seo.admission.path} />
-      <PageHero kicker={admission.kicker} title={admission.title} titleBn={admission.titleBn} lede={admission.lede} />
+      <PageHero kicker={admission.kicker} title={admission.title} titleBn={admission.titleBn} lede={admission.lede} tone="orange" art="pencil" />
 
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">

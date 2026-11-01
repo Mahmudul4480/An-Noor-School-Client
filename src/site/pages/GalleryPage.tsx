@@ -26,7 +26,7 @@ export default function GalleryPage() {
   return (
     <>
       <Seo title={seo.gallery.title} description={seo.gallery.description} path={seo.gallery.path} />
-      <PageHero kicker={galleryPage.kicker} title={galleryPage.title} titleBn={galleryPage.titleBn} lede={galleryPage.lede} />
+      <PageHero kicker={galleryPage.kicker} title={galleryPage.title} titleBn={galleryPage.titleBn} lede={galleryPage.lede} tone="navy" art="rainbow" />
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Filter photographs">
           {galleryPage.filters.map((item) => (

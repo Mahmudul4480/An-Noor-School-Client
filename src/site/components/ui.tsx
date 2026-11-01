@@ -2,31 +2,42 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
+import { Art, type ArtName } from '../art';
+import { toneClass, Wave, type SiteTone } from './kit';
 
 export function PageHero({
   kicker,
   title,
   titleBn,
   lede,
+  tone = 'navy',
+  art = 'star',
 }: {
   kicker: string;
   title: string;
   titleBn?: string;
   lede: string;
+  tone?: SiteTone;
+  art?: ArtName;
 }) {
+  const theme = toneClass[tone];
+  const titleOnCoral = tone === 'coral' ? 'text-white' : theme.text;
   return (
-    <section className="relative overflow-hidden bg-navy text-white">
-      <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold">{kicker}</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-semibold leading-[1.12] sm:text-5xl">{title}</h1>
-        {titleBn && (
-          <p lang="bn" className="font-bn mt-3 text-xl text-cream sm:text-2xl">
-            {titleBn}
-          </p>
-        )}
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">{lede}</p>
+    <section className={`relative overflow-hidden ${theme.bg} ${theme.text}`}>
+      <div className="relative mx-auto flex max-w-6xl items-end justify-between gap-4 px-4 py-12 sm:px-6 sm:py-16">
+        <div>
+          <p className={`text-xs font-bold uppercase tracking-[0.18em] ${theme.lede}`}>{kicker}</p>
+          <h1 className={`mt-2 max-w-3xl text-4xl font-semibold leading-[1.08] sm:text-5xl ${titleOnCoral}`}>{title}</h1>
+          {titleBn && (
+            <p lang="bn" className={`font-bn mt-2 text-xl sm:text-2xl ${theme.lede}`}>
+              {titleBn}
+            </p>
+          )}
+          <p className={`mt-4 max-w-2xl text-base leading-relaxed sm:text-lg ${theme.lede}`}>{lede}</p>
+        </div>
+        <Art name={art} className="hidden h-20 w-20 shrink-0 sm:inline-flex" />
       </div>
-      <div className="h-px bg-gold/70" />
+      <Wave fill={theme.wave} />
     </section>
   );
 }

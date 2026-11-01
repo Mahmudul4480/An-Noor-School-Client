@@ -7,7 +7,7 @@ export default function AboutPage() {
   return (
     <>
       <Seo title={seo.about.title} description={seo.about.description} path={seo.about.path} />
-      <PageHero kicker={about.kicker} title={about.title} titleBn={about.titleBn} lede={about.lede} />
+      <PageHero kicker={about.kicker} title={about.title} titleBn={about.titleBn} lede={about.lede} tone="navy" art="lantern" />
       <section className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <h2 className="text-2xl font-semibold text-navy-deep">{about.storyTitle}</h2>

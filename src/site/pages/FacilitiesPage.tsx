@@ -6,7 +6,7 @@ export default function FacilitiesPage() {
   return (
     <>
       <Seo title={seo.facilities.title} description={seo.facilities.description} path={seo.facilities.path} />
-      <PageHero kicker={facilities.kicker} title={facilities.title} titleBn={facilities.titleBn} lede={facilities.lede} />
+      <PageHero kicker={facilities.kicker} title={facilities.title} titleBn={facilities.titleBn} lede={facilities.lede} tone="sky" art="cloud" />
       <section className="mx-auto grid max-w-6xl gap-5 px-4 py-14 sm:px-6 md:grid-cols-2">
         {facilities.real.map((item) => (
           <article key={item.title} className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">

@@ -9,7 +9,7 @@ export default function AcademicsPage() {
   return (
     <>
       <Seo title={seo.academics.title} description={seo.academics.description} path={seo.academics.path} />
-      <PageHero kicker={academics.kicker} title={academics.title} titleBn={academics.titleBn} lede={academics.lede} />
+      <PageHero kicker={academics.kicker} title={academics.title} titleBn={academics.titleBn} lede={academics.lede} tone="leaf" art="book" />
 
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <div className="rounded-3xl bg-gradient-to-br from-navy-deep to-navy p-6 text-white shadow-[0_22px_50px_-28px_rgba(20,21,63,0.55)] sm:p-8">

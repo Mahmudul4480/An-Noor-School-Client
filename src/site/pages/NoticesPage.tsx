@@ -8,7 +8,7 @@ export default function NoticesPage() {
   return (
     <>
       <Seo title={seo.notices.title} description={seo.notices.description} path={seo.notices.path} />
-      <PageHero
+      <PageHero tone="coral" art="balloon"
         kicker={noticesPage.kicker}
         title={noticesPage.title}
         titleBn={noticesPage.titleBn}

@@ -6,7 +6,7 @@ export default function TeachersPage() {
   return (
     <>
       <Seo title={seo.teachers.title} description={seo.teachers.description} path={seo.teachers.path} />
-      <PageHero
+      <PageHero tone="sun" art="star"
         kicker={teachersPage.kicker}
         title={teachersPage.title}
         titleBn={teachersPage.titleBn}
