@@ -490,8 +490,7 @@ export type JourneyMilestone = {
 };
 
 /**
- * Our Journey cards. The scroll motion is adapted from the numbered Experience
- * stack (sticky cards, scroll-scrubbed tilt). Copy below is not a finished history.
+ * Our Journey cards. A quiet vertical list. Copy below is not a finished history.
  *
  * TODO: owner — replace every card marked placeholder with the real year and story.
  * Keep `no` as 01, 02, 03… so the stack stays numbered. Add or remove cards freely.

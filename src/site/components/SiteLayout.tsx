@@ -3,7 +3,6 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Facebook, Mail, MapPin, Menu, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
-import { Bounce } from './ui';
 
 export function SiteLayout() {
   const { pathname } = useLocation();
@@ -116,14 +115,12 @@ function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 xl:ml-4">
-          <Bounce>
-            <Link
-              to="/admission"
-              className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-gold px-3 py-2 text-xs font-bold text-navy-deep shadow-sm transition hover:bg-cream sm:px-4 sm:text-sm"
-            >
-              Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
-            </Link>
-          </Bounce>
+          <Link
+            to="/admission"
+            className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-gold px-3 py-2 text-xs font-semibold text-navy-deep transition-colors hover:bg-cream sm:px-4 sm:text-sm"
+          >
+            Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
+          </Link>
           <Link
             to="/login"
             className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-gold hover:text-gold sm:inline-flex"

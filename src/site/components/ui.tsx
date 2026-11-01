@@ -15,12 +15,8 @@ export function PageHero({
   lede: string;
 }) {
   return (
-      <section className="relative overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-navy-soft text-white">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,24,0.16),transparent_42%)]"
-      />
-      <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+    <section className="relative overflow-hidden bg-navy text-white">
+      <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold">{kicker}</p>
         <h1 className="mt-3 max-w-3xl text-4xl font-semibold leading-[1.12] sm:text-5xl">{title}</h1>
         {titleBn && (
@@ -30,7 +26,7 @@ export function PageHero({
         )}
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">{lede}</p>
       </div>
-      <div className="h-1.5 bg-gradient-to-r from-gold via-cream to-crest" />
+      <div className="h-px bg-gold/70" />
     </section>
   );
 }
@@ -81,10 +77,10 @@ export function Reveal({
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y: 28 }}
+      initial={reduce ? false : { opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ type: 'spring', stiffness: 260, damping: 24, delay }}
+      viewport={{ once: true, margin: '-24px' }}
+      transition={{ duration: 0.45, delay, ease: 'easeOut' }}
     >
       {children}
     </motion.div>
@@ -99,32 +95,16 @@ export function Ribbon({ children }: { children: ReactNode }) {
   );
 }
 
-const spring = { type: 'spring' as const, stiffness: 420, damping: 16 };
-
-export function Bounce({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Lift({ children, className = '' }: { children: ReactNode; className?: string }) {
   const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
-      whileHover={reduce ? undefined : { y: -6, scale: 1.03 }}
-      whileTap={reduce ? undefined : { scale: 0.98 }}
-      transition={spring}
+      whileHover={reduce ? undefined : { y: -3 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
     >
       {children}
     </motion.div>
-  );
-}
-
-export function Wiggle({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.span
-      className={`inline-flex ${className}`}
-      animate={reduce ? undefined : { rotate: [0, -8, 8, -4, 0] }}
-      transition={reduce ? undefined : { duration: 1.6, repeat: Infinity, repeatDelay: 2.4, ease: 'easeInOut' }}
-    >
-      {children}
-    </motion.span>
   );
 }
 
@@ -133,7 +113,7 @@ export function StatGrid({ items }: { items: Stat[] }) {
     <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {items.map((item) => (
         <div key={item.id}>
-        <Bounce className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream px-4 py-5 shadow-[0_18px_40px_-24px_rgba(20,21,63,0.65)] ring-1 ring-navy/10">
+        <Lift className="relative h-full overflow-hidden rounded-2xl bg-white px-4 py-5 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold via-cream to-crest" />
           <dt className="text-xs font-medium uppercase tracking-wider text-navy/70">
             {item.label}
@@ -150,7 +130,7 @@ export function StatGrid({ items }: { items: Stat[] }) {
               </span>
             )}
           </dd>
-        </Bounce>
+        </Lift>
         </div>
       ))}
     </dl>
@@ -185,22 +165,13 @@ function CountUp({ value }: { value: number }) {
   return <span ref={ref}>{text}</span>;
 }
 
-export function PlaceholderCard({
-  title,
-  caption,
-  children,
-}: {
-  title: string;
-  caption: string;
-  children: ReactNode;
-}) {
+export function PlaceholderCard({ title, caption }: { title: string; caption: string }) {
   return (
-    <figure className="overflow-hidden rounded-3xl bg-gradient-to-br from-navy-deep to-navy shadow-[0_20px_40px_-24px_rgba(20,21,63,0.8)] ring-1 ring-white/10">
-      <div className="aspect-[4/3]">{children}</div>
-      <figcaption className="space-y-1 px-4 py-4 text-white">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs leading-relaxed text-cream/80">{caption}</p>
-      </figcaption>
+    <figure className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
+      <div className="flex aspect-[4/3] items-end bg-gradient-to-br from-[#e8e7f0] via-[#f6f4ee] to-[#d5d8e4] p-5">
+        <p className="text-sm font-medium text-navy/75">{title}</p>
+      </div>
+      <figcaption className="px-4 py-3 text-xs leading-relaxed text-ink/60">{caption}</figcaption>
     </figure>
   );
 }
@@ -216,7 +187,7 @@ export function TextLink({ to, children }: { to: string; children: ReactNode }) 
 export function CreamCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-3xl bg-gradient-to-br from-[#fffaf0] via-[#fff8e8] to-cream p-6 shadow-[0_22px_50px_-28px_rgba(20,21,63,0.55)] ring-1 ring-navy/10 sm:p-8 ${className}`}
+      className={`rounded-2xl bg-white p-6 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10 sm:p-8 ${className}`}
     >
       {children}
     </div>

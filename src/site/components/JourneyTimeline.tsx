@@ -1,118 +1,52 @@
-import { useEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { journey } from '../content';
 
-/**
- * Numbered sticky cards with a scroll-scrubbed tilt, adapted from the
- * portfolio Experience section (data-exp-card + GSAP ScrollTrigger, scrub).
- * A gold line draws down the stack on the same scroll. Desktop only;
- * phones and reduced-motion get a quiet static list.
- */
+/** A quiet vertical timeline. No tilt, no sticky stack. */
 export function JourneyTimeline() {
-  const rootRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const desktop = window.matchMedia('(min-width: 768px)');
-    const line = root.querySelector<HTMLElement>('[data-journey-line]');
-
-    if (reduce) {
-      if (line) line.style.transform = 'scaleY(1)';
-      return;
-    }
-    if (!desktop.matches) return;
-
-    let revert: (() => void) | null = null;
-    let cancelled = false;
-
-    (async () => {
-      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import('gsap'),
-        import('gsap/ScrollTrigger'),
-      ]);
-      if (cancelled || !rootRef.current) return;
-      gsap.registerPlugin(ScrollTrigger);
-
-      const ctx = gsap.context(() => {
-        const stack = root.querySelector<HTMLElement>('[data-journey-stack]');
-        if (line && stack) {
-          gsap.set(line, { scaleY: 0, transformOrigin: 'top center' });
-          gsap.to(line, {
-            scaleY: 1,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: stack,
-              start: 'top 75%',
-              end: 'bottom 55%',
-              scrub: true,
-            },
-          });
-        }
-
-        root.querySelectorAll<HTMLElement>('[data-exp-card]').forEach((card, index) => {
-          const rot = index % 2 === 0 ? -2.2 : 2.4;
-          gsap.fromTo(
-            card,
-            { y: 90, rotate: rot * 3 },
-            {
-              y: 0,
-              rotate: rot,
-              ease: 'none',
-              scrollTrigger: {
-                trigger: card,
-                start: 'top 92%',
-                end: 'top 46%',
-                scrub: true,
-              },
-            },
-          );
-        });
-      }, root);
-
-      revert = () => ctx.revert();
-      requestAnimationFrame(() => ScrollTrigger.refresh());
-    })();
-
-    return () => {
-      cancelled = true;
-      revert?.();
-    };
-  }, []);
+  const reduce = useReducedMotion();
 
   return (
-    <section className="h-exp" ref={rootRef} aria-labelledby="journey-title">
-      <div className="h-exp-head">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-navy-soft">
+    <section className="bg-[#f7f6f2] py-16 sm:py-24" aria-labelledby="journey-title">
+      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-navy/60">
           {journey.kicker}
           <span lang="bn" className="font-bn ml-2 normal-case tracking-normal text-crest">
             {journey.kickerBn}
           </span>
         </p>
-        <h2 id="journey-title" className="mt-2 text-3xl font-semibold text-navy-deep sm:text-5xl">
+        <h2 id="journey-title" className="mt-3 text-3xl font-semibold tracking-tight text-navy-deep sm:text-4xl">
           {journey.title}
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-ink/75 sm:text-base">{journey.lede}</p>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-ink/70 sm:text-base">{journey.lede}</p>
       </div>
-      <div className="h-exp-stack" data-journey-stack>
-        <div className="h-exp-line" data-journey-line aria-hidden="true" />
-        {journey.milestones.map((step) => (
-          <article key={step.no} className="h-exp-card" data-exp-card>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="h-exp-no">{step.no}</p>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-crest">{step.year}</p>
-              {step.placeholder && (
-                <span className="rounded-full bg-navy/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-navy">
-                  To be written
-                </span>
-              )}
-            </div>
-            <h3>{step.title}</h3>
-            <p>{step.text}</p>
-          </article>
+
+      <ol className="relative mx-auto mt-14 max-w-3xl px-4 sm:px-6">
+        <div className="absolute bottom-2 left-[7px] top-2 w-px bg-navy/15" aria-hidden="true" />
+        {journey.milestones.map((step, index) => (
+          <li key={step.no} className="relative pb-8 pl-10 last:pb-0">
+            <span className="absolute left-0 top-6 h-[15px] w-[15px] rounded-full border-2 border-navy bg-white" aria-hidden="true" />
+            <motion.article
+              className="rounded-2xl bg-white p-6 shadow-[0_10px_30px_-20px_rgba(20,21,63,0.45)] ring-1 ring-navy/8 sm:p-7"
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-30px' }}
+              transition={{ duration: 0.45, delay: Math.min(index * 0.04, 0.16), ease: 'easeOut' }}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs font-semibold tracking-[0.16em] text-navy">{step.no}</p>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-ink/50">{step.year}</p>
+                {step.placeholder && (
+                  <span className="rounded-full bg-[#f4f1e6] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-navy/70">
+                    To be written
+                  </span>
+                )}
+              </div>
+              <h3 className="mt-3 text-xl font-semibold tracking-tight text-navy-deep">{step.title}</h3>
+              <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink/70">{step.text}</p>
+            </motion.article>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

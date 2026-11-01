@@ -1,8 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { campusPhoto, galleryPage, moments, photoPlaceholders, seo, type Photo, type PhotoPlaceholder } from '../content';
 import { Seo } from '../seo';
-import { Illustration } from '../components/Illustrations';
-import { PageHero } from '../components/ui';
+import { PageHero, PlaceholderCard } from '../components/ui';
 
 type Filter = 'all' | 'campus' | 'people' | 'celebration' | 'needed';
 
@@ -92,15 +91,5 @@ export default function GalleryPage() {
 }
 
 function PlaceholderTile({ item }: { item: PhotoPlaceholder }) {
-  return (
-    <figure className="overflow-hidden rounded-[1.6rem] bg-navy-deep ring-1 ring-white/10">
-      <div className="aspect-[4/3]">
-        <Illustration variant={item.variant} title={item.needed} />
-      </div>
-      <figcaption className="px-4 py-3">
-        <p className="text-sm font-medium text-white">{item.title}</p>
-        <p className="mt-1 text-xs text-cream/75">{item.caption}</p>
-      </figcaption>
-    </figure>
-  );
+  return <PlaceholderCard title={item.title} caption={item.caption} />;
 }

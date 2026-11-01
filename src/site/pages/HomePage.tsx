@@ -5,7 +5,6 @@ import {
   admission,
   classes,
   home,
-  photos,
   programs,
   seo,
   site,
@@ -13,11 +12,11 @@ import {
   values,
 } from '../content';
 import { Seo } from '../seo';
-import { HeroFloaters } from '../components/HeroFloaters';
+import { HeroSlideshow } from '../components/HeroSlideshow';
 import { InquiryForm } from '../components/InquiryForm';
 import { JourneyTimeline } from '../components/JourneyTimeline';
 import { MomentsCarousel } from '../components/MomentsCarousel';
-import { Bounce, CreamCard, Reveal, Ribbon, SectionHeading, StatGrid, Wiggle } from '../components/ui';
+import { CreamCard, Lift, Reveal, Ribbon, SectionHeading, StatGrid } from '../components/ui';
 
 const programIcons = {
   islamic: MoonStar,
@@ -34,20 +33,10 @@ export default function HomePage() {
   return (
     <>
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
-      <section className="relative overflow-hidden bg-navy-deep text-white">
-        <img
-          src={photos.hero.src}
-          alt={photos.hero.alt}
-          width={photos.hero.width}
-          height={photos.hero.height}
-          fetchPriority="high"
-          decoding="async"
-          className="absolute inset-0 h-full w-full object-cover object-[center_40%]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/95 via-navy/82 to-navy-deep/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#f6f1e4] via-transparent to-navy-deep/30" />
-        <HeroFloaters />
-        <div className="relative z-10 mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
+      <section className="relative min-h-[88svh] overflow-hidden bg-navy text-white md:min-h-[78vh]">
+        <HeroSlideshow />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-deep via-navy-deep/70 to-navy-deep/25 md:bg-gradient-to-r md:from-navy-deep/90 md:via-navy-deep/55 md:to-navy-deep/15" />
+        <div className="relative z-10 mx-auto flex min-h-[88svh] max-w-6xl flex-col justify-end gap-10 px-4 pb-16 pt-28 sm:px-6 md:min-h-[78vh] md:justify-center md:py-24 lg:grid lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
             <motion.p
               lang="ar"
@@ -60,7 +49,7 @@ export default function HomePage() {
               {site.bismillah}
             </motion.p>
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-cream">{home.kicker}</p>
-            <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[1.08] sm:text-6xl">
+            <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
               An-Noor
               <span className="mt-1 block text-3xl font-medium text-cream sm:text-5xl">International School</span>
             </h1>
@@ -70,27 +59,23 @@ export default function HomePage() {
             </p>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">{home.lede}</p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Bounce>
-                <Link
-                  to="/admission"
-                  className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-bold text-navy-deep shadow-lg shadow-black/20"
-                >
-                  {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
-                  <ArrowRight size={16} aria-hidden="true" />
-                </Link>
-              </Bounce>
-              <Bounce>
-                <Link
-                  to="/about"
-                  className="inline-flex items-center rounded-full border border-white/35 px-5 py-3 text-sm font-semibold text-white hover:border-gold hover:text-gold"
-                >
-                  {home.secondaryCta}
-                </Link>
-              </Bounce>
+              <Link
+                to="/admission"
+                className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-navy-deep transition-colors hover:bg-cream"
+              >
+                {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <Link
+                to="/about"
+                className="inline-flex items-center rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white/10"
+              >
+                {home.secondaryCta}
+              </Link>
             </div>
           </div>
           <motion.blockquote
-            className="relative rounded-[2rem] bg-gradient-to-br from-cream to-[#fff4c4] p-6 text-navy-deep shadow-[0_24px_50px_-24px_rgba(0,0,0,0.55)] sm:p-8"
+            className="relative rounded-2xl bg-white/95 p-6 text-navy-deep shadow-[0_18px_40px_-24px_rgba(0,0,0,0.45)] sm:p-8"
             initial={reduce ? false : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
@@ -123,26 +108,26 @@ export default function HomePage() {
             const Icon = programIcons[program.id as keyof typeof programIcons];
             return (
               <div key={program.id}>
-              <Reveal delay={index * 0.06}>
-                <Bounce className="h-full">
-                <article className="h-full rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream p-6 shadow-[0_18px_40px_-28px_rgba(20,21,63,0.7)] ring-1 ring-navy/10">
+              <Reveal delay={index * 0.04}>
+                <Lift className="h-full">
+                <article className="h-full rounded-2xl bg-white p-6 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy">
                         {program.titleAr}
                       </p>
-                      <h3 className="mt-1 text-xl font-semibold text-navy-deep">{program.title}</h3>
+                      <h3 className="mt-1 text-xl font-semibold tracking-tight text-navy-deep">{program.title}</h3>
                       <p lang="bn" className="font-bn text-sm text-crest">
                         {program.titleBn}
                       </p>
                     </div>
-                    <Wiggle className="h-11 w-11 items-center justify-center rounded-2xl bg-navy text-gold">
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-gold">
                       <Icon size={20} aria-hidden="true" />
-                    </Wiggle>
+                    </span>
                   </div>
-                  <p className="mt-4 text-sm leading-relaxed text-ink/80">{program.text}</p>
+                  <p className="mt-4 text-sm leading-relaxed text-ink/75">{program.text}</p>
                 </article>
-                </Bounce>
+                </Lift>
               </Reveal>
               </div>
             );
@@ -150,10 +135,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-navy-deep via-navy to-navy-soft py-16 text-white sm:py-20">
+      <section className="bg-white py-16 sm:py-24">
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <SectionHeading
-            light
             kicker={home.pathKicker}
             kickerBn={home.pathKickerBn}
             title={home.pathTitle}
@@ -161,37 +145,37 @@ export default function HomePage() {
           />
           <ol className="mt-10 space-y-4">
             {early.map((item, index) => (
-              <li key={item.id} className="grid gap-4 rounded-3xl bg-white/10 p-5 ring-1 ring-white/15 sm:grid-cols-[auto_1fr] sm:items-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold text-sm font-bold text-navy-deep">
+              <li key={item.id} className="grid gap-4 rounded-2xl bg-[#f7f6f2] p-5 sm:grid-cols-[auto_1fr] sm:items-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-navy text-sm font-semibold text-white">
                   {index + 1}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="text-xs uppercase tracking-[0.16em] text-cream/70">{item.stage}</span>
+                    <h3 className="text-xl font-semibold tracking-tight text-navy-deep">{item.name}</h3>
+                    <span className="text-xs uppercase tracking-[0.16em] text-navy/45">{item.stage}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {item.sections.map((section) => (
-                      <span key={section} className="rounded-full bg-cream/15 px-3 py-1 text-xs font-medium text-cream">
+                      <span key={section} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-navy ring-1 ring-navy/10">
                         {section}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/75">{item.text}</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink/70">{item.text}</p>
                 </div>
               </li>
             ))}
           </ol>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {primary.map((item) => (
-              <div key={item.id} className="rounded-2xl bg-white/10 px-3 py-4 text-center ring-1 ring-white/15">
-                <p className="text-sm font-semibold text-gold">{item.name}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-wider text-cream/70">Primary</p>
+              <div key={item.id} className="rounded-2xl bg-[#f7f6f2] px-3 py-4 text-center">
+                <p className="text-sm font-semibold text-navy-deep">{item.name}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-wider text-navy/45">Primary</p>
               </div>
             ))}
           </div>
-          <p className="mt-6 text-sm text-cream/70">{home.pathFootnote}</p>
-          <Link to="/academics" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-gold">
+          <p className="mt-6 text-sm text-ink/60">{home.pathFootnote}</p>
+          <Link to="/academics" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-navy">
             See the classes <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
@@ -212,13 +196,13 @@ export default function HomePage() {
                   {values.map((value) => (
                     <span
                       key={`${copy}-${value.en}`}
-                      className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-navy to-navy-soft px-5 py-3 text-white shadow-md"
+                      className="inline-flex items-center gap-3 rounded-full bg-white px-5 py-3 text-navy shadow-sm ring-1 ring-navy/10"
                     >
-                      <span lang="ar" className="font-arabic text-xl text-gold">
+                      <span lang="ar" className="font-arabic text-xl text-navy">
                         {value.ar}
                       </span>
                       <span className="text-sm font-semibold">{value.en}</span>
-                      <span lang="bn" className="font-bn text-sm text-cream">
+                      <span lang="bn" className="font-bn text-sm text-ink/60">
                         {value.bn}
                       </span>
                     </span>
@@ -244,7 +228,7 @@ export default function HomePage() {
             alt={`Portrait of ${site.principal.name}, ${site.principal.title} of ${site.name}.`}
             width={site.principal.photoWidth}
             height={site.principal.photoHeight}
-            className="mx-auto aspect-[3/4] w-full max-w-[240px] rounded-[1.6rem] object-cover object-top shadow-lg ring-1 ring-navy/10"
+            className="mx-auto aspect-[3/4] w-full max-w-[240px] rounded-2xl object-cover object-top ring-1 ring-navy/10"
             loading="lazy"
           />
           <div>
@@ -260,8 +244,8 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="grid overflow-hidden rounded-[2rem] bg-navy-deep shadow-[0_30px_60px_-36px_rgba(20,21,63,0.85)] lg:grid-cols-2">
-          <div className="relative bg-gradient-to-br from-navy-deep to-navy-soft p-7 text-white sm:p-10">
+        <div className="grid overflow-hidden rounded-2xl bg-navy shadow-[0_18px_40px_-24px_rgba(20,21,63,0.45)] lg:grid-cols-2">
+          <div className="bg-navy p-7 text-white sm:p-10">
             <div className="relative">
               <Ribbon>{home.admissionKicker}</Ribbon>
               <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">{home.admissionTitle}</h2>
@@ -269,7 +253,7 @@ export default function HomePage() {
               <p className="mt-6 text-sm text-cream/80">{site.address.line}</p>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-[#fffaf0] to-cream p-7 sm:p-10">
+          <div className="bg-white p-7 sm:p-10">
             <h3 className="text-xl font-semibold text-navy-deep">{admission.formTitle}</h3>
             <div className="mt-4">
               <InquiryForm />
