@@ -7,9 +7,9 @@ export default function AdmissionPage() {
   return (
     <>
       <Seo title={seo.admission.title} description={seo.admission.description} path={seo.admission.path} />
-      <PageHero kicker={admission.kicker} title={admission.title} titleBn={admission.titleBn} lede={admission.lede} />
+      <PageHero kicker={admission.kicker} title={admission.title} titleBn={admission.titleBn} lede={admission.lede} tone="orange" art="pencil" />
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-3xl font-semibold text-navy-deep">{admission.stepsTitle}</h2>
           <Ribbon>Session 2026–27</Ribbon>
@@ -28,7 +28,7 @@ export default function AdmissionPage() {
         </ol>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-5 px-4 sm:px-6 lg:grid-cols-2">
+      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 sm:px-6 lg:grid-cols-2">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{admission.documentsTitle}</h2>
           <p className="mt-3 text-sm leading-relaxed text-ink/70">{admission.documentsNote}</p>
@@ -47,7 +47,7 @@ export default function AdmissionPage() {
         </CreamCard>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{admission.formTitle}</h2>
           <div className="mt-4">

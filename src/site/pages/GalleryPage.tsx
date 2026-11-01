@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { campusPhoto, galleryPage, moments, photoPlaceholders, seo, type Photo, type PhotoPlaceholder } from '../content';
 import { Seo } from '../seo';
+import { HoverCard } from '../components/kit';
 import { PageHero, PlaceholderCard } from '../components/ui';
 
 type Filter = 'all' | 'campus' | 'people' | 'celebration' | 'needed';
@@ -26,8 +27,8 @@ export default function GalleryPage() {
   return (
     <>
       <Seo title={seo.gallery.title} description={seo.gallery.description} path={seo.gallery.path} />
-      <PageHero kicker={galleryPage.kicker} title={galleryPage.title} titleBn={galleryPage.titleBn} lede={galleryPage.lede} />
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <PageHero kicker={galleryPage.kicker} title={galleryPage.title} titleBn={galleryPage.titleBn} lede={galleryPage.lede} tone="navy" art="rainbow" />
+      <section className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6">
         <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Filter photographs">
           {galleryPage.filters.map((item) => (
             <button
@@ -45,11 +46,11 @@ export default function GalleryPage() {
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visiblePhotos.map((photo) => (
+            <HoverCard key={photo.id} className="overflow-hidden rounded-[1.6rem] bg-navy-deep text-left shadow-lg ring-1 ring-navy/10">
             <button
-              key={photo.id}
               type="button"
               onClick={() => open(photo)}
-              className="overflow-hidden rounded-[1.6rem] bg-navy-deep text-left shadow-lg ring-1 ring-navy/10"
+              className="w-full text-left"
             >
               <img
                 src={photo.src}
@@ -61,6 +62,7 @@ export default function GalleryPage() {
               />
               <span className="block px-4 py-3 text-sm text-cream">{photo.caption}</span>
             </button>
+            </HoverCard>
           ))}
           {visiblePlaceholders.map((item) => (
             <div key={item.id}>

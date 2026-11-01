@@ -296,6 +296,10 @@ export type Photo = {
   category: 'campus' | 'people' | 'celebration';
 };
 
+/**
+ * TODO: parental consent is required before publishing any new photograph of a child.
+ * The pictures already on this site stay; do not add further images of children until the school confirms consent.
+ */
 export const photos = {
   hero: {
     src: '/site/hero.webp',
@@ -452,6 +456,22 @@ export const home = {
   admissionTitle: 'Admission is open',
   admissionText:
     'Families may inquire now for Play through Class 6. The form below opens an email to the school — or WhatsApp, once a number is confirmed. It is not stored on this website.',
+};
+
+/**
+ * TODO: replace with the school's real daily timetable. These rows are placeholders, not a published schedule.
+ */
+export const dayAtSchool = {
+  kicker: 'A day at An-Noor',
+  kickerBn: 'একদিন আন-নূরে',
+  title: 'How a school day might feel',
+  note: 'The office has not confirmed the timetable. Nothing below is a bell time.',
+  steps: [
+    { label: 'Arrival', text: 'To be confirmed: how children are welcomed in.' },
+    { label: 'Learning', text: 'To be confirmed: lessons, Arabic, and Islamic studies.' },
+    { label: 'Salah & rest', text: 'To be confirmed: prayer, snack, and a break.' },
+    { label: 'Home time', text: 'To be confirmed: how the day closes.' },
+  ],
 };
 
 export const about = {

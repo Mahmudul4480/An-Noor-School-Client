@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { moments } from '../content';
+import { HoverCard } from './kit';
 
 export function MomentsCarousel() {
   const [index, setIndex] = useState(0);
@@ -28,25 +29,26 @@ export function MomentsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative overflow-hidden rounded-2xl bg-navy shadow-[0_14px_36px_-22px_rgba(20,21,63,0.45)] ring-1 ring-navy/10">
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={photo.src}
-            src={photo.src}
-            alt={photo.alt}
-            width={photo.width}
-            height={photo.height}
-            className="aspect-[16/10] w-full object-cover"
-            initial={reduce ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduce ? undefined : { opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
-          />
-        </AnimatePresence>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy-deep/90 to-transparent p-5 pt-16 text-white">
-          <p className="max-w-lg text-sm font-medium sm:text-base">{photo.caption}</p>
+      <HoverCard className="rounded-[28px] border border-navy/10 bg-white p-3 shadow-[0_8px_24px_rgba(42,44,137,0.08)] sm:p-4">
+        <div className="relative overflow-hidden rounded-[20px] bg-sky/20">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={photo.src}
+              src={photo.src}
+              alt={photo.alt}
+              width={photo.width}
+              height={photo.height}
+              className="aspect-[16/10] w-full object-cover"
+              loading="lazy"
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduce ? undefined : { opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+            />
+          </AnimatePresence>
         </div>
-      </div>
+        <p className="px-2 py-3 text-center text-sm font-semibold text-navy-deep">{photo.caption}</p>
+      </HoverCard>
       <div>
         <p className="font-arabic text-3xl text-navy" lang="ar" dir="rtl">
           نور
@@ -80,10 +82,12 @@ export function MomentsCarousel() {
                 aria-selected={itemIndex === index}
                 aria-label={item.caption}
                 onClick={() => setIndex(itemIndex)}
-                className={`h-2.5 rounded-full transition ${
-                  itemIndex === index ? 'w-6 bg-gold' : 'w-2.5 bg-navy/25'
-                }`}
-              />
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
+                <span
+                  className={`block h-2.5 rounded-full ${itemIndex === index ? 'w-6 bg-navy' : 'w-2.5 bg-navy/30'}`}
+                />
+              </button>
             ))}
           </div>
         </div>

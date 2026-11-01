@@ -6,13 +6,13 @@ export default function TeachersPage() {
   return (
     <>
       <Seo title={seo.teachers.title} description={seo.teachers.description} path={seo.teachers.path} />
-      <PageHero
+      <PageHero tone="sun" art="star"
         kicker={teachersPage.kicker}
         title={teachersPage.title}
         titleBn={teachersPage.titleBn}
         lede={teachersPage.lede}
       />
-      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
+      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
         <CreamCard className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
           <img
             src={site.principal.photo}
@@ -37,14 +37,14 @@ export default function TeachersPage() {
         </CreamCard>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{teachersPage.directoryTitle}</h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/75">{teachersPage.directoryNote}</p>
         </CreamCard>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
         <h2 className="text-2xl font-semibold text-navy-deep">{teachersPage.galleryTitle}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {moments.map((photo) => (

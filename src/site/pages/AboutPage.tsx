@@ -7,8 +7,8 @@ export default function AboutPage() {
   return (
     <>
       <Seo title={seo.about.title} description={seo.about.description} path={seo.about.path} />
-      <PageHero kicker={about.kicker} title={about.title} titleBn={about.titleBn} lede={about.lede} />
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <PageHero kicker={about.kicker} title={about.title} titleBn={about.titleBn} lede={about.lede} tone="navy" art="lantern" />
+      <section className="mx-auto grid max-w-[1200px] gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <h2 className="text-2xl font-semibold text-navy-deep">{about.storyTitle}</h2>
           <div className="mt-4 space-y-4 text-base leading-relaxed text-ink/80">
@@ -35,7 +35,7 @@ export default function AboutPage() {
 
       <JourneyTimeline />
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-2">
+      <section className="mx-auto grid max-w-[1200px] gap-4 px-4 sm:px-6 md:grid-cols-2">
         <Reveal>
           <CreamCard className="h-full">
             <h2 className="text-lg font-semibold text-navy-deep">{about.missionTitle}</h2>
@@ -50,7 +50,7 @@ export default function AboutPage() {
         </Reveal>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <h2 className="text-3xl font-semibold text-navy-deep">{about.leadershipTitle}</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/75">{about.leadershipText}</p>
         <div className="mt-8 grid gap-5 lg:grid-cols-2">

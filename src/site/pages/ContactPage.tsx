@@ -8,8 +8,8 @@ export default function ContactPage() {
   return (
     <>
       <Seo title={seo.contact.title} description={seo.contact.description} path={seo.contact.path} />
-      <PageHero kicker={contactPage.kicker} title={contactPage.title} titleBn={contactPage.titleBn} lede={contactPage.lede} />
-      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
+      <PageHero kicker={contactPage.kicker} title={contactPage.title} titleBn={contactPage.titleBn} lede={contactPage.lede} tone="navy" art="planet" />
+      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
         <div className="space-y-4">
           <CreamCard>
             <h2 className="text-lg font-semibold text-navy-deep">School office</h2>
