@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
-import { Art, type ArtName } from '../art';
-import { toneClass, Wave, type SiteTone } from './kit';
+import { Art, DriftingButterfly, type ArtName } from '../art';
+import { HoverCard, toneClass, Wave, type SiteTone } from './kit';
 
 export function PageHero({
   kicker,
@@ -36,8 +36,9 @@ export function PageHero({
           <p className={`mt-4 max-w-2xl text-base leading-relaxed sm:text-lg ${theme.lede}`}>{lede}</p>
         </div>
         <Art name={art} className="hidden h-20 w-20 shrink-0 sm:inline-flex" />
+        <DriftingButterfly className="absolute right-8 top-6 hidden h-12 w-12 md:inline-block" duration={17} />
       </div>
-      <Wave fill={theme.wave} />
+      <Wave fill={theme.wave} flowers />
     </section>
   );
 }
@@ -178,12 +179,14 @@ function CountUp({ value }: { value: number }) {
 
 export function PlaceholderCard({ title, caption }: { title: string; caption: string }) {
   return (
+    <HoverCard>
     <figure className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
       <div className="flex aspect-[4/3] items-end bg-gradient-to-br from-[#e8e7f0] via-[#f6f4ee] to-[#d5d8e4] p-5">
         <p className="text-sm font-medium text-navy/75">{title}</p>
       </div>
       <figcaption className="px-4 py-3 text-xs leading-relaxed text-ink/60">{caption}</figcaption>
     </figure>
+    </HoverCard>
   );
 }
 
@@ -197,10 +200,10 @@ export function TextLink({ to, children }: { to: string; children: ReactNode }) 
 
 export function CreamCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div
+    <HoverCard
       className={`rounded-2xl bg-white p-6 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10 sm:p-8 ${className}`}
     >
       {children}
-    </div>
+    </HoverCard>
   );
 }

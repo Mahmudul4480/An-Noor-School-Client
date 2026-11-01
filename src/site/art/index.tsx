@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 
 /**
  * Flat object illustrations for the public site.
@@ -23,7 +24,9 @@ export type ArtName =
   | 'balloon'
   | 'planet'
   | 'quran'
-  | 'cloud';
+  | 'cloud'
+  | 'flower'
+  | 'butterfly';
 
 export function Art({ name, className = 'h-12 w-12 text-navy' }: { name: ArtName; className?: string }) {
   const Icon = icons[name];
@@ -45,6 +48,8 @@ const icons: Record<ArtName, () => ReactElement> = {
   planet: Planet,
   quran: QuranStand,
   cloud: Cloud,
+  flower: Flower,
+  butterfly: Butterfly,
 };
 
 function Frame({ children }: { children: ReactNode }) {
@@ -161,5 +166,76 @@ function Cloud() {
         strokeLinejoin="round"
       />
     </Frame>
+  );
+}
+
+function Flower() {
+  return (
+    <Frame>
+      <circle cx="32" cy="20" r="7" fill="#FFC928" stroke="#2A2C89" strokeWidth="3" />
+      <circle cx="20" cy="34" r="7" fill="#FFC928" stroke="#2A2C89" strokeWidth="3" />
+      <circle cx="44" cy="34" r="7" fill="#F7931E" stroke="#2A2C89" strokeWidth="3" />
+      <circle cx="32" cy="44" r="7" fill="#F7931E" stroke="#2A2C89" strokeWidth="3" />
+      <circle cx="32" cy="33" r="5" fill="#FFF7E3" stroke="#2A2C89" strokeWidth="3" />
+    </Frame>
+  );
+}
+
+function Butterfly() {
+  const reduce = useReducedMotion();
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
+      <motion.g
+        style={{ transformOrigin: '32px 34px' }}
+        animate={reduce ? undefined : { scaleX: [1, 0.45, 1] }}
+        transition={reduce ? undefined : { duration: 0.55, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <ellipse cx="20" cy="28" rx="12" ry="14" fill="#5CB8F5" stroke="#2A2C89" strokeWidth="3" />
+        <ellipse cx="44" cy="28" rx="12" ry="14" fill="#5CB8F5" stroke="#2A2C89" strokeWidth="3" />
+        <ellipse cx="22" cy="44" rx="8" ry="8" fill="#FFC928" stroke="#2A2C89" strokeWidth="3" />
+        <ellipse cx="42" cy="44" rx="8" ry="8" fill="#FFC928" stroke="#2A2C89" strokeWidth="3" />
+      </motion.g>
+      <path d="M32 16v36" stroke="#2A2C89" strokeWidth="3" strokeLinecap="round" />
+      <path d="M32 18c-4-6-2-10 0-12 2 2 4 6 0 12Z" fill="#2A2C89" />
+    </svg>
+  );
+}
+
+/** A butterfly that flaps and drifts. Stays out of the text column. */
+export function DriftingButterfly({
+  className = '',
+  duration = 16,
+  delay = 0,
+}: {
+  className?: string;
+  duration?: number;
+  delay?: number;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      aria-hidden="true"
+      className={`pointer-events-none ${className}`}
+      animate={reduce ? undefined : { x: [0, 28, 8, 36, 0], y: [0, -14, 6, -10, 0] }}
+      transition={reduce ? undefined : { duration, delay, repeat: Infinity, ease: 'easeInOut' }}
+    >
+      <Art name="butterfly" className="h-10 w-10 sm:h-12 sm:w-12" />
+    </motion.span>
+  );
+}
+
+/** A flower that sways and gently blooms. */
+export function SwayingFlower({ className = '', delay = 0 }: { className?: string; delay?: number }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      aria-hidden="true"
+      className={`pointer-events-none ${className}`}
+      style={{ transformOrigin: '50% 100%' }}
+      animate={reduce ? undefined : { rotate: [-3, 3, -3], scale: [0.96, 1.04, 0.96] }}
+      transition={reduce ? undefined : { duration: 6.5, delay, repeat: Infinity, ease: 'easeInOut' }}
+    >
+      <Art name="flower" className="h-full w-full" />
+    </motion.span>
   );
 }

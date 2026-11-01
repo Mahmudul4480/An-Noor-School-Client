@@ -1,5 +1,6 @@
 import { facilities, photoPlaceholders, seo } from '../content';
 import { Seo } from '../seo';
+import { HoverCard } from '../components/kit';
 import { PageHero, PlaceholderCard, SectionHeading } from '../components/ui';
 
 export default function FacilitiesPage() {
@@ -9,7 +10,7 @@ export default function FacilitiesPage() {
       <PageHero kicker={facilities.kicker} title={facilities.title} titleBn={facilities.titleBn} lede={facilities.lede} tone="sky" art="cloud" />
       <section className="mx-auto grid max-w-6xl gap-5 px-4 py-14 sm:px-6 md:grid-cols-2">
         {facilities.real.map((item) => (
-          <article key={item.title} className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
+          <HoverCard key={item.title} className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
             <img
               src={item.photo.src}
               alt={item.photo.alt}
@@ -22,7 +23,7 @@ export default function FacilitiesPage() {
               <h2 className="text-xl font-semibold text-navy-deep">{item.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/75">{item.text}</p>
             </div>
-          </article>
+          </HoverCard>
         ))}
       </section>
       <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">

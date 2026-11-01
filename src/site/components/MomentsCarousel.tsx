@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { moments } from '../content';
+import { HoverCard } from './kit';
 
 export function MomentsCarousel() {
   const [index, setIndex] = useState(0);
@@ -28,7 +29,7 @@ export function MomentsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="rotate-[-1deg] rounded-[28px] bg-white p-3 shadow-[0_12px_0_0_#5CB8F5] sm:p-4">
+      <HoverCard className="rotate-[-1deg] rounded-[28px] bg-white p-3 shadow-[0_12px_0_0_#5CB8F5] sm:p-4">
         <div className="relative overflow-hidden rounded-[20px] bg-sky/20">
           <AnimatePresence mode="wait">
             <motion.img
@@ -47,7 +48,7 @@ export function MomentsCarousel() {
           </AnimatePresence>
         </div>
         <p className="px-2 py-3 text-center text-sm font-semibold text-navy-deep">{photo.caption}</p>
-      </div>
+      </HoverCard>
       <div>
         <p className="font-arabic text-3xl text-navy" lang="ar" dir="rtl">
           نور

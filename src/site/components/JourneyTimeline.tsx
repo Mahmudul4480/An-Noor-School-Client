@@ -30,7 +30,9 @@ export function JourneyTimeline() {
               initial={reduce ? false : { opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-30px' }}
-              transition={{ duration: 0.45, delay: Math.min(index * 0.04, 0.16), ease: 'easeOut' }}
+              whileHover={reduce ? undefined : { y: -8, scale: 1.02, boxShadow: '0 18px 36px rgba(92,184,245,0.38)' }}
+              whileTap={reduce ? undefined : { scale: 0.985 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 20 }}
             >
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-xs font-semibold tracking-[0.16em] text-navy">{step.no}</p>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { Art, type ArtName } from '../art';
+import { Art, DriftingButterfly, SwayingFlower, type ArtName } from '../art';
 import {
   admission,
   classes,
@@ -16,7 +16,8 @@ import {
 import { Seo } from '../seo';
 import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
-import { ArchFrame, BlobFrame, Float, JoyLink, SoftCard, Sticker, Wave } from '../components/kit';
+import { useReducedMotion, motion } from 'motion/react';
+import { ArchFrame, BlobFrame, Float, HoverCard, JoyLink, SoftCard, Sticker, Wave } from '../components/kit';
 import { Reveal } from '../components/ui';
 
 const factTones = [
@@ -34,6 +35,7 @@ const programArt: Record<string, { art: ArtName; tone: string; border: string }>
 const stepColors = ['bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun'];
 
 export default function HomePage() {
+  const reduce = useReducedMotion();
   return (
     <>
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
@@ -63,29 +65,41 @@ export default function HomePage() {
                 {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
                 <ArrowRight size={18} aria-hidden="true" />
               </JoyLink>
-              <Link
+              <JoyLink
                 to="/about"
                 className="inline-flex min-h-11 items-center rounded-full border-2 border-navy bg-white px-5 py-3 text-base font-bold text-navy"
               >
                 {home.secondaryCta}
-              </Link>
+              </JoyLink>
             </div>
           </div>
-          <ArchFrame className="mx-auto w-full max-w-md lg:max-w-none">
-            <img
-              src={photos.hero.src}
-              srcSet="/site/hero-800.webp 800w, /site/hero.webp 1920w"
-              sizes="(max-width: 768px) 100vw, 560px"
-              alt={photos.hero.alt}
-              width={photos.hero.width}
-              height={photos.hero.height}
-              fetchPriority="high"
-              decoding="async"
-              className="aspect-[4/5] w-full object-cover sm:aspect-[5/4]"
+          <motion.div
+            className="relative w-full"
+            animate={reduce ? undefined : { y: [0, -8, 0] }}
+            transition={reduce ? undefined : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-2 rounded-[150px_150px_36px_36px] shadow-[0_0_0_8px_rgba(255,201,40,0.55),0_0_28px_6px_rgba(92,184,245,0.45)] motion-safe:animate-pulse"
             />
-          </ArchFrame>
+            <ArchFrame className="relative w-full">
+              <motion.img
+                src={photos.hero.src}
+                srcSet="/site/hero-800.webp 800w, /site/hero.webp 1920w"
+                sizes="(max-width: 768px) 100vw, 640px"
+                alt={photos.hero.alt}
+                width={photos.hero.width}
+                height={photos.hero.height}
+                fetchPriority="high"
+                decoding="async"
+                className="aspect-[4/3] w-full origin-center object-cover sm:aspect-[5/4]"
+                animate={reduce ? undefined : { scale: [1, 1.07], x: [0, 14, 0], y: [0, -8, 0] }}
+                transition={reduce ? undefined : { duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </ArchFrame>
+          </motion.div>
         </div>
-        <Wave fill="#FFF7E3" />
+        <Wave fill="#FFF7E3" flowers />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -93,13 +107,13 @@ export default function HomePage() {
           {stats.map((item, index) => (
             <li key={item.id}>
               <Reveal delay={index * 0.04}>
-                <div className={`flex min-h-28 flex-col justify-center rounded-full px-4 py-5 text-center shadow-[0_8px_0_0_rgba(42,44,137,0.15)] ${factTones[index].bg} ${factTones[index].text}`}>
+                <HoverCard className={`flex min-h-28 flex-col justify-center rounded-full px-4 py-5 text-center shadow-[0_8px_0_0_rgba(42,44,137,0.15)] ${factTones[index].bg} ${factTones[index].text}`}>
                   <p className="text-2xl font-semibold sm:text-3xl">
                     {item.value === null ? item.pending : item.value}
                   </p>
                   <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
                   <p lang="bn" className="font-bn text-sm">{item.bn}</p>
-                </div>
+                </HoverCard>
               </Reveal>
             </li>
           ))}
@@ -115,7 +129,7 @@ export default function HomePage() {
           {programs.map((program) => {
             const look = programArt[program.id] ?? programArt.english;
             return (
-              <article key={program.id} className={`rounded-[28px] border-4 bg-white p-5 ${look.border}`}>
+              <HoverCard key={program.id} className={`h-full rounded-[28px] border-4 bg-white p-5 ${look.border}`}>
                 <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
                   <Art name={look.art} className="h-12 w-12 text-navy" />
                 </div>
@@ -123,7 +137,7 @@ export default function HomePage() {
                 <h3 className="text-2xl font-semibold text-navy-deep">{program.title}</h3>
                 <p lang="bn" className="font-bn text-sm font-semibold text-navy">{program.titleBn}</p>
                 <p className="mt-2 text-sm leading-relaxed text-navy-deep/75">{program.text}</p>
-              </article>
+              </HoverCard>
             );
           })}
         </div>
@@ -136,7 +150,7 @@ export default function HomePage() {
           <ol className="mt-8 space-y-3">
             {classes.map((item, index) => (
               <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
-                <div className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]}`}>
+                <HoverCard className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]}`}>
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-sm font-bold">{String(index + 1).padStart(2, '0')}</span>
                     <h3 className="text-xl font-semibold">{item.name}</h3>
@@ -145,7 +159,7 @@ export default function HomePage() {
                     <p className="mt-1 text-sm font-semibold">{item.sections.join(' · ')}</p>
                   )}
                   <p className="mt-1 text-sm leading-relaxed opacity-90">{item.text}</p>
-                </div>
+                </HoverCard>
               </li>
             ))}
           </ol>
@@ -158,15 +172,15 @@ export default function HomePage() {
         <h2 className="mt-4 text-3xl font-semibold text-navy-deep">{dayAtSchool.title}</h2>
         <p lang="bn" className="font-bn text-lg font-semibold text-navy">{dayAtSchool.kickerBn}</p>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-navy-deep/75">{dayAtSchool.note}</p>
-        <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {dayAtSchool.steps.map((step, index) => (
-            <li key={step.label} className="rounded-[24px] border-4 border-dashed border-navy/30 bg-white p-4">
+            <HoverCard key={step.label} className="rounded-[24px] border-4 border-dashed border-navy/30 bg-white p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-navy">0{index + 1}</p>
               <h3 className="mt-1 text-lg font-semibold text-navy-deep">{step.label}</h3>
               <p className="mt-1 text-sm text-navy-deep/70">{step.text}</p>
-            </li>
+            </HoverCard>
           ))}
-        </ol>
+        </div>
       </section>
 
       <section className="bg-white py-12 sm:py-16">
@@ -228,9 +242,9 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <h2 className="text-3xl font-semibold text-navy-deep">{noticesPage.title}</h2>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {noticesPage.notices.map((notice) => (
-            <li key={notice.id} className="rotate-[-1deg] rounded-[24px] bg-sun p-5 shadow-[6px_6px_0_0_#2A2C89]">
+            <HoverCard key={notice.id} className="rotate-[-1deg] rounded-[24px] bg-sun p-5 shadow-[6px_6px_0_0_#2A2C89]">
               <p className="text-xs font-bold uppercase tracking-wide text-navy">{notice.date}</p>
               <h3 className="mt-1 text-xl font-semibold text-navy-deep">{notice.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-navy-deep/80">{notice.body}</p>
@@ -239,13 +253,13 @@ export default function HomePage() {
                   Admission details
                 </Link>
               )}
-            </li>
+            </HoverCard>
           ))}
-          <li className="rotate-[1.5deg] rounded-[24px] bg-coral/15 p-5">
+          <HoverCard className="rotate-[1.5deg] rounded-[24px] bg-coral/15 p-5">
             <h3 className="text-xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h3>
             <p className="mt-2 text-sm text-navy-deep/75">{noticesPage.eventsNote}</p>
-          </li>
-        </ul>
+          </HoverCard>
+        </div>
       </section>
     </>
   );
@@ -254,17 +268,12 @@ export default function HomePage() {
 function Decorations() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <Float duration={8} className="absolute left-2 top-4">
-        <Art name="cloud" className="h-12 w-12 text-navy sm:h-16 sm:w-16" />
-      </Float>
-      <Float duration={7} className="absolute right-6 top-8 hidden md:inline-block">
-        <Art name="star" className="h-10 w-10 text-navy" />
-      </Float>
-      <Float duration={9} className="absolute bottom-16 right-4 hidden md:inline-block">
-        <Art name="balloon" className="h-14 w-14 text-navy" />
-      </Float>
-      <Float duration={6} className="absolute right-24 top-6 hidden lg:inline-block">
-        <Art name="crescent" className="h-12 w-12 text-navy" />
+      <SwayingFlower className="absolute bottom-10 left-1 h-8 w-8 sm:left-3 sm:h-12 sm:w-12" />
+      <SwayingFlower className="absolute right-2 top-3 hidden h-11 w-11 md:block" delay={0.4} />
+      <DriftingButterfly className="absolute bottom-28 right-1 h-9 w-9 md:bottom-auto md:right-8 md:top-8 md:h-12 md:w-12" duration={16} />
+      <DriftingButterfly className="absolute bottom-24 left-1 hidden h-11 w-11 lg:inline-block" duration={18} delay={0.8} />
+      <Float duration={8} className="absolute left-2 top-2 hidden sm:inline-block">
+        <Art name="cloud" className="h-12 w-12 text-navy" />
       </Float>
     </div>
   );
