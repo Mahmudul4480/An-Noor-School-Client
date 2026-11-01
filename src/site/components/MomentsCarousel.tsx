@@ -29,7 +29,7 @@ export function MomentsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <HoverCard className="rotate-[-1deg] rounded-[28px] bg-white p-3 shadow-[0_12px_0_0_#5CB8F5] sm:p-4">
+      <HoverCard className="rounded-[28px] border border-navy/10 bg-white p-3 shadow-[0_8px_24px_rgba(42,44,137,0.08)] sm:p-4">
         <div className="relative overflow-hidden rounded-[20px] bg-sky/20">
           <AnimatePresence mode="wait">
             <motion.img

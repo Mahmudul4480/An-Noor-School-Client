@@ -17,23 +17,15 @@ import { Seo } from '../seo';
 import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
 import { useReducedMotion, motion } from 'motion/react';
-import { ArchFrame, BlobFrame, Float, HoverCard, JoyLink, SoftCard, Sticker, Wave } from '../components/kit';
+import { ArchFrame, BlobFrame, HoverCard, JoyLink, SoftCard, Sticker, Wave } from '../components/kit';
 import { Reveal } from '../components/ui';
 
-const factTones = [
-  { bg: 'bg-sun', text: 'text-navy-deep' },
-  { bg: 'bg-sky', text: 'text-navy-deep' },
-  { bg: 'bg-leaf', text: 'text-white' },
-  { bg: 'bg-sun', text: 'text-navy-deep' },
-] as const;
 const programArt: Record<string, { art: ArtName; tone: string; border: string }> = {
   islamic: { art: 'crescent', tone: 'bg-sun', border: 'border-sun' },
   hifz: { art: 'quran', tone: 'bg-[#e7f6ee]', border: 'border-leaf' },
   arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky' },
   english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange' },
 };
-const stepColors = ['bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun', 'bg-sky', 'bg-sun'];
-
 export default function HomePage() {
   const reduce = useReducedMotion();
   return (
@@ -41,7 +33,7 @@ export default function HomePage() {
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
       <section className="relative overflow-hidden bg-gradient-to-b from-sky to-cream">
         <Decorations />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-4 pb-8 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:pb-4">
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-8 px-4 pb-8 pt-8 sm:px-6 sm:pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:pb-4">
           <div>
             <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy sm:text-3xl">
               {site.bismillah}
@@ -60,14 +52,14 @@ export default function HomePage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <JoyLink
                 to="/admission"
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange px-5 py-3 text-base font-bold text-navy-deep shadow-[0_6px_0_0_#2A2C89]"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange px-5 py-3 text-base font-bold text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.12)]"
               >
                 {home.primaryCta} <span lang="bn" className="font-bn">/ {home.primaryCtaBn}</span>
                 <ArrowRight size={18} aria-hidden="true" />
               </JoyLink>
               <JoyLink
                 to="/about"
-                className="inline-flex min-h-11 items-center rounded-full border-2 border-navy bg-white px-5 py-3 text-base font-bold text-navy"
+                className="inline-flex min-h-11 items-center rounded-full border border-navy/20 bg-white px-5 py-3 text-base font-bold text-navy"
               >
                 {home.secondaryCta}
               </JoyLink>
@@ -78,14 +70,10 @@ export default function HomePage() {
             animate={reduce ? undefined : { y: [0, -8, 0] }}
             transition={reduce ? undefined : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-2 rounded-[150px_150px_36px_36px] shadow-[0_0_0_8px_rgba(255,201,40,0.55),0_0_28px_6px_rgba(92,184,245,0.45)] motion-safe:animate-pulse"
-            />
-            <ArchFrame className="relative w-full">
+            <ArchFrame className="relative w-full ring-1 ring-sun/80">
               <motion.img
                 src={photos.hero.src}
-                srcSet="/site/hero-800.webp 800w, /site/hero.webp 1920w"
+                srcSet="/site/hero-800.webp 960w, /site/hero.webp 1920w"
                 sizes="(max-width: 768px) 100vw, 640px"
                 alt={photos.hero.alt}
                 width={photos.hero.width}
@@ -93,8 +81,8 @@ export default function HomePage() {
                 fetchPriority="high"
                 decoding="async"
                 className="aspect-[4/3] w-full origin-center object-cover sm:aspect-[5/4]"
-                animate={reduce ? undefined : { scale: [1, 1.07], x: [0, 14, 0], y: [0, -8, 0] }}
-                transition={reduce ? undefined : { duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+                animate={reduce ? undefined : { scale: [1, 1.035] }}
+                transition={reduce ? undefined : { duration: 22, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }}
               />
             </ArchFrame>
           </motion.div>
@@ -102,13 +90,13 @@ export default function HomePage() {
         <Wave fill="#FFF7E3" flowers />
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((item, index) => (
             <li key={item.id}>
               <Reveal delay={index * 0.04}>
-                <HoverCard className={`flex min-h-28 flex-col justify-center rounded-full px-4 py-5 text-center shadow-[0_8px_0_0_rgba(42,44,137,0.15)] ${factTones[index].bg} ${factTones[index].text}`}>
-                  <p className="text-2xl font-semibold sm:text-3xl">
+                <HoverCard className="flex min-h-28 flex-col justify-center rounded-[24px] border border-navy/10 bg-white px-4 py-5 text-center text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.06)]">
+                  <p className="text-2xl font-semibold text-navy sm:text-3xl">
                     {item.value === null ? item.pending : item.value}
                   </p>
                   <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
@@ -120,7 +108,7 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+      <section className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 sm:py-16">
         <Reveal>
           <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">{home.programsTitle}</h2>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-navy-deep/75">{home.programsText}</p>
@@ -129,7 +117,7 @@ export default function HomePage() {
           {programs.map((program) => {
             const look = programArt[program.id] ?? programArt.english;
             return (
-              <HoverCard key={program.id} className={`h-full rounded-[28px] border-4 bg-white p-5 ${look.border}`}>
+              <HoverCard key={program.id} className="h-full rounded-[28px] border border-navy/10 bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.06)]">
                 <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
                   <Art name={look.art} className="h-12 w-12 text-navy" />
                 </div>
@@ -144,13 +132,13 @@ export default function HomePage() {
       </section>
 
       <section className="bg-white py-12 sm:py-16">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">{home.pathTitle}</h2>
           <p className="mt-3 max-w-2xl text-navy-deep/75">{home.pathText}</p>
           <ol className="mt-8 space-y-3">
             {classes.map((item, index) => (
               <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
-                <HoverCard className={`rounded-[24px] px-4 py-3 text-navy-deep shadow-[0_6px_0_0_rgba(42,44,137,0.12)] ${stepColors[index]}`}>
+                <HoverCard className="rounded-[24px] border border-navy/10 bg-white px-4 py-4 text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.05)]">
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-sm font-bold">{String(index + 1).padStart(2, '0')}</span>
                     <h3 className="text-xl font-semibold">{item.name}</h3>
@@ -167,14 +155,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
         <Sticker rotate={1.5}>Placeholder</Sticker>
         <h2 className="mt-4 text-3xl font-semibold text-navy-deep">{dayAtSchool.title}</h2>
         <p lang="bn" className="font-bn text-lg font-semibold text-navy">{dayAtSchool.kickerBn}</p>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-navy-deep/75">{dayAtSchool.note}</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {dayAtSchool.steps.map((step, index) => (
-            <HoverCard key={step.label} className="rounded-[24px] border-4 border-dashed border-navy/30 bg-white p-4">
+            <HoverCard key={step.label} className="rounded-[24px] border border-dashed border-navy/20 bg-white p-5">
               <p className="text-xs font-bold uppercase tracking-wide text-navy">0{index + 1}</p>
               <h3 className="mt-1 text-lg font-semibold text-navy-deep">{step.label}</h3>
               <p className="mt-1 text-sm text-navy-deep/70">{step.text}</p>
@@ -184,7 +172,7 @@ export default function HomePage() {
       </section>
 
       <section className="bg-white py-12 sm:py-16">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <h2 className="text-3xl font-semibold text-navy-deep">{home.momentsTitle}</h2>
           <p lang="bn" className="font-bn text-lg font-semibold text-navy">{home.momentsKickerBn}</p>
           <div className="mt-6">
@@ -193,7 +181,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[240px_1fr]">
+      <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[240px_1fr]">
         <BlobFrame className="mx-auto w-56">
           <img
             src={site.principal.photo}
@@ -213,7 +201,7 @@ export default function HomePage() {
       </section>
 
       <section className="bg-orange/20 py-12 sm:py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-[1200px] gap-8 px-4 sm:px-6 lg:grid-cols-2">
           <div>
             <h2 className="text-3xl font-semibold text-navy-deep">{home.admissionTitle}</h2>
             <p className="mt-3 text-navy-deep/80">{home.admissionText}</p>
@@ -240,11 +228,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
         <h2 className="text-3xl font-semibold text-navy-deep">{noticesPage.title}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {noticesPage.notices.map((notice) => (
-            <HoverCard key={notice.id} className="rotate-[-1deg] rounded-[24px] bg-sun p-5 shadow-[6px_6px_0_0_#2A2C89]">
+            <HoverCard key={notice.id} className="rounded-[24px] border border-sun bg-sun/40 p-5 shadow-[0_8px_20px_rgba(42,44,137,0.06)]">
               <p className="text-xs font-bold uppercase tracking-wide text-navy">{notice.date}</p>
               <h3 className="mt-1 text-xl font-semibold text-navy-deep">{notice.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-navy-deep/80">{notice.body}</p>
@@ -255,7 +243,7 @@ export default function HomePage() {
               )}
             </HoverCard>
           ))}
-          <HoverCard className="rotate-[1.5deg] rounded-[24px] bg-coral/15 p-5">
+          <HoverCard className="rounded-[24px] border border-navy/10 bg-white p-5">
             <h3 className="text-xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h3>
             <p className="mt-2 text-sm text-navy-deep/75">{noticesPage.eventsNote}</p>
           </HoverCard>
@@ -268,13 +256,8 @@ export default function HomePage() {
 function Decorations() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <SwayingFlower className="absolute bottom-10 left-1 h-8 w-8 sm:left-3 sm:h-12 sm:w-12" />
-      <SwayingFlower className="absolute right-2 top-3 hidden h-11 w-11 md:block" delay={0.4} />
-      <DriftingButterfly className="absolute bottom-28 right-1 h-9 w-9 md:bottom-auto md:right-8 md:top-8 md:h-12 md:w-12" duration={16} />
-      <DriftingButterfly className="absolute bottom-24 left-1 hidden h-11 w-11 lg:inline-block" duration={18} delay={0.8} />
-      <Float duration={8} className="absolute left-2 top-2 hidden sm:inline-block">
-        <Art name="cloud" className="h-12 w-12 text-navy" />
-      </Float>
+      <SwayingFlower className="absolute bottom-6 left-2 hidden h-8 w-8 opacity-80 md:block" />
+      <DriftingButterfly className="absolute right-4 top-6 hidden h-8 w-8 opacity-90 md:inline-block" duration={18} />
     </div>
   );
 }

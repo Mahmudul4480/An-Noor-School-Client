@@ -46,8 +46,8 @@ export function Wave({
 function WaveFlowers() {
   return (
     <>
-      <SwayingFlower className="absolute -top-3 left-1 h-8 w-8 sm:left-4 sm:h-12 sm:w-12" />
-      <SwayingFlower className="absolute -top-4 right-2 hidden h-11 w-11 sm:block" delay={0.6} />
+      <SwayingFlower className="absolute -top-2 left-2 h-7 w-7 opacity-80 sm:left-6 sm:h-9 sm:w-9" />
+      <SwayingFlower className="absolute -top-3 right-3 hidden h-8 w-8 opacity-80 md:block" delay={0.6} />
     </>
   );
 }
@@ -64,7 +64,7 @@ export function Sticker({
   const reduce = useReducedMotion();
   return (
     <motion.span
-      className={`inline-flex items-center rounded-full border-2 border-navy-deep bg-sun px-3 py-1 text-sm font-bold text-navy-deep shadow-[4px_4px_0_0_#2A2C89] ${className}`}
+      className={`inline-flex items-center rounded-full border border-navy/15 bg-sun px-3 py-1 text-sm font-bold text-navy-deep shadow-[0_6px_16px_rgba(42,44,137,0.12)] ${className}`}
       style={{ rotate }}
       whileHover={reduce ? undefined : { rotate: rotate - 3 }}
       transition={{ duration: 0.35 }}
@@ -131,7 +131,7 @@ export function HoverCard({ children, className = '' }: { children: ReactNode; c
       whileHover={
         reduce
           ? undefined
-          : { y: -8, scale: 1.02, boxShadow: '0 18px 36px rgba(92,184,245,0.38)' }
+          : { y: -8, scale: 1.015, boxShadow: '0 16px 32px rgba(42,44,137,0.12)' }
       }
       whileTap={reduce ? undefined : { y: -2, scale: 0.985 }}
       transition={cardSpring}
@@ -144,7 +144,7 @@ export function HoverCard({ children, className = '' }: { children: ReactNode; c
 export function ArchFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`arch-photo overflow-hidden border-[6px] border-white bg-white shadow-[0_14px_0_0_#FFC928] ${className}`}
+      className={`arch-photo overflow-hidden border border-white bg-white shadow-[0_12px_28px_rgba(42,44,137,0.12)] ${className}`}
     >
       {children}
     </div>
@@ -153,7 +153,7 @@ export function ArchFrame({ children, className = '' }: { children: ReactNode; c
 
 export function BlobFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`blob-photo overflow-hidden border-[6px] border-white bg-white shadow-[0_12px_0_0_#5CB8F5] ${className}`}>
+    <div className={`blob-photo overflow-hidden border border-white bg-white shadow-[0_12px_28px_rgba(42,44,137,0.12)] ${className}`}>
       {children}
     </div>
   );
@@ -177,7 +177,7 @@ export function SoftCard({
     coral: 'border-coral',
   }[accent];
   return (
-    <HoverCard className={`rounded-[28px] border-4 bg-white p-5 shadow-[0_14px_0_0_rgba(42,44,137,0.12)] ${border} ${className}`}>
+    <HoverCard className={`rounded-[28px] border bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.08)] ${border} ${className}`}>
       {children}
     </HoverCard>
   );

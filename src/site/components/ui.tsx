@@ -24,7 +24,7 @@ export function PageHero({
   const titleOnCoral = tone === 'coral' ? 'text-white' : theme.text;
   return (
     <section className={`relative overflow-hidden ${theme.bg} ${theme.text}`}>
-      <div className="relative mx-auto flex max-w-6xl items-end justify-between gap-4 px-4 py-12 sm:px-6 sm:py-16">
+      <div className="relative mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4 py-12 sm:px-6 sm:py-16">
         <div>
           <p className={`text-xs font-bold uppercase tracking-[0.18em] ${theme.lede}`}>{kicker}</p>
           <h1 className={`mt-2 max-w-3xl text-4xl font-semibold leading-[1.08] sm:text-5xl ${titleOnCoral}`}>{title}</h1>
@@ -180,7 +180,7 @@ function CountUp({ value }: { value: number }) {
 export function PlaceholderCard({ title, caption }: { title: string; caption: string }) {
   return (
     <HoverCard>
-    <figure className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
+    <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-[0_8px_24px_rgba(42,44,137,0.06)]">
       <div className="flex aspect-[4/3] items-end bg-gradient-to-br from-[#e8e7f0] via-[#f6f4ee] to-[#d5d8e4] p-5">
         <p className="text-sm font-medium text-navy/75">{title}</p>
       </div>
@@ -201,7 +201,7 @@ export function TextLink({ to, children }: { to: string; children: ReactNode }) 
 export function CreamCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <HoverCard
-      className={`rounded-2xl bg-white p-6 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10 sm:p-8 ${className}`}
+      className={`rounded-2xl border border-navy/10 bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.06)] sm:p-8 ${className}`}
     >
       {children}
     </HoverCard>

@@ -15,7 +15,7 @@ export default function NoticesPage() {
         titleBn={noticesPage.titleBn}
         lede={noticesPage.lede}
       />
-      <section className="mx-auto max-w-6xl space-y-4 px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-[1200px] space-y-4 px-4 py-14 sm:px-6">
         {noticesPage.notices.map((notice) => (
           <HoverCard key={notice.id} className="rounded-[1.8rem] bg-gradient-to-br from-navy-deep to-navy p-6 text-white shadow-lg sm:p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold">{notice.date}</p>
@@ -30,7 +30,7 @@ export default function NoticesPage() {
         ))}
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-5 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h2>
           <p className="mt-3 text-sm leading-relaxed text-ink/75">{noticesPage.eventsNote}</p>

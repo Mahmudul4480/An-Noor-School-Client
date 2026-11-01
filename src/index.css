@@ -46,11 +46,27 @@
   background: var(--site-cream);
   color: var(--site-navy-deep);
   font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .site-shell :where(h1, h2, h3, h4) {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.site-shell .site-wrap {
+  width: min(1200px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .site-shell .site-wrap {
+    width: min(1200px, calc(100% - 48px));
+  }
 }
 
 .site-shell .font-arabic {
@@ -68,7 +84,11 @@
 }
 
 .site-shell .arch-photo {
-  border-radius: 140px 140px 28px 28px;
+  border-radius: 120px 120px 24px 24px;
+}
+
+.site-shell img {
+  image-rendering: auto;
 }
 
 .site-shell .blob-photo {

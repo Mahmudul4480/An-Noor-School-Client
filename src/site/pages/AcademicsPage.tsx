@@ -12,7 +12,7 @@ export default function AcademicsPage() {
       <Seo title={seo.academics.title} description={seo.academics.description} path={seo.academics.path} />
       <PageHero kicker={academics.kicker} title={academics.title} titleBn={academics.titleBn} lede={academics.lede} tone="leaf" art="book" />
 
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
         <div className="rounded-3xl bg-gradient-to-br from-navy-deep to-navy p-6 text-white shadow-[0_22px_50px_-28px_rgba(20,21,63,0.55)] sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">{academics.bannerTitle}</p>
           <p className="mt-3 text-2xl font-semibold sm:text-3xl">{site.curriculumLine}</p>
@@ -20,7 +20,7 @@ export default function AcademicsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="grid gap-4 md:grid-cols-2">
           {programs.map((program) => (
             <HoverCard key={program.id} className="rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream p-6 ring-1 ring-navy/10">
@@ -37,7 +37,7 @@ export default function AcademicsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <SectionHeading kicker="Classes" kickerBn="শ্রেণি" title={academics.classesTitle} text={academics.classesText} />
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           {early.map((item) => (

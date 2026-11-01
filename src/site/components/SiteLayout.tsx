@@ -44,7 +44,7 @@ function Ticker() {
     <div className="bg-navy text-white">
       <p className="sr-only">{items.join('. ')}</p>
       <div className="overflow-hidden" aria-hidden="true">
-        <div className="site-marquee flex w-max py-2 text-[12px] font-medium tracking-wide">
+        <div className="site-marquee flex w-max py-2 text-sm font-medium">
           <span className="px-6">{line}</span>
           <span className="site-marquee-copy px-6">{line}</span>
         </div>
@@ -79,11 +79,11 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b-4 border-sun bg-cream text-navy-deep ${
+      className={`sticky top-0 z-40 border-b border-navy/10 bg-white text-navy-deep ${
         scrolled ? 'shadow-[0_10px_0_0_rgba(42,44,137,0.08)]' : ''
       }`}
     >
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-2.5 sm:px-6">
         <Link to="/" className="flex shrink-0 items-center gap-3">
           <img
             src={site.logo}
@@ -107,7 +107,7 @@ function Header() {
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `min-h-11 text-[13px] font-bold transition hover:text-orange ${isActive ? 'text-orange' : 'text-navy'}`
+                `min-h-11 text-sm font-semibold transition hover:text-orange ${isActive ? 'text-orange' : 'text-navy'}`
               }
             >
               {item.label}
@@ -118,13 +118,13 @@ function Header() {
         <div className="ml-auto flex items-center gap-2 xl:ml-4">
           <JoyLink
             to="/admission"
-            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-orange px-3 py-2 text-xs font-bold text-navy-deep shadow-[0_4px_0_0_#2A2C89] sm:px-4 sm:text-sm"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-orange px-4 py-2 text-sm font-bold text-navy-deep shadow-[0_8px_18px_rgba(42,44,137,0.12)]"
           >
             Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
           </JoyLink>
           <JoyLink
             to="/login"
-            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border-2 border-navy px-4 py-2 text-sm font-bold text-navy sm:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-navy/20 px-4 py-2 text-sm font-bold text-navy sm:inline-flex"
           >
             Portal Login
           </JoyLink>
@@ -189,7 +189,7 @@ function Footer() {
   return (
     <footer className="relative mt-8 overflow-hidden bg-navy-deep text-white">
       <Wave fill="#14153F" flip flowers className="bg-cream" />
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
+      <div className="relative mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>
           <img src={site.logo} alt="" width={720} height={720} className="h-20 w-20 object-contain" />
           <p className="mt-4 text-lg font-semibold text-white">{site.name}</p>
