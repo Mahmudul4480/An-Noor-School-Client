@@ -34,6 +34,11 @@ beforeEach(async () => {
     await setDoc(doc(db, 'ledgerEntries/le-1'), { amount: 50, type: 'credit' });
     await setDoc(doc(db, 'schoolStaff/stf-1'), { status: 'pending_approval', name: 'New Teacher' });
     await setDoc(doc(db, 'schoolSettings/main'), { name: 'An-Noor' });
+    await setDoc(doc(db, 'teacherAccess/t@school.com'), { keys: ['S:Play|Rawdah', 'C:Class 3'] });
+    await setDoc(doc(db, 'studentRoster/R-1'), { studentId: 'R-1', name: 'a', class: 'Play', section: 'Rawdah', roll: '1', status: 'Active' });
+    await setDoc(doc(db, 'studentRoster/R-2'), { studentId: 'R-2', name: 'b', class: 'Play', section: 'Nabat', roll: '1', status: 'Active' });
+    await setDoc(doc(db, 'studentRoster/R-3'), { studentId: 'R-3', name: 'c', class: 'Class 3', section: '', roll: '1', status: 'Active' });
+    await setDoc(doc(db, 'studentRoster/R-4'), { studentId: 'R-4', name: 'd', class: 'Class 4', section: '', roll: '1', status: 'Active' });
   });
   ctx.admin = env.authenticatedContext('adminUid', { email: 'chotan4480+admin@gmail.com' }).firestore();
   ctx.principal = env.authenticatedContext('principalUid', { email: 'p@school.com' }).firestore();
@@ -82,7 +87,8 @@ describe('admissions', () => {
     await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { dueAmount: 0 }));
     await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { tuitionReduction: { reducedAmount: 1 } }));
   });
-  it('teacher reads student roster', () => assertSucceeds(getDocs(collection(ctx.teacher, 'students'))));
+  it('teacher cannot list full students', () => assertFails(getDocs(collection(ctx.teacher, 'students'))));
+  it('teacher cannot read full student doc (guardian phone)', () => assertFails(getDoc(doc(ctx.teacher, 'students/STU-1'))));
   it('teacher cannot write students', () => assertFails(updateDoc(doc(ctx.teacher, 'students/STU-1'), { name: 'x' })));
   it('teacher cannot read invoices', () => assertFails(getDocs(collection(ctx.teacher, 'studentInvoices'))));
   it('teacher cannot read admissions', () => assertFails(getDoc(doc(ctx.teacher, 'admissions/adm-1'))));
@@ -220,7 +226,7 @@ describe('principal live dashboard reads', () => {
   for (const col of ['students', 'studentInvoices', 'incomeEntries', 'expenses', 'ledgerAccounts', 'ledgerEntries', 'schoolAssets', 'admissions']) {
     it(`principal can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.principal, col))));
     it(`super_admin can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.admin, col))));
-    if (col !== 'students') it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
+    it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
   }
 });
 
@@ -250,5 +256,31 @@ describe('guardDeployments', () => {
     await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'guardDeployments/g2'), rec));
     await assertSucceeds(updateDoc(doc(ctx.principal, 'guardDeployments/g2'), { status: 'ended' }));
     await assertFails(deleteDoc(doc(ctx.principal, 'guardDeployments/g2')));
+  });
+});
+
+describe('teacher roster scope', () => {
+  const R = (c) => collection(c, 'studentRoster');
+  it('teacher reads own section roster doc', () => assertSucceeds(getDoc(doc(ctx.teacher, 'studentRoster/R-1'))));
+  it('teacher queries own section', () => assertSucceeds(getDocs(query(R(ctx.teacher), where('class', '==', 'Play'), where('section', '==', 'Rawdah')))));
+  it('teacher queries own whole class', () => assertSucceeds(getDocs(query(R(ctx.teacher), where('class', '==', 'Class 3')))));
+  it('teacher cannot read other section doc', () => assertFails(getDoc(doc(ctx.teacher, 'studentRoster/R-2'))));
+  it('teacher cannot read other class doc', () => assertFails(getDoc(doc(ctx.teacher, 'studentRoster/R-4'))));
+  it('teacher cannot query whole Play (only Rawdah allowed)', () => assertFails(getDocs(query(R(ctx.teacher), where('class', '==', 'Play')))));
+  it('teacher cannot query other class', () => assertFails(getDocs(query(R(ctx.teacher), where('class', '==', 'Class 4')))));
+  it('teacher cannot list all roster', () => assertFails(getDocs(R(ctx.teacher))));
+  it('teacher reads own access doc', () => assertSucceeds(getDoc(doc(ctx.teacher, 'teacherAccess/t@school.com'))));
+  it('teacher cannot grant self access', () => assertFails(setDoc(doc(ctx.teacher, 'teacherAccess/t@school.com'), { keys: ['C:Class 4'] })));
+  it('accounts cannot grant teacher access', () => assertFails(setDoc(doc(ctx.accounts, 'teacherAccess/t@school.com'), { keys: ['C:Class 4'] })));
+  it('principal writes teacher access', () => assertSucceeds(setDoc(doc(ctx.principal, 'teacherAccess/x@school.com'), { keys: [] })));
+  it('teacher cannot write roster', () => assertFails(setDoc(doc(ctx.teacher, 'studentRoster/R-9'), { studentId: 'R-9', class: 'Class 3' })));
+  it('accounts cannot put guardian phone in roster', () =>
+    assertFails(setDoc(doc(ctx.accounts, 'studentRoster/R-9'), { studentId: 'R-9', class: 'Class 3', guardianContact: '017' })));
+  it('accounts writes roster projection', () =>
+    assertSucceeds(setDoc(doc(ctx.accounts, 'studentRoster/R-9'), { studentId: 'R-9', name: 'x', class: 'Class 3', section: '', roll: '', status: 'Active' })));
+  it('teacher without access doc sees nothing', async () => {
+    const other = env.authenticatedContext('t2', { email: 't2@school.com' }).firestore();
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'users/t2'), { role: 'teacher' }));
+    await assertFails(getDoc(doc(other, 'studentRoster/R-1')));
   });
 });

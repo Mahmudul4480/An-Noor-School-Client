@@ -14,6 +14,9 @@ import { db } from './firebase';
 import { isDemoLoginEnabled } from './auth';
 import { fetchGuardianByMobile, normalizeMobile } from './guardians';
 import type { Student } from '../types';
+import { updateRosterStatus, upsertRosterEntries } from './teacherAccess';
+
+const mirror = (p: Promise<void>) => p.catch((e) => console.warn('roster sync failed', e));
 
 const STUDENTS_COLLECTION = 'students';
 const LOCAL_STORAGE_KEY = 'an-noor-students';
@@ -163,6 +166,7 @@ export async function importStudents(students: Student[]): Promise<{ imported: n
   });
 
   await batch.commit();
+  await mirror(upsertRosterEntries(students));
   return { imported, updated };
 }
 
@@ -179,6 +183,7 @@ export async function addStudent(student: Student): Promise<void> {
     omitUndefined({ ...student, createdAt: serverTimestamp(), updatedAt: serverTimestamp() } as Record<string, unknown>),
     { merge: true },
   );
+  await mirror(upsertRosterEntries([student]));
 }
 
 export interface UpdateStudentInput {
@@ -241,6 +246,7 @@ export async function updateStudent(input: UpdateStudentInput): Promise<Student>
     } as Record<string, unknown>),
     { merge: true },
   );
+  await mirror(upsertRosterEntries([updated]));
 
   return updated;
 }
@@ -261,6 +267,7 @@ export async function updateStudentStatus(
 
   const ref = doc(db, STUDENTS_COLLECTION, studentId);
   await updateDoc(ref, { status, inactiveReason: reason ?? null, updatedAt: serverTimestamp() });
+  await mirror(updateRosterStatus(studentId, status));
 }
 
 export async function getNextStudentId(academicYear: string): Promise<string> {

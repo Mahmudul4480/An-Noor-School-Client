@@ -1,4 +1,5 @@
 import { ClassCountCards } from './common/ClassCountCards';
+import { TeacherAccessSync } from './principal/TeacherAccessSync';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -96,6 +97,7 @@ const PrincipalDashboardInner = () => {
   return (
     <div className="p-6 space-y-6">
       <ClassCountCards />
+      <TeacherAccessSync />
       {/* Principal Stats Header — live data */}
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
         {[
