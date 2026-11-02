@@ -227,3 +227,25 @@ describe('principal sidebar pages reads', () => {
     it(`super_admin can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.admin, col))));
   }
 });
+
+describe('guardDeployments', () => {
+  const rec = { staffId: 's1', post: 'main_gate', date: '2026-11-02', status: 'active' };
+  it('principal can assign guard', () => assertSucceeds(setDoc(doc(ctx.principal, 'guardDeployments/g1'), rec)));
+  it('admin can assign guard', () => assertSucceeds(setDoc(doc(ctx.admin, 'guardDeployments/g1'), rec)));
+  it('accounts cannot assign guard', () => assertFails(setDoc(doc(ctx.accounts, 'guardDeployments/g1'), rec)));
+  it('teacher cannot assign guard', () => assertFails(setDoc(doc(ctx.teacher, 'guardDeployments/g1'), rec)));
+  it('accounts can read deployments', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'guardDeployments/g2'), rec));
+    await assertSucceeds(getDoc(doc(ctx.accounts, 'guardDeployments/g2')));
+  });
+  it('teacher/guardian cannot read deployments', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'guardDeployments/g2'), rec));
+    await assertFails(getDoc(doc(ctx.teacher, 'guardDeployments/g2')));
+    await assertFails(getDoc(doc(ctx.guardian, 'guardDeployments/g2')));
+  });
+  it('principal can end, nobody deletes', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'guardDeployments/g2'), rec));
+    await assertSucceeds(updateDoc(doc(ctx.principal, 'guardDeployments/g2'), { status: 'ended' }));
+    await assertFails(deleteDoc(doc(ctx.principal, 'guardDeployments/g2')));
+  });
+});
