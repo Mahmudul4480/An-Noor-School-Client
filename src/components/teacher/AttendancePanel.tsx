@@ -3,7 +3,7 @@ import { cn, dhakaToday, formatDateTime } from '../../lib/utils';
 import { showToast } from '../../lib/toast';
 import { userErrorMessage } from '../../lib/errorMessages';
 import {
-  ATTENDANCE_BN, ATTENDANCE_STATUSES, classKey, recordEntries, fetchAttendanceHistory, saveAttendance,
+  ATTENDANCE_BN, ATTENDANCE_STATUSES, AttendanceConflictError, classKey, fetchAttendanceSheet, recordEntries, fetchAttendanceHistory, saveAttendance,
   type AttendanceSheet, type AttendanceStatus,
 } from '../../lib/teaching';
 import { card, focusFieldEl, h, input, inputErr, sortByRoll, type TeacherClassRow } from './types';
@@ -33,6 +33,8 @@ export function AttendancePanel({ rows, teacherName }: { rows: TeacherClassRow[]
   const [classErr, setClassErr] = React.useState(false);
   const [missing, setMissing] = React.useState<string[]>([]);
   const [viewDate, setViewDate] = React.useState('');
+  const [baseSheet, setBaseSheet] = React.useState<AttendanceSheet | null>(null);
+  const [confirmSheet, setConfirmSheet] = React.useState<AttendanceSheet | null>(null);
 
   const row = rows.find((r) => r.key === rowKey);
   const students = React.useMemo(() => sortByRoll(row?.students ?? []), [row]);
@@ -49,6 +51,7 @@ export function AttendancePanel({ rows, teacherName }: { rows: TeacherClassRow[]
       const init: Record<string, AttendanceStatus> = {};
       (row?.students ?? []).forEach((s) => { init[s.studentId] = t?.records?.[s.studentId]?.status ?? 'present'; });
       setStatuses(init);
+      setBaseSheet(t ?? null);
       setMissing([]);
     } catch (e) {
       showToast('error', 'উপস্থিতির তথ্য লোড করা যায়নি', userErrorMessage(e));
@@ -75,14 +78,38 @@ export function AttendancePanel({ rows, teacherName }: { rows: TeacherClassRow[]
       showToast('error', `${miss.length} জন ছাত্রের উপস্থিতি দেওয়া হয়নি`, 'লাল দাগ দেওয়া সারি ঠিক করুন');
       return;
     }
+    // A sheet for today already exists (maybe by another teacher): re-check the server and warn before saving.
     setSaving(true);
     try {
-      const saved = await saveAttendance({ className: row.className, section: row.section, teacherName, students, statuses, existing: todaySheet });
-      setHistory((h0) => [saved, ...h0.filter((s) => s.date !== today)]);
-      showToast('success', todaySheet ? 'উপস্থিতি হালনাগাদ হয়েছে' : 'উপস্থিতি সেভ হয়েছে', `${row.label} • ${formatDateTime(saved.updatedAtIso)}`);
+      const latest = await fetchAttendanceSheet(today, key);
+      if (latest) {
+        setConfirmSheet(latest); return;
+      }
+      await doSave(false);
     } catch (e) {
       showToast('error', 'উপস্থিতি সেভ করা যায়নি', userErrorMessage(e));
     } finally { setSaving(false); }
+  };
+
+  const doSave = async (force: boolean) => {
+    if (!row) return;
+    try {
+      const saved = await saveAttendance({ className: row.className, section: row.section, teacherName, students, statuses, existing: baseSheet, force });
+      setHistory((h0) => [saved, ...h0.filter((s) => s.date !== today)]);
+      setBaseSheet(saved);
+      setConfirmSheet(null);
+      showToast('success', force || baseSheet ? 'উপস্থিতি হালনাগাদ হয়েছে' : 'উপস্থিতি সেভ হয়েছে', `${row.label} • ${formatDateTime(saved.updatedAtIso)}`);
+    } catch (e) {
+      if (e instanceof AttendanceConflictError) { setConfirmSheet(e.current); return; }
+      throw e;
+    }
+  };
+
+  const confirmOverwrite = async () => {
+    setSaving(true);
+    try { await doSave(true); }
+    catch (e) { showToast('error', 'উপস্থিতি সেভ করা যায়নি', userErrorMessage(e)); }
+    finally { setSaving(false); }
   };
 
   const viewSheet = history.find((s) => s.date === viewDate) ?? null;
@@ -91,6 +118,26 @@ export function AttendancePanel({ rows, teacherName }: { rows: TeacherClassRow[]
 
   return (
     <div className="space-y-6">
+      {confirmSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h4 className="text-[14px] font-black text-red-600 mb-2">সতর্কতা: আজকের উপস্থিতি আগেই সেভ করা আছে</h4>
+            <p className="text-[12px] font-bold text-school-blue mb-1">
+              সেভ করেছেন: {confirmSheet.updatedByName || confirmSheet.teacherName} • {formatDateTime(confirmSheet.updatedAtIso)}
+            </p>
+            <div className="my-3"><CountChips counts={confirmSheet.counts ?? {}} total={confirmSheet.total} /></div>
+            <p className="text-[11px] font-bold text-school-muted mb-4">
+              চালিয়ে গেলে শুধু আপনি যেসব ছাত্রের অবস্থা বদলেছেন সেগুলো হালনাগাদ হবে, বাকিদের আগের তথ্য থাকবে।
+              আগে সর্বশেষ তথ্য দেখে নিতে চাইলে "সর্বশেষ তথ্য লোড করুন" চাপুন।
+            </p>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button type="button" onClick={() => { setConfirmSheet(null); void load(); }} className="px-4 py-2 rounded-xl bg-slate-100 text-[11px] font-black text-school-blue">সর্বশেষ তথ্য লোড করুন</button>
+              <button type="button" onClick={() => setConfirmSheet(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-[11px] font-black text-school-muted">বাতিল</button>
+              <button type="button" disabled={saving} onClick={confirmOverwrite} className="px-4 py-2 rounded-xl bg-red-600 text-white text-[11px] font-black disabled:opacity-50">তবুও সেভ করুন</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className={card}>
         <h3 className={h}>আজকের উপস্থিতি নিন</h3>
         <div className="grid sm:grid-cols-3 gap-3 mb-4">
@@ -105,7 +152,7 @@ export function AttendancePanel({ rows, teacherName }: { rows: TeacherClassRow[]
             <input className={cn(input, 'bg-slate-50')} value={formatDateTime(today)} readOnly />
           </div>
           <div className="text-[10px] font-bold text-school-muted self-end">
-            {todaySheet ? <>আজ নেওয়া হয়েছে • শেষ হালনাগাদ {formatDateTime(todaySheet.updatedAtIso)} ({todaySheet.teacherName})। আজকের মধ্যে বদলাতে পারবেন।</> : 'আজ এখনো উপস্থিতি নেওয়া হয়নি'}
+            {todaySheet ? <>আজ নেওয়া হয়েছে • শেষ সেভ করেছেন {todaySheet.updatedByName || todaySheet.teacherName}, {formatDateTime(todaySheet.updatedAtIso)}। আজকের মধ্যে বদলাতে পারবেন।</> : 'আজ এখনো উপস্থিতি নেওয়া হয়নি'}
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">

@@ -5,7 +5,7 @@
  * Rules: teacher writes only own keys (teacherAccess), attendance only for Dhaka today; Principal/super admin read all.
  * Only roster fields (name, roll) are copied — never guardian info.
  */
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { dhakaToday } from './utils';
@@ -29,6 +29,8 @@ export interface AttendanceSheet {
   teacherName: string;
   takenAt: string;
   updatedAtIso: string;
+  updatedBy?: string;
+  updatedByName?: string;
 }
 
 export type TopicStatus = 'planned' | 'ongoing' | 'done';
@@ -94,27 +96,71 @@ export async function fetchAttendanceForDate(date: string): Promise<AttendanceSh
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AttendanceSheet));
 }
 
+/** Thrown when the day's sheet changed on the server since the teacher loaded it (another teacher saved). */
+export class AttendanceConflictError extends Error {
+  constructor(public current: AttendanceSheet) { super('attendance-conflict'); }
+}
+
+/**
+ * Transactional, per-student merge save.
+ *  - Reads the current sheet inside a transaction.
+ *  - If it changed since `existing` was loaded (or exists but wasn't loaded) and !force → AttendanceConflictError.
+ *  - Only students whose status this teacher set/changed (vs. the loaded baseline) are overwritten; other
+ *    students keep whatever is on the server, so two teachers never wipe each other's rows.
+ *  - Writes studentAttendance/{date}_{studentId} projections for the guardian portal.
+ */
 export async function saveAttendance(args: {
   className: string; section: string; teacherName: string;
-  students: RosterEntry[]; statuses: Record<string, AttendanceStatus>; existing: AttendanceSheet | null;
+  students: RosterEntry[]; statuses: Record<string, AttendanceStatus>; existing: AttendanceSheet | null; force?: boolean;
 }): Promise<AttendanceSheet> {
   const email = await myEmail();
   const date = dhakaToday();
   const key = classKey(args.className, args.section);
-  const records: Record<string, AttendanceRecord> = {};
-  args.students.forEach((s) => {
-    const st = args.statuses[s.studentId];
-    if (st) records[s.studentId] = { status: st, name: s.name || '', roll: s.roll || '' };
+  const section = (args.section ?? '').trim();
+  const id = attendanceDocId(date, key);
+  const ref = doc(db, 'attendance', id);
+  const baseline = (args.existing?.records ?? {}) as Record<string, AttendanceRecord>;
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? ({ id: snap.id, ...snap.data() } as AttendanceSheet) : null;
+    if (current && !args.force && (!args.existing || current.updatedAtIso !== args.existing.updatedAtIso)) {
+      throw new AttendanceConflictError(current);
+    }
+    const records: Record<string, AttendanceRecord> = { ...((current?.records ?? {}) as Record<string, AttendanceRecord>) };
+    const touched: string[] = [];
+    args.students.forEach((s) => {
+      const st = args.statuses[s.studentId];
+      if (!st) return;
+      const mine = !args.existing || baseline[s.studentId]?.status !== st || !records[s.studentId];
+      if (mine) { records[s.studentId] = { status: st, name: s.name || '', roll: s.roll || '' }; touched.push(s.studentId); }
+    });
+    const nowIso = new Date().toISOString();
+    const name = args.teacherName || email;
+    const data = {
+      date, className: args.className, section, key, records,
+      counts: countStatuses(records), total: Object.keys(records).length,
+      teacherEmail: email, teacherName: name, updatedBy: email, updatedByName: name,
+      takenAt: current?.takenAt ?? nowIso, updatedAtIso: nowIso, updatedAt: serverTimestamp(),
+    };
+    tx.set(ref, data);
+    touched.forEach((sid) => {
+      tx.set(doc(db, 'studentAttendance', `${date}_${sid}`), {
+        studentId: sid, date, month: date.slice(0, 7), className: args.className, section, key,
+        status: records[sid].status, teacherEmail: email, teacherName: name, updatedAtIso: nowIso, updatedAt: serverTimestamp(),
+      });
+    });
+    return { id, ...data } as AttendanceSheet;
   });
-  const nowIso = new Date().toISOString();
-  const data = {
-    date, className: args.className, section: (args.section ?? '').trim(), key, records,
-    counts: countStatuses(records), total: Object.keys(records).length,
-    teacherEmail: email, teacherName: args.teacherName || email,
-    takenAt: args.existing?.takenAt ?? nowIso, updatedAtIso: nowIso, updatedAt: serverTimestamp(),
-  };
-  await setDoc(doc(db, 'attendance', attendanceDocId(date, key)), data);
-  return { id: attendanceDocId(date, key), ...data } as AttendanceSheet;
+}
+
+export interface StudentAttendanceDay { id: string; studentId: string; date: string; month: string; status: AttendanceStatus; className: string; section: string; teacherName: string; updatedAtIso: string }
+
+/** Guardian: one child's attendance days (rules allow only the guardian's linked studentIds). */
+export async function fetchStudentAttendance(studentId: string): Promise<StudentAttendanceDay[]> {
+  if (isDemoLoginEnabled || !studentId) return [];
+  await waitForAuthUser();
+  const snap = await getDocs(query(collection(db, 'studentAttendance'), where('studentId', '==', studentId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as StudentAttendanceDay)).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function fetchTopicsForKeys(keys: string[]): Promise<CurriculumTopic[]> {

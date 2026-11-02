@@ -18,6 +18,7 @@ import { fetchInvoices } from '../lib/invoices';
 import { fetchAccounts } from '../lib/ledger';
 import { initiateOnlinePayment, isPaymentGatewayConfigured, simulateOnlinePayment } from '../lib/payments';
 import { InvoiceReceiptModal } from './InvoiceReceiptModal';
+import { GuardianAttendance } from './guardian/GuardianAttendance';
 import type { LedgerAccount, Student, StudentInvoice } from '../types';
 
 export const GuardianDashboard = () => {
@@ -177,19 +178,6 @@ export const GuardianDashboard = () => {
                 </div>
               )}
 
-              <div className="mt-8 pt-6 border-t border-white/10 w-full">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase mb-2">
-                  <span className="opacity-60">Monthly Attendance</span>
-                  <span className="text-school-gold">94%</span>
-                </div>
-                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: '94%' }}
-                    className="bg-school-gold h-full rounded-full" 
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -228,6 +216,7 @@ export const GuardianDashboard = () => {
 
         {/* Center Column: Daily Updates & Fees */}
         <div className="lg:col-span-2 space-y-6">
+          <GuardianAttendance studentId={student?.studentId} studentName={student?.name} />
           {/* 3. Daily Updates Feed */}
           <div className="bg-white rounded-[2.5rem] p-8 border border-school-border shadow-sm flex flex-col h-[500px]">
             <div className="flex items-center justify-between mb-8">

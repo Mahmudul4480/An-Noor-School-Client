@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, query, where, addDoc, runTransaction } from 'firebase/firestore';
 
 const GDOM = 'guardians.al-noor-int-school.local';
 let env;
@@ -346,5 +346,78 @@ describe('attendance & curriculum', () => {
   it('teacher queries own key topics only', async () => {
     await assertSucceeds(getDocs(query(collection(ctx.teacher, 'curriculumTopics'), where('key', '==', 'C:Class 3'))));
     await assertFails(getDocs(query(collection(ctx.teacher, 'curriculumTopics'), where('key', '==', 'C:Class 4'))));
+  });
+});
+
+describe('guardian attendance projection & merge save', () => {
+  const today = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+  const yday = new Date(Date.now() - 18 * 3600e3).toISOString().slice(0, 10);
+  const sa = (o = {}) => ({ studentId: 'R-1', date: today, month: today.slice(0, 7), className: 'Play', section: 'Rawdah', key: 'S:Play|Rawdah',
+    status: 'present', teacherEmail: 't@school.com', teacherName: 'T', updatedAtIso: 'x', ...o });
+  const seed = (id, data) => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'studentAttendance', id), data));
+  it('teacher writes own-class projection today', () => assertSucceeds(setDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`), sa())));
+  it('teacher cannot write projection for other section', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-2`), sa({ studentId: 'R-2', section: 'Nabat', key: 'S:Play|Nabat' }))));
+  it('teacher cannot write projection with wrong id', () => assertFails(setDoc(doc(ctx.teacher, 'studentAttendance', 'x'), sa())));
+  it('teacher cannot write past-day projection', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'studentAttendance', `${yday}_R-1`), sa({ date: yday, month: yday.slice(0, 7) }))));
+  it('teacher cannot set invalid status or extra fields', async () => {
+    await assertFails(setDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`), sa({ status: 'x' })));
+    await assertFails(setDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`), sa({ guardianPhone: '017' })));
+  });
+  it('guardian reads only own child attendance', async () => {
+    await seed(`${today}_STU-1`, sa({ studentId: 'STU-1' }));
+    await seed(`${today}_STU-2`, sa({ studentId: 'STU-2' }));
+    await assertSucceeds(getDocs(query(collection(ctx.guardian, 'studentAttendance'), where('studentId', '==', 'STU-1'))));
+    await assertSucceeds(getDoc(doc(ctx.guardian, 'studentAttendance', `${today}_STU-1`)));
+    await assertFails(getDoc(doc(ctx.guardian, 'studentAttendance', `${today}_STU-2`)));
+    await assertFails(getDocs(query(collection(ctx.guardian, 'studentAttendance'), where('studentId', '==', 'STU-2'))));
+    await assertFails(getDocs(collection(ctx.guardian, 'studentAttendance')));
+  });
+  it('guardian cannot read class sheets or write', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'attendance/s1'), { key: 'S:Play|Rawdah', date: today }));
+    await assertFails(getDoc(doc(ctx.guardian, 'attendance/s1')));
+    await assertFails(setDoc(doc(ctx.guardian, 'studentAttendance', `${today}_STU-1`), sa({ studentId: 'STU-1', teacherEmail: `g01711111111@${GDOM}` })));
+  });
+  it('accounts and stranger cannot read projections', async () => {
+    await seed(`${today}_STU-1`, sa({ studentId: 'STU-1' }));
+    await assertFails(getDoc(doc(ctx.accounts, 'studentAttendance', `${today}_STU-1`)));
+    await assertFails(getDoc(doc(ctx.stranger, 'studentAttendance', `${today}_STU-1`)));
+  });
+  it('teacher reads own-class projection only; principal reads all; nobody deletes', async () => {
+    await seed(`${today}_R-1`, sa());
+    await seed(`${today}_R-4`, sa({ studentId: 'R-4', className: 'Class 4', section: '', key: 'C:Class 4' }));
+    await assertSucceeds(getDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`)));
+    await assertFails(getDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-4`)));
+    await assertSucceeds(getDocs(collection(ctx.principal, 'studentAttendance')));
+    await assertFails(deleteDoc(doc(ctx.principal, 'studentAttendance', `${today}_R-1`)));
+  });
+  it('teacher cannot update another class projection / move student', async () => {
+    await seed(`${today}_R-4`, sa({ studentId: 'R-4', className: 'Class 4', section: '', key: 'C:Class 4', teacherEmail: 'o@school.com' }));
+    await assertFails(updateDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-4`), { status: 'absent' }));
+    await seed(`${today}_R-1`, sa({ teacherEmail: 'o@school.com' }));
+    await assertSucceeds(updateDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`), { status: 'absent', teacherEmail: 't@school.com' }));
+    await assertFails(updateDoc(doc(ctx.teacher, 'studentAttendance', `${today}_R-1`), { studentId: 'STU-1' }));
+  });
+  it('teacher can probe a missing sheet but not read another class sheet', async () => {
+    await assertSucceeds(getDoc(doc(ctx.teacher, 'attendance/none')));
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'attendance/c4'), { key: 'C:Class 4', date: today }));
+    await assertFails(getDoc(doc(ctx.teacher, 'attendance/c4')));
+  });
+  it('sheet accepts updatedBy = self only', async () => {
+    const att = (o = {}) => ({ date: today, className: 'Play', section: 'Rawdah', key: 'S:Play|Rawdah', records: {}, counts: {}, total: 0,
+      teacherEmail: 't@school.com', teacherName: 'T', takenAt: 'x', updatedAtIso: 'x', updatedBy: 't@school.com', updatedByName: 'T', ...o });
+    await assertSucceeds(setDoc(doc(ctx.teacher, 'attendance/m1'), att()));
+    await assertFails(setDoc(doc(ctx.teacher, 'attendance/m2'), att({ updatedBy: 'x@school.com' })));
+  });
+  it('transaction: sheet + 30 projections in one commit', async () => {
+    const recs = {}; for (let i = 0; i < 30; i++) recs[`P-${i}`] = { status: 'present', name: 'n', roll: String(i) };
+    await assertSucceeds(runTransaction(ctx.teacher, async (tx) => {
+      const ref = doc(ctx.teacher, 'attendance', `${today}_S-Play-Rawdah`);
+      await tx.get(ref);
+      tx.set(ref, { date: today, className: 'Play', section: 'Rawdah', key: 'S:Play|Rawdah', records: recs, counts: { present: 30 }, total: 30,
+        teacherEmail: 't@school.com', teacherName: 'T', takenAt: 'x', updatedAtIso: 'x', updatedBy: 't@school.com', updatedByName: 'T' });
+      Object.keys(recs).forEach((sid) => tx.set(doc(ctx.teacher, 'studentAttendance', `${today}_${sid}`), sa({ studentId: sid })));
+    }));
   });
 });
