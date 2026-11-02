@@ -66,9 +66,27 @@ service cloud.firestore {
 
     // ---------- students & billing ----------
     match /students/{studentId} {
-      // Teachers read the roster (class lists / counts) — no invoices, ledger or salary access.
-      allow read: if isOffice() || isTeacher() || (isGuardian() && studentId in guardianStudentIds());
+      // Full student records (guardian phone, fees, reductions): office + own guardian only. Teachers use studentRoster.
+      allow read: if isOffice() || (isGuardian() && studentId in guardianStudentIds());
       allow create, update: if isOffice();
+      allow delete: if isPrincipal();
+    }
+    // Teacher class access, derived from ACTIVE class duties. Only Principal/super admin write it.
+    function taPath() { return /databases/$(database)/documents/teacherAccess/$(email()); }
+    function teacherKeys() { return isTeacher() && exists(taPath()) ? get(taPath()).data.keys : []; }
+    function rosterVisible(d, keys) {
+      return keys.hasAny(['C:' + d['class'], 'S:' + d['class'] + '|' + d.get('section', '')]);
+    }
+    match /teacherAccess/{id} {
+      allow get: if isTeacher() && id == email();
+      allow read: if isOffice();
+      allow write: if isPrincipal();
+    }
+    // Roster-only projection: id, name, class, section, roll, status. Teacher sees only own class/section.
+    match /studentRoster/{studentId} {
+      allow read: if isOffice() || (isTeacher() && rosterVisible(resource.data, teacherKeys()));
+      allow create, update: if isOffice()
+        && request.resource.data.keys().hasOnly(['studentId', 'name', 'class', 'section', 'roll', 'status', 'updatedAt']);
       allow delete: if isPrincipal();
     }
     match /studentInvoices/{id} {

@@ -3,13 +3,15 @@ import { Users, BookOpen, ClipboardList, School, Calendar, MessageSquare } from 
 import { cn } from '../lib/utils';
 import { CoordinatorClassTags, CoordinatorHub } from './staff/CoordinatorHub';
 import { coordinatorDuties, dutyLabel, fetchStaffMemberForCurrentUser } from '../lib/staff';
-import { fetchStudents } from '../lib/students';
+import { fetchMyRoster, type RosterEntry } from '../lib/teacherAccess';
 import { actionLabel, fetchCoordinatorEvaluations } from '../lib/coordinator';
 import { classSectionLabel } from '../lib/schoolConstants';
 import { showToast } from '../lib/toast';
 import { userErrorMessage } from '../lib/errorMessages';
 import { ErrorBoundary } from './ErrorBoundary';
-import type { CoordinatorEvaluation, DutyAssignment, StaffMember, Student } from '../types';
+import type { CoordinatorEvaluation, DutyAssignment, StaffMember } from '../types';
+
+type Student = RosterEntry;
 
 const card = 'bg-white p-6 rounded-[2rem] border border-school-border shadow-sm';
 const h = 'text-xs font-black text-school-blue tracking-widest mb-4';
@@ -109,7 +111,7 @@ function TeacherDashboardInner() {
         if (!alive) return;
         setStaff(me);
         const [st, ev] = await Promise.all([
-          fetchStudents().catch((e) => { showToast('error', 'ছাত্রদের তালিকা লোড করা যায়নি', userErrorMessage(e)); return [] as Student[]; }),
+          (me ? fetchMyRoster(me) : Promise.resolve([] as Student[])).catch((e) => { showToast('error', 'ছাত্রদের তালিকা লোড করা যায়নি', userErrorMessage(e)); return [] as Student[]; }),
           fetchCoordinatorEvaluations().catch(() => [] as CoordinatorEvaluation[]),
         ]);
         if (!alive) return;

@@ -6,6 +6,7 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { getCurrentActor, getCurrentActorLabel } from './actor';
 import { provisionLoginAccount } from './provisionAuth';
 import { omitUndefined, toIsoString } from './utils';
+import { syncTeacherAccessFor } from './teacherAccess';
 import type {
   DutyAssignment,
   DutyKind,
@@ -195,6 +196,8 @@ async function persistStaff(person: StaffMember): Promise<void> {
     ...person,
     updatedAt: serverTimestamp(),
   }), { merge: true });
+  // Mirror active class duties into teacherAccess (rules allow Principal/super admin only; others skip).
+  await syncTeacherAccessFor(person).catch(() => undefined);
 }
 
 async function nextEmployeeId(track: StaffTrack): Promise<string> {
