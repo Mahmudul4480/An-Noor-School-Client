@@ -25,7 +25,7 @@ export default function ContactPage() {
               </li>
               <li className="flex gap-3">
                 <Mail className="mt-0.5 text-navy" size={18} aria-hidden="true" />
-                <a className="font-medium text-navy underline-offset-4 hover:underline" href={`mailto:${site.email}`}>
+                <a className="break-all font-medium text-navy underline-offset-4 hover:underline" href={`mailto:${site.email}`}>
                   {site.email}
                 </a>
               </li>
@@ -46,23 +46,12 @@ export default function ContactPage() {
           </CreamCard>
           <CreamCard>
             <h2 className="text-lg font-semibold text-navy-deep">{contactPage.hoursTitle}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink/75">{contactPage.hoursNote}</p>
+            <p className="mt-3 text-base leading-relaxed text-navy-deep/85">{contactPage.hoursNote}</p>
           </CreamCard>
-          <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-navy-deep to-navy-soft p-6 text-white shadow-lg">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-30"
-              style={{
-                backgroundImage:
-                  'linear-gradient(rgba(254,237,175,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(254,237,175,0.25) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-              }}
-            />
-            <div className="relative">
-              <h2 className="text-lg font-semibold">{contactPage.mapTitle}</h2>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-cream/85">{contactPage.mapNote}</p>
-              <p className="mt-4 text-sm text-gold">{site.address.line}</p>
-            </div>
+          <div className="site-card p-6">
+            <h2 className="text-lg font-semibold text-navy-deep">{contactPage.mapTitle}</h2>
+            <p className="mt-3 max-w-md text-base leading-relaxed text-navy-deep/85">{contactPage.mapNote}</p>
+            <p className="mt-4 text-base font-semibold text-navy">{site.address.line}</p>
           </div>
         </div>
         <CreamCard>

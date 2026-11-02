@@ -36,8 +36,8 @@ export default function GalleryPage() {
               type="button"
               aria-pressed={filter === item.id}
               onClick={() => setFilter(item.id as Filter)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                filter === item.id ? 'bg-navy text-gold' : 'bg-cream text-navy ring-1 ring-navy/10'
+              className={`min-h-11 rounded-full px-4 py-2 text-sm font-semibold ${
+                filter === item.id ? 'bg-navy text-white' : 'border border-navy/15 bg-white text-navy'
               }`}
             >
               {item.label}
@@ -46,7 +46,7 @@ export default function GalleryPage() {
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visiblePhotos.map((photo) => (
-            <HoverCard key={photo.id} className="overflow-hidden rounded-[1.6rem] bg-navy-deep text-left shadow-lg ring-1 ring-navy/10">
+            <HoverCard key={photo.id} className="site-card text-left">
             <button
               type="button"
               onClick={() => open(photo)}
@@ -60,7 +60,7 @@ export default function GalleryPage() {
                 className="aspect-[4/3] w-full object-cover"
                 loading="lazy"
               />
-              <span className="block px-4 py-3 text-sm text-cream">{photo.caption}</span>
+              <span className="block px-4 py-3 text-base text-navy-deep">{photo.caption}</span>
             </button>
             </HoverCard>
           ))}
@@ -73,7 +73,7 @@ export default function GalleryPage() {
       </section>
       <dialog
         ref={dialogRef}
-        className="w-[min(960px,calc(100%-2rem))] rounded-3xl bg-navy-deep p-3 text-white backdrop:bg-navy-deep/70"
+        className="w-[min(960px,calc(100%-2rem))] rounded-3xl border border-navy/10 bg-white p-3 text-navy-deep backdrop:bg-navy-deep/70"
         onClose={() => setActive(null)}
       >
         {active && (
@@ -81,7 +81,7 @@ export default function GalleryPage() {
             <img src={active.src} alt={active.alt} width={active.width} height={active.height} className="max-h-[75vh] w-full rounded-2xl object-contain" />
             <figcaption className="flex items-center justify-between gap-4 px-2 py-3 text-sm">
               <span>{active.caption}</span>
-              <button type="button" className="rounded-full bg-gold px-4 py-2 font-semibold text-navy-deep" onClick={() => dialogRef.current?.close()}>
+              <button type="button" className="min-h-11 rounded-full bg-navy px-4 py-2 font-semibold text-white" onClick={() => dialogRef.current?.close()}>
                 Close
               </button>
             </figcaption>
