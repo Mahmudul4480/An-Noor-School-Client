@@ -189,6 +189,12 @@ service cloud.firestore {
         || (isAccounts() && !(oldVal('status', '') == 'pending_approval' && newVal('status', '') != 'pending_approval'));
       allow delete: if isPrincipal();
     }
+    // Guard / security gate deployments: Principal assigns; office reads; no deletes (history).
+    match /guardDeployments/{id} {
+      allow read: if isOffice();
+      allow create, update: if isPrincipal();
+      allow delete: if false;
+    }
     match /coordinatorEvaluations/{id} {
       allow read, create, update: if isStaff();
       allow delete: if isPrincipal();

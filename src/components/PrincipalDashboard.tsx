@@ -24,6 +24,7 @@ import { ApprovalsPanel } from './accounts/ApprovalsPanel';
 import { AccessControlPanel } from './AccessControlPanel';
 import { CoordinatorOfficePanel } from './staff/CoordinatorOfficePanel';
 import { StaffDirectoryPanel } from './staff/StaffDirectoryPanel';
+import { GuardDutyPanel } from './staff/GuardDutyPanel';
 import { LowStockAlertCard } from './LowStockAlertCard';
 import { fetchApprovalStats } from '../lib/approvals';
 import { getCurrentActorLabel } from '../lib/actor';
@@ -88,6 +89,7 @@ const PrincipalDashboardInner = () => {
     { id: 'access', label: 'Accounts Access', icon: <UserCheck size={16} /> },
     { id: 'staff', label: 'Staff Directory', icon: <Users size={16} /> },
     { id: 'coordinators', label: 'Coordinators', icon: <School size={16} /> },
+    { id: 'guards', label: 'গার্ড ডিউটি', icon: <Shield size={16} /> },
     { id: 'analytics', label: 'Oversight', icon: <TrendingUp size={16} /> },
   ];
 
@@ -234,6 +236,12 @@ const PrincipalDashboardInner = () => {
         {activeSubTab === 'staff' && (
           <motion.div key="staff" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <StaffDirectoryPanel viewer="principal" />
+          </motion.div>
+        )}
+
+        {activeSubTab === 'guards' && (
+          <motion.div key="guards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <ErrorBoundary label="GuardDuty"><GuardDutyPanel /></ErrorBoundary>
           </motion.div>
         )}
 

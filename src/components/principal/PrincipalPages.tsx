@@ -136,7 +136,7 @@ export function PrincipalStaffPage() {
   const count = (f: (s: StaffMember) => boolean) => staff.filter(f).length;
   const roles = new Map<string, number>();
   users.forEach((u) => roles.set(u.role ?? 'unknown', (roles.get(u.role ?? 'unknown') ?? 0) + 1));
-  const pendingDuties = staff.reduce((s, m) => s + (Array.isArray(m.duties) ? m.duties.filter((d) => (d as { status?: string }).status === 'pending_approval').length : 0), 0);
+  const pendingDuties = staff.reduce((s, m) => s + (Array.isArray(m.duties) ? m.duties.filter((d) => (d as { status?: string }).status === 'pending').length : 0), 0);
   return (
     <div className="p-6 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

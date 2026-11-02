@@ -2,6 +2,7 @@ import React from 'react';
 import { Loader2, UserRound } from 'lucide-react';
 import { fetchStaffMembers, statusLabel, coordinatorDuties } from '../../lib/staff';
 import { StaffProfileModal } from './StaffProfileModal';
+import { fetchTodayGuardPosts, guardPostLabel, type GuardDeployment } from '../../lib/guardDuty';
 import type { StaffMember, StaffTrack } from '../../types';
 
 export function StaffDirectoryPanel({
@@ -15,11 +16,13 @@ export function StaffDirectoryPanel({
   const [loading, setLoading] = React.useState(true);
   const [track, setTrack] = React.useState<StaffTrack>('teacher');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [posts, setPosts] = React.useState<Map<string, GuardDeployment>>(new Map());
 
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
       setPeople(await fetchStaffMembers());
+      fetchTodayGuardPosts().then(setPosts).catch(() => setPosts(new Map()));
     } finally {
       setLoading(false);
     }
@@ -94,6 +97,11 @@ export function StaffDirectoryPanel({
                     <p className="text-[10px] font-black uppercase tracking-widest mt-2 text-emerald-600">
                       {statusLabel(person.status)}
                     </p>
+                    {posts.get(person.id) && (
+                      <p className="text-[10px] font-black mt-1 text-blue-600">
+                        আজকের ডিউটি · {guardPostLabel(posts.get(person.id)!.post)}
+                      </p>
+                    )}
                     {coordinatorDuties(person).length > 0 && (
                       <p className="text-[10px] font-black uppercase tracking-widest mt-1 text-school-gold">
                         Coordinator · {coordinatorDuties(person).map((duty) => duty.className).join(', ')}
