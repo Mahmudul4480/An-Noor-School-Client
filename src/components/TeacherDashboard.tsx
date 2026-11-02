@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, BookOpen, ClipboardList, School, Calendar, MessageSquare } from 'lucide-react';
+import { Users, BookOpen, ClipboardList, School, Calendar, MessageSquare, CheckSquare, BookMarked } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { CoordinatorClassTags, CoordinatorHub } from './staff/CoordinatorHub';
 import { coordinatorDuties, dutyLabel, fetchStaffMemberForCurrentUser } from '../lib/staff';
@@ -9,6 +9,9 @@ import { classSectionLabel } from '../lib/schoolConstants';
 import { showToast } from '../lib/toast';
 import { userErrorMessage } from '../lib/errorMessages';
 import { ErrorBoundary } from './ErrorBoundary';
+import { MyStudentsPanel } from './teacher/MyStudentsPanel';
+import { AttendancePanel } from './teacher/AttendancePanel';
+import { CurriculumPanel } from './teacher/CurriculumPanel';
 import type { CoordinatorEvaluation, DutyAssignment, StaffMember } from '../types';
 
 type Student = RosterEntry;
@@ -19,9 +22,6 @@ const NOT_TRACKED = 'এখনো ট্র্যাক হচ্ছে না';
 
 const NOT_TRACKED_ITEMS = [
   'আজকের ক্লাস রুটিন / সময়সূচি',
-  'ছাত্র উপস্থিতি (Attendance)',
-  'ডেইলি লেসন / পাঠের অগ্রগতি',
-  'সিলেবাস অগ্রগতি',
   'পরীক্ষার ফলাফল / ক্লাস পারফরম্যান্স',
   'নোটিশ ও ইভেন্ট',
   'ছুটির আবেদন (Leave)',
@@ -143,6 +143,8 @@ function TeacherDashboardInner() {
   const tabs = [
     { id: 'overview', label: 'সারসংক্ষেপ', icon: <Calendar size={16} /> },
     { id: 'students', label: 'আমার ছাত্র', icon: <Users size={16} /> },
+    { id: 'attendance', label: 'উপস্থিতি', icon: <CheckSquare size={16} /> },
+    { id: 'curriculum', label: 'সিলেবাস / কারিকুলাম', icon: <BookMarked size={16} /> },
     { id: 'duties', label: 'আমার দায়িত্ব', icon: <ClipboardList size={16} /> },
     { id: 'feedback', label: 'কো-অর্ডিনেটর মূল্যায়ন', icon: <MessageSquare size={16} /> },
     ...(isCoordinator ? [{ id: 'coordinator', label: 'Coordinator Hub', icon: <School size={16} /> }] : []),
@@ -206,33 +208,9 @@ function TeacherDashboardInner() {
         </div>
       )}
 
-      {tab === 'students' && (
-        <div className={card}>
-          <h3 className={h}>আমার ক্লাসের ছাত্র ({myStudents.length} জন)</h3>
-          <p className="text-[10px] font-bold text-slate-400 mb-3">উপস্থিতি নেওয়া: {NOT_TRACKED}</p>
-          {myStudents.length === 0 ? (
-            <p className="text-sm text-school-muted text-center py-6">কোনো ছাত্র পাওয়া যায়নি</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead><tr className="text-left text-[10px] text-school-muted">
-                  <th className="p-2">আইডি</th><th className="p-2">নাম</th><th className="p-2">ক্লাস</th><th className="p-2">রোল</th>
-                </tr></thead>
-                <tbody>
-                  {myStudents.map((s) => (
-                    <tr key={s.studentId} className="border-t border-slate-100">
-                      <td className="p-2 font-bold text-school-muted">{s.studentId}</td>
-                      <td className="p-2 font-black text-school-blue">{s.name}</td>
-                      <td className="p-2">{s._label}</td>
-                      <td className="p-2">{s.roll || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+      {tab === 'students' && <ErrorBoundary><MyStudentsPanel rows={rows} /></ErrorBoundary>}
+      {tab === 'attendance' && <ErrorBoundary><AttendancePanel rows={rows} teacherName={staff?.name ?? ''} /></ErrorBoundary>}
+      {tab === 'curriculum' && <ErrorBoundary><CurriculumPanel rows={rows} teacherName={staff?.name ?? ''} /></ErrorBoundary>}
 
       {tab === 'duties' && (
         <div className={card}>

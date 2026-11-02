@@ -26,6 +26,9 @@ import { AccessControlPanel } from './AccessControlPanel';
 import { CoordinatorOfficePanel } from './staff/CoordinatorOfficePanel';
 import { StaffDirectoryPanel } from './staff/StaffDirectoryPanel';
 import { GuardDutyPanel } from './staff/GuardDutyPanel';
+import { TeachingOverviewPanel } from './principal/TeachingOverviewPanel';
+import { fetchAttendanceForDate } from '../lib/teaching';
+import { dhakaToday } from '../lib/utils';
 import { LowStockAlertCard } from './LowStockAlertCard';
 import { fetchApprovalStats } from '../lib/approvals';
 import { getCurrentActorLabel } from '../lib/actor';
@@ -47,6 +50,16 @@ export const PrincipalDashboard = () => (
 
 const PrincipalDashboardInner = () => {
   const [activeSubTab, setActiveSubTab] = React.useState('overview');
+  const [attToday, setAttToday] = React.useState<{ present: number; total: number; classes: number } | null>(null);
+  React.useEffect(() => {
+    fetchAttendanceForDate(dhakaToday())
+      .then((sheets) => setAttToday({
+        present: sheets.reduce((n, s) => n + (s.counts?.present ?? 0) + (s.counts?.late ?? 0), 0),
+        total: sheets.reduce((n, s) => n + (s.total ?? 0), 0),
+        classes: sheets.length,
+      }))
+      .catch(() => setAttToday(null));
+  }, []);
   const [pendingCount, setPendingCount] = React.useState(0);
   const [data, setData] = React.useState<PrincipalData | null>(null);
   const [detail, setDetail] = React.useState<DetailKind | null>(null);
@@ -91,6 +104,7 @@ const PrincipalDashboardInner = () => {
     { id: 'staff', label: 'Staff Directory', icon: <Users size={16} /> },
     { id: 'coordinators', label: 'Coordinators', icon: <School size={16} /> },
     { id: 'guards', label: 'গার্ড ডিউটি', icon: <Shield size={16} /> },
+    { id: 'teaching', label: 'উপস্থিতি ও সিলেবাস', icon: <UserCheck size={16} /> },
     { id: 'analytics', label: 'Oversight', icon: <TrendingUp size={16} /> },
   ];
 
@@ -108,7 +122,7 @@ const PrincipalDashboardInner = () => {
           { key: 'assets' as const, label: 'সম্পদ (Assets)', value: assets ? tk(assets.value) : '…', sub: assets ? `${assets.count} টি সক্রিয় সম্পদ` : '', icon: <BookOpen />, color: 'text-school-gold', bg: 'bg-amber-50' },
           { key: null, label: 'মোট ছাত্র/ছাত্রী (Enrollment)', value: enroll ? String(enroll.count) : '…', sub: 'Active students', icon: <Users />, color: 'text-school-blue', bg: 'bg-blue-50' },
           { key: null, label: 'Staff KPI', value: 'Not tracked yet', sub: 'এখনো ট্র্যাক করা হয় না', icon: <Award />, color: 'text-slate-400', bg: 'bg-slate-50' },
-          { key: null, label: 'উপস্থিতি (Attendance)', value: 'Not tracked yet', sub: 'এখনো ট্র্যাক করা হয় না', icon: <UserCheck />, color: 'text-slate-400', bg: 'bg-slate-50' },
+          { key: null, label: 'আজকের উপস্থিতি (Attendance)', value: attToday ? (attToday.total ? `${attToday.present} / ${attToday.total}` : 'এখনো নেওয়া হয়নি') : '—', sub: attToday ? `${attToday.classes}টি ক্লাস • বিস্তারিত: উপস্থিতি ও সিলেবাস ট্যাব` : '', icon: <UserCheck />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
         ].map((stat, idx) => {
           const clickable = canDrill && stat.key && !loading;
           return (
@@ -241,6 +255,11 @@ const PrincipalDashboardInner = () => {
           </motion.div>
         )}
 
+        {activeSubTab === 'teaching' && (
+          <motion.div key="teaching" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <ErrorBoundary label="Teaching"><TeachingOverviewPanel /></ErrorBoundary>
+          </motion.div>
+        )}
         {activeSubTab === 'guards' && (
           <motion.div key="guards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <ErrorBoundary label="GuardDuty"><GuardDutyPanel /></ErrorBoundary>

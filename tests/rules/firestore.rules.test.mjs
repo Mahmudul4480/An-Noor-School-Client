@@ -284,3 +284,67 @@ describe('teacher roster scope', () => {
     await assertFails(getDoc(doc(other, 'studentRoster/R-1')));
   });
 });
+
+describe('attendance & curriculum', () => {
+  const today = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+  const yday = new Date(Date.now() - 18 * 3600e3).toISOString().slice(0, 10);
+  const att = (o = {}) => ({ date: today, className: 'Play', section: 'Rawdah', key: 'S:Play|Rawdah', records: { 'R-1': { status: 'present', name: 'a', roll: '1' } },
+    counts: { present: 1 }, total: 1, teacherEmail: 't@school.com', teacherName: 'T', takenAt: 'x', updatedAtIso: 'x', ...o });
+  const id = (d, k) => `${d}_${k}`;
+  it('teacher takes attendance for own section today', () => assertSucceeds(setDoc(doc(ctx.teacher, 'attendance', id(today, 'a')), att())));
+  it('teacher takes attendance for own whole class', () =>
+    assertSucceeds(setDoc(doc(ctx.teacher, 'attendance', id(today, 'b')), att({ className: 'Class 3', section: '', key: 'C:Class 3' }))));
+  it('teacher cannot take other section', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'attendance', id(today, 'c')), att({ section: 'Nabat', key: 'S:Play|Nabat' }))));
+  it('teacher cannot fake key', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'attendance', id(today, 'd')), att({ section: 'Nabat' }))));
+  it('teacher cannot write as another email', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'attendance', id(today, 'e')), att({ teacherEmail: 'x@school.com' }))));
+  it('teacher cannot take a past date', () => assertFails(setDoc(doc(ctx.teacher, 'attendance', id(yday, 'f')), att({ date: yday }))));
+  it('teacher cannot add guardian data', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'attendance', id(today, 'g')), att({ guardianContact: '017' }))));
+  it('teacher edits same day; cannot edit past day', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'attendance/old'), att({ date: yday })));
+    await assertSucceeds(setDoc(doc(ctx.teacher, 'attendance', id(today, 'a')), att()));
+    await assertSucceeds(updateDoc(doc(ctx.teacher, 'attendance', id(today, 'a')), { counts: { absent: 1 } }));
+    await assertFails(updateDoc(doc(ctx.teacher, 'attendance/old'), { counts: { absent: 1 } }));
+    await assertSucceeds(getDoc(doc(ctx.teacher, 'attendance/old')));
+  });
+  it('teacher queries own key history', () =>
+    assertSucceeds(getDocs(query(collection(ctx.teacher, 'attendance'), where('key', '==', 'S:Play|Rawdah')))));
+  it('teacher cannot list all attendance', () => assertFails(getDocs(collection(ctx.teacher, 'attendance'))));
+  it('principal & admin read all attendance', async () => {
+    await assertSucceeds(getDocs(collection(ctx.principal, 'attendance')));
+    await assertSucceeds(getDocs(collection(ctx.admin, 'attendance')));
+  });
+  it('accounts cannot read or write attendance', async () => {
+    await assertFails(getDocs(collection(ctx.accounts, 'attendance')));
+    await assertFails(setDoc(doc(ctx.accounts, 'attendance', id(today, 'h')), att({ teacherEmail: 'acc@school.com' })));
+  });
+  it('nobody deletes attendance', async () => {
+    await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'attendance/z'), att()));
+    await assertFails(deleteDoc(doc(ctx.principal, 'attendance/z')));
+  });
+
+  const topic = (o = {}) => ({ className: 'Play', section: 'Rawdah', key: 'S:Play|Rawdah', subject: 'Bangla', title: 'স্বরবর্ণ', status: 'planned',
+    teacherEmail: 't@school.com', teacherName: 'T', updatedAtIso: 'x', ...o });
+  it('teacher adds topic for own section', () => assertSucceeds(setDoc(doc(ctx.teacher, 'curriculumTopics/t1'), topic())));
+  it('teacher cannot add topic for other class', () =>
+    assertFails(setDoc(doc(ctx.teacher, 'curriculumTopics/t2'), topic({ className: 'Class 4', section: '', key: 'C:Class 4' }))));
+  it('teacher cannot set invalid status', () => assertFails(setDoc(doc(ctx.teacher, 'curriculumTopics/t3'), topic({ status: 'x' }))));
+  it('teacher marks progress; cannot delete', async () => {
+    await assertSucceeds(setDoc(doc(ctx.teacher, 'curriculumTopics/t1'), topic()));
+    await assertSucceeds(updateDoc(doc(ctx.teacher, 'curriculumTopics/t1'), { status: 'done', doneDate: today }));
+    await assertFails(updateDoc(doc(ctx.teacher, 'curriculumTopics/t1'), { key: 'C:Class 4', className: 'Class 4', section: '' }));
+    await assertFails(deleteDoc(doc(ctx.teacher, 'curriculumTopics/t1')));
+  });
+  it('principal reads all topics; accounts cannot', async () => {
+    await assertSucceeds(getDocs(collection(ctx.principal, 'curriculumTopics')));
+    await assertFails(getDocs(collection(ctx.accounts, 'curriculumTopics')));
+    await assertFails(setDoc(doc(ctx.accounts, 'curriculumTopics/t9'), topic({ teacherEmail: 'acc@school.com' })));
+  });
+  it('teacher queries own key topics only', async () => {
+    await assertSucceeds(getDocs(query(collection(ctx.teacher, 'curriculumTopics'), where('key', '==', 'C:Class 3'))));
+    await assertFails(getDocs(query(collection(ctx.teacher, 'curriculumTopics'), where('key', '==', 'C:Class 4'))));
+  });
+});
