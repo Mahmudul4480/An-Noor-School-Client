@@ -82,6 +82,9 @@ describe('admissions', () => {
     await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { dueAmount: 0 }));
     await assertFails(updateDoc(doc(ctx.accounts, 'admissions/adm-1'), { tuitionReduction: { reducedAmount: 1 } }));
   });
+  it('teacher reads student roster', () => assertSucceeds(getDocs(collection(ctx.teacher, 'students'))));
+  it('teacher cannot write students', () => assertFails(updateDoc(doc(ctx.teacher, 'students/STU-1'), { name: 'x' })));
+  it('teacher cannot read invoices', () => assertFails(getDocs(collection(ctx.teacher, 'studentInvoices'))));
   it('teacher cannot read admissions', () => assertFails(getDoc(doc(ctx.teacher, 'admissions/adm-1'))));
 });
 
@@ -217,7 +220,7 @@ describe('principal live dashboard reads', () => {
   for (const col of ['students', 'studentInvoices', 'incomeEntries', 'expenses', 'ledgerAccounts', 'ledgerEntries', 'schoolAssets', 'admissions']) {
     it(`principal can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.principal, col))));
     it(`super_admin can list ${col}`, () => assertSucceeds(getDocs(collection(ctx.admin, col))));
-    it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
+    if (col !== 'students') it(`teacher cannot list ${col}`, () => assertFails(getDocs(collection(ctx.teacher, col))));
   }
 });
 

@@ -66,7 +66,8 @@ service cloud.firestore {
 
     // ---------- students & billing ----------
     match /students/{studentId} {
-      allow read: if isOffice() || (isGuardian() && studentId in guardianStudentIds());
+      // Teachers read the roster (class lists / counts) — no invoices, ledger or salary access.
+      allow read: if isOffice() || isTeacher() || (isGuardian() && studentId in guardianStudentIds());
       allow create, update: if isOffice();
       allow delete: if isPrincipal();
     }
