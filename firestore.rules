@@ -113,15 +113,39 @@ service cloud.firestore {
     // attendance/{date_key}: records = { studentId: { status, name, roll } } only; no guardian data.
     function attendanceShape() {
       return request.resource.data.keys().hasOnly(['date', 'className', 'section', 'key', 'records', 'counts', 'total',
-          'teacherEmail', 'teacherName', 'takenAt', 'updatedAt', 'updatedAtIso'])
-        && request.resource.data.records is map;
+          'teacherEmail', 'teacherName', 'takenAt', 'updatedAt', 'updatedAtIso', 'updatedBy', 'updatedByName'])
+        && request.resource.data.records is map
+        && (!('updatedBy' in request.resource.data) || request.resource.data.updatedBy == email() || isPrincipal());
     }
     match /attendance/{id} {
-      allow read: if isPrincipal() || (isTeacher() && resource.data.key in teacherKeys());
+      // resource == null: a teacher may probe a not-yet-taken sheet (needed by the transactional save).
+      allow read: if isPrincipal() || (isTeacher() && (resource == null || resource.data.key in teacherKeys()));
       allow create: if attendanceShape() && ((isTeacher() && isDhakaToday(request.resource.data.date) && ownsNew(teacherKeys())) || isPrincipal());
       allow update: if attendanceShape() && (
         (isTeacher() && isDhakaToday(resource.data.date)
             && !changed().hasAny(['date', 'className', 'section', 'key', 'takenAt']) && teacherOwnsBoth())
+        || isPrincipal());
+      allow delete: if false;
+    }
+    // studentAttendance/{date}_{studentId}: per-student projection of an attendance sheet, so a guardian
+    // can read ONLY their own child's days (the class sheet holds every student and stays office/teacher-only).
+    function studentAttendanceShape() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['studentId', 'date', 'month', 'className', 'section', 'key', 'status',
+          'teacherEmail', 'teacherName', 'updatedAt', 'updatedAtIso'])
+        && d.studentId is string && d.date is string && d.month == d.date[0:7]
+        && d.status in ['present', 'absent', 'late', 'leave']
+        && d.key == keyFor(d) && d.teacherEmail == email();
+    }
+    match /studentAttendance/{id} {
+      allow read: if isPrincipal()
+        || (isGuardian() && resource.data.studentId in guardianStudentIds())
+        || (isTeacher() && resource.data.key in teacherKeys());
+      allow create: if studentAttendanceShape() && id == request.resource.data.date + '_' + request.resource.data.studentId
+        && ((isTeacher() && isDhakaToday(request.resource.data.date) && request.resource.data.key in teacherKeys()) || isPrincipal());
+      allow update: if studentAttendanceShape() && (
+        (isTeacher() && isDhakaToday(resource.data.date)
+            && !changed().hasAny(['studentId', 'date', 'month', 'className', 'section', 'key']) && teacherOwnsBoth())
         || isPrincipal());
       allow delete: if false;
     }
