@@ -95,8 +95,10 @@ function DutyList({ duties }: { duties: DutyAssignment[] }) {
   );
 }
 
-function TeacherDashboardInner() {
-  const [tab, setTab] = React.useState('overview');
+function TeacherDashboardInner({ activeTab, onTabChange }: { activeTab?: string; onTabChange?: (id: string) => void }) {
+  const [localTab, setLocalTab] = React.useState('overview');
+  const tab = activeTab ?? localTab;
+  const setTab = (id: string) => { setLocalTab(id); onTabChange?.(id); };
   const [staff, setStaff] = React.useState<StaffMember | null>(null);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [evals, setEvals] = React.useState<CoordinatorEvaluation[]>([]);
@@ -244,8 +246,8 @@ function TeacherDashboardInner() {
   );
 }
 
-export const TeacherDashboard = () => (
+export const TeacherDashboard = (props: { activeTab?: string; onTabChange?: (id: string) => void }) => (
   <ErrorBoundary>
-    <TeacherDashboardInner />
+    <TeacherDashboardInner {...props} />
   </ErrorBoundary>
 );

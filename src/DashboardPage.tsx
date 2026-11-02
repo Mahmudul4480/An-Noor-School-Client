@@ -85,10 +85,10 @@ const DashboardPage = () => {
       accent: "text-emerald-400",
       icon: <BookOpen size={40} />,
       menu: [
-        { icon: <LayoutDashboard size={20} />, label: "Overview", id: "overview" },
-        { icon: <Users size={20} />, label: "My Students", id: "students" },
-        { icon: <BookOpen size={20} />, label: "Curriculum", id: "curriculum" },
-        { icon: <Calendar size={20} />, label: "Attendance", id: "attendance" },
+        { icon: <LayoutDashboard size={20} />, label: "সারসংক্ষেপ", id: "overview" },
+        { icon: <Users size={20} />, label: "আমার ছাত্র", id: "students" },
+        { icon: <BookOpen size={20} />, label: "সিলেবাস / কারিকুলাম", id: "curriculum" },
+        { icon: <Calendar size={20} />, label: "উপস্থিতি", id: "attendance" },
       ]
     },
     accounts: {
@@ -137,6 +137,7 @@ const DashboardPage = () => {
   };
 
   const isAccountsSidebarTab = currentView === 'accounts' && activeTab in accountsSidebarSections;
+  const isTeacherSidebarTab = currentView === 'teacher' && ['students', 'curriculum', 'attendance', 'duties', 'feedback', 'coordinator'].includes(activeTab);
 
   const renderAdminPortal = () => (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
@@ -198,7 +199,7 @@ const DashboardPage = () => {
       );
     }
 
-    if (activeTab !== 'overview' && !isAccountsSidebarTab) {
+    if (activeTab !== 'overview' && !isAccountsSidebarTab && !isTeacherSidebarTab) {
       return (
         <div className="h-[60vh] flex flex-col items-center justify-center text-center p-8">
           <div className="w-20 h-20 bg-slate-100 rounded-[2rem] flex items-center justify-center text-slate-300 mb-6">
@@ -218,7 +219,7 @@ const DashboardPage = () => {
 
     switch (currentView) {
       case 'guardian': return <GuardianDashboard />;
-      case 'teacher': return <TeacherDashboard />;
+      case 'teacher': return <TeacherDashboard activeTab={activeTab} onTabChange={setActiveTab} />;
       case 'accounts':
         return (
           <AccountsDashboard
@@ -267,7 +268,7 @@ const DashboardPage = () => {
           {activeConfig?.menu.map((item: any) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => { setActiveTab(item.id); if (typeof window !== 'undefined' && window.innerWidth < 768) setSidebarOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all group text-sm uppercase tracking-wide",
                 activeTab === item.id 
@@ -356,6 +357,8 @@ const DashboardPage = () => {
                     expenses: 'Expenses',
                     financials: 'Financials',
                   }[activeTab] ?? 'Accounts Dashboard')
+                : currentView === 'teacher' && activeTab !== 'overview'
+                  ? (({ students: 'আমার ছাত্র', curriculum: 'সিলেবাস / কারিকুলাম', attendance: 'উপস্থিতি', duties: 'আমার দায়িত্ব', feedback: 'কো-অর্ডিনেটর মূল্যায়ন', coordinator: 'Coordinator Hub' } as Record<string, string>)[activeTab] ?? activeTab)
                 : activeTab === 'overview'
                   ? `${currentView || 'Admin'} Dashboard`
                   : activeTab}
