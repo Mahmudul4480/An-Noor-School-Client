@@ -326,3 +326,13 @@ export async function fetchStudentsForGuardian(mobile: string): Promise<Student[
   );
   return results.filter((s): s is Student => !!s);
 }
+
+/** Direct single-doc read (office roles only by rules). Returns null if missing. */
+export async function fetchStudentDoc(studentId: string): Promise<Student | null> {
+  const id = studentId.trim();
+  if (!id) return null;
+  const snap = await getDoc(doc(db, STUDENTS_COLLECTION, id));
+  if (!snap.exists()) return null;
+  const data = snap.data() as Student;
+  return { ...data, studentId: data.studentId ?? snap.id, status: data.status ?? 'Setup Needed' };
+}
