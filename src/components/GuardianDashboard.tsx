@@ -13,7 +13,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { fetchStudentsForGuardian } from '../lib/students';
+import { fetchStudentDoc, fetchStudentsForGuardian } from '../lib/students';
 import { fetchInvoices } from '../lib/invoices';
 import { fetchAccounts } from '../lib/ledger';
 import { initiateOnlinePayment, isPaymentGatewayConfigured, simulateOnlinePayment } from '../lib/payments';
@@ -21,7 +21,12 @@ import { InvoiceReceiptModal } from './InvoiceReceiptModal';
 import { GuardianAttendance } from './guardian/GuardianAttendance';
 import type { LedgerAccount, Student, StudentInvoice } from '../types';
 
-export const GuardianDashboard = () => {
+export const DEFAULT_PREVIEW_STUDENT_ID = 'ANS-2026-001';
+
+export const GuardianDashboard = ({ previewMode = false }: { previewMode?: boolean }) => {
+  const [previewId, setPreviewId] = React.useState(() => localStorage.getItem('adminPreviewStudentId') || DEFAULT_PREVIEW_STUDENT_ID);
+  const [previewInput, setPreviewInput] = React.useState(previewId);
+  const [previewError, setPreviewError] = React.useState('');
   const [students, setStudents] = React.useState<Student[]>([]);
   const [invoices, setInvoices] = React.useState<StudentInvoice[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -32,11 +37,33 @@ export const GuardianDashboard = () => {
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
 
   React.useEffect(() => {
+    if (previewMode) {
+      setLoading(true);
+      setPreviewError('');
+      setSelectedIndex(0);
+      fetchStudentDoc(previewId)
+        .then((s) => {
+          setStudents(s ? [s] : []);
+          if (!s) setPreviewError(`"${previewId}" আইডির কোনো ছাত্র/ছাত্রী পাওয়া যায়নি। আইডি ঠিক আছে কি না দেখে আবার চেষ্টা করুন।`);
+        })
+        .catch((err) => { setStudents([]); setPreviewError(userErrorMessage(err, 'ছাত্রের তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।')); })
+        .finally(() => setLoading(false));
+      return;
+    }
     const mobile = localStorage.getItem('guardianMobile') ?? '';
     fetchStudentsForGuardian(mobile)
       .then((data) => setStudents(data))
       .finally(() => setLoading(false));
-  }, []);
+  }, [previewMode, previewId]);
+
+  const submitPreview = (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = previewInput.trim().toUpperCase();
+    if (!id) { setPreviewError('ছাত্রের আইডি লিখুন (যেমন ANS-2026-001)।'); return; }
+    localStorage.setItem('adminPreviewStudentId', id);
+    setPreviewInput(id);
+    setPreviewId(id);
+  };
 
   React.useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => setAccounts([]));
@@ -89,6 +116,7 @@ export const GuardianDashboard = () => {
   ];
 
   const handlePayNow = async (invoice: StudentInvoice) => {
+    if (previewMode) { setPayMessage('প্রিভিউ মোডে পেমেন্ট করা যায় না — এটা শুধু দেখার জন্য।'); return; }
     setPayingId(invoice.id);
     setPayMessage('');
     try {
@@ -122,6 +150,28 @@ export const GuardianDashboard = () => {
       animate={{ opacity: 1 }}
       className="p-6 space-y-6"
     >
+      {previewMode && (
+        <form onSubmit={submitPreview} className="bg-slate-900 text-white rounded-[2rem] p-5 flex flex-col md:flex-row md:items-center gap-4" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
+          <div className="flex-1">
+            <p className="text-sm font-black text-school-gold">অভিভাবক ড্যাশবোর্ড প্রিভিউ (শুধু দেখার জন্য)</p>
+            <p className="text-xs text-white/70 mt-1">এখানে কিছু বদলানো বা পেমেন্ট করা যাবে না। যে ছাত্রের অভিভাবক ড্যাশবোর্ড দেখতে চান, তার আইডি দিন।</p>
+          </div>
+          <input
+            value={previewInput}
+            onChange={(e) => { setPreviewInput(e.target.value); setPreviewError(''); }}
+            placeholder="ANS-2026-001"
+            aria-invalid={!!previewError}
+            className={cn("px-4 py-2.5 rounded-xl text-school-blue font-bold text-sm w-full md:w-56 outline-none border-2", previewError ? "border-red-500 bg-red-50" : "border-transparent")}
+          />
+          <button type="submit" className="px-5 py-2.5 bg-school-gold text-school-blue rounded-xl font-black text-sm">দেখুন</button>
+        </form>
+      )}
+      {previewMode && previewError && (
+        <div role="alert" className="fixed top-6 right-6 z-50 max-w-sm bg-red-600 text-white rounded-2xl shadow-2xl p-4 text-sm font-bold" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
+          {previewError}
+          <button type="button" onClick={() => setPreviewError('')} className="block mt-2 text-xs underline">ঠিক আছে</button>
+        </div>
+      )}
       {loading ? (
         <div className="py-20 text-center">
           <Loader2 size={32} className="animate-spin mx-auto text-school-blue mb-4" />
@@ -129,7 +179,7 @@ export const GuardianDashboard = () => {
         </div>
       ) : !student ? (
         <div className="py-20 text-center bg-white rounded-[2.5rem] border border-school-border">
-          <p className="text-sm font-bold text-school-muted">No student linked to this guardian account yet.</p>
+          <p className="text-sm font-bold text-school-muted">{previewMode ? 'এই আইডির কোনো ছাত্র/ছাত্রী পাওয়া যায়নি।' : 'No student linked to this guardian account yet.'}</p>
           <p className="text-[10px] text-school-muted mt-2">Admission approve হলে ID card এখানে দেখা যাবে।</p>
         </div>
       ) : (
@@ -295,7 +345,9 @@ export const GuardianDashboard = () => {
                         </span>
                       </td>
                       <td className="py-5 text-right">
-                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
+                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && previewMode ? (
+                          <span className="text-[10px] font-bold text-school-muted">বকেয়া (প্রিভিউ)</span>
+                        ) : invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
                           <motion.button 
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}

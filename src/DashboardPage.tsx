@@ -156,7 +156,7 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
         {[
-          { id: 'guardian', label: 'Guardian', icon: <GraduationCap size={32} />, color: 'bg-school-blue', desc: 'Parent/Student view' },
+          { id: 'guardian', label: 'Guardian', icon: <GraduationCap size={32} />, color: 'bg-school-blue', desc: 'অভিভাবক ড্যাশবোর্ড (ANS-2026-001 প্রিভিউ)' },
           { id: 'teacher', label: 'Teacher', icon: <BookOpen size={32} />, color: 'bg-emerald-600', desc: 'Classroom & Lessons' },
           { id: 'accounts', label: 'Accounts', icon: <Calculator size={32} />, color: 'bg-purple-600', desc: 'Fiscal & Billing' },
           { id: 'principal', label: 'Principal', icon: <Shield size={32} />, color: 'bg-school-gold text-school-blue', desc: 'School Operations' },
@@ -218,7 +218,7 @@ const DashboardPage = () => {
     }
 
     switch (currentView) {
-      case 'guardian': return <GuardianDashboard />;
+      case 'guardian': return <GuardianDashboard previewMode={role === 'super_admin'} />;
       case 'teacher': return <TeacherDashboard activeTab={activeTab} onTabChange={setActiveTab} />;
       case 'accounts':
         return (
