@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { dayEntryBlockMessage } from '../src/lib/dayLock.ts';
+import { buildInventorySaleReceiptHtml } from '../src/lib/inventorySaleReceipt.ts';
 import {
+  creditInventorySaleNow,
   defaultSalePrice,
   liveSaleTotal,
   parseSaleQuantity,
@@ -23,6 +25,40 @@ describe('inventory sale', () => {
       unitPrice: shown.unitPrice,
     });
     assert.equal(saved.income?.amount, shown.total);
+    const credited = creditInventorySaleNow(
+      {
+        category: 'ইনভেন্টরি বিক্রয়',
+        createdBy: 'Accounts',
+        createdAt: '2026-11-07T06:09:00.000Z',
+        approvalStatus: 'pending',
+        amount: shown.total,
+      },
+      { itemName: 'Khata', quantity: shown.quantity, unit: 'pcs', unitPrice: shown.unitPrice, movementId: 'mov-1' },
+    );
+    assert.equal(credited.approvalStatus, 'approved');
+    assert.equal(credited.amount, shown.total);
+    const html = buildInventorySaleReceiptHtml({
+      receiptNumber: 'INC-1',
+      issuedAt: '2026-11-07T06:09:00.000Z',
+      buyerName: 'করিম',
+      itemName: 'Khata',
+      quantity: 2,
+      unit: 'pcs',
+      unitPrice: 60,
+      total: 120,
+      accountName: 'Main Cash',
+      paymentMethod: 'ক্যাশ',
+      receivedBy: 'Accounts',
+    });
+    assert.match(html, /গ্রাহক কপি/);
+    assert.match(html, /Customer Copy/);
+    assert.match(html, /অফিস কপি/);
+    assert.match(html, /Office Copy/);
+    assert.match(html, /মোট দাম/);
+    assert.match(html, /12:09\s*PM/);
+    assert.match(html, /page-break-inside:\s*avoid/);
+    assert.equal((html.match(/class="copy"/g) || []).length, 2);
+    assert.equal((html.match(/class="page"/g) || []).length, 1);
   });
 
   it('defaults the price to the selling price', () => {

@@ -200,7 +200,11 @@ service cloud.firestore {
     // ---------- money: income / expense / ledger ----------
     match /incomeEntries/{id} {
       allow read: if isOffice();
-      allow create: if isPrincipal() || (isAccounts() && newVal('approvalStatus', '') == 'pending');
+      // Counter inventory sales are credited at once. Every other income stays pending until the Principal approves it.
+      allow create: if isPrincipal() || (isAccounts() && (
+        newVal('approvalStatus', '') == 'pending'
+        || (newVal('approvalStatus', '') == 'approved' && newVal('category', '') == 'ইনভেন্টরি বিক্রয়')
+      ));
       allow update: if isPrincipal();
       allow delete: if false;
     }

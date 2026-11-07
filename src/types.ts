@@ -289,6 +289,12 @@ export interface IncomeEntry {
   reviewedBy?: string;
   reviewedAt?: string;
   reviewNote?: string;
+  /** Set only for a counter inventory sale, so the two-copy receipt can be reprinted. */
+  saleItemName?: string;
+  saleQuantity?: number;
+  saleUnit?: string;
+  saleUnitPrice?: number;
+  saleMovementId?: string;
 }
 
 /* ---------------- Inventory / Store ---------------- */

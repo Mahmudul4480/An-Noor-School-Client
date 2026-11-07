@@ -42,8 +42,10 @@ import {
   saveInventoryItem,
   stockValue,
 } from '../../lib/inventory';
-import { defaultSalePrice, liveSaleTotal, parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber, parseSaleQuantity } from '../../lib/inventoryQuantity';
+import { INVENTORY_SALE_CATEGORY, defaultSalePrice, liveSaleTotal, parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber, parseSaleQuantity } from '../../lib/inventoryQuantity';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
+import { fetchIncomeEntries } from '../../lib/income';
+import { InventorySaleReceiptModal } from './InventorySaleReceiptModal';
 import type {
   IncomeEntry,
   InventoryItem,
@@ -70,6 +72,8 @@ export function InventoryPanel() {
   const [editItem, setEditItem] = React.useState<InventoryItem | null>(null);
   const [showItemForm, setShowItemForm] = React.useState(false);
   const [saleItem, setSaleItem] = React.useState<InventoryItem | null>(null);
+  const [saleReceipt, setSaleReceipt] = React.useState<IncomeEntry | null>(null);
+  const [saleReceiptAuto, setSaleReceiptAuto] = React.useState(false);
   const [restockItem, setRestockItem] = React.useState<InventoryItem | null>(null);
 
   const load = React.useCallback(async () => {
@@ -478,6 +482,25 @@ export function InventoryPanel() {
                     <td className="py-3.5 text-right font-bold text-slate-500">{movement.unitPrice}</td>
                     <td className="py-3.5 text-right font-black text-school-blue">
                       ৳ {movement.totalAmount.toLocaleString('en-BD')}
+                      {movement.type === 'sale' && (
+                        <button
+                          type="button"
+                          className="block ml-auto mt-1 text-[10px] font-black text-school-blue underline"
+                          style={{ fontFamily: "'Anek Bangla', sans-serif" }}
+                          onClick={async () => {
+                            const entries = await fetchIncomeEntries();
+                            const match = entries.find((entry) => entry.category === INVENTORY_SALE_CATEGORY && entry.saleMovementId === movement.id);
+                            if (!match) {
+                              setError('এই বিক্রির রসিদ পাওয়া যায়নি।');
+                              return;
+                            }
+                            setSaleReceiptAuto(false);
+                            setSaleReceipt(match);
+                          }}
+                        >
+                          রসিদ
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -554,9 +577,13 @@ export function InventoryPanel() {
             item={saleItem}
             accounts={collectionAccounts}
             onClose={() => setSaleItem(null)}
-            onSold={async (text) => {
+            onSold={async (text, income) => {
               setSaleItem(null);
               setMessage(text);
+              if (income && income.approvalStatus === 'approved') {
+                setSaleReceiptAuto(true);
+                setSaleReceipt(income);
+              }
               await load();
             }}
           />
@@ -594,6 +621,14 @@ export function InventoryPanel() {
           </div>
         )}
       </AnimatePresence>
+      {saleReceipt && (
+        <InventorySaleReceiptModal
+          entry={saleReceipt}
+          account={accounts.find((account) => account.id === saleReceipt.accountId)}
+          autoPrint={saleReceiptAuto}
+          onClose={() => setSaleReceipt(null)}
+        />
+      )}
     </div>
   );
 }
@@ -907,7 +942,7 @@ function SaleModal({
   item: InventoryItem;
   accounts: LedgerAccount[];
   onClose: () => void;
-  onSold: (message: string) => void | Promise<void>;
+  onSold: (message: string, income?: IncomeEntry | null) => void | Promise<void>;
 }) {
   const available = remainingStock(item);
   const [quantity, setQuantity] = React.useState(available > 0 ? '1' : '');
@@ -976,9 +1011,9 @@ function SaleModal({
         note: note.trim() || undefined,
       });
       const text = saved.income
-        ? `বিক্রি সেভ হয়েছে। ${item.name} × ${saved.movement.quantity} ${item.unit} — ৳ ${saved.income.amount.toLocaleString('en-BD')} «ইনভেন্টরি বিক্রয়» ইনকামে যোগ হয়েছে (${saved.income.receiptNumber})। Principal approve করলে টাকা হিসাবে উঠবে এবং রসিদ তৈরি হবে।`
+        ? `বিক্রি সেভ হয়েছে। ${item.name} × ${saved.movement.quantity} ${item.unit} — মোট দাম ৳ ${saved.income.amount.toLocaleString('en-BD')} (${saved.income.receiptNumber}) নির্বাচিত অ্যাকাউন্টে জমা হয়েছে। রসিদ তৈরি হয়েছে।`
         : `বিক্রি সেভ হয়েছে। ${item.name} × ${saved.movement.quantity} ${item.unit} স্টক থেকে কমেছে। টাকা ০ বলে ইনকাম এন্ট্রি হয়নি।`;
-      await onSold(text);
+      await onSold(text, saved.income);
     } catch (err) {
       const message = userErrorMessage(err, 'বিক্রি সেভ করা যায়নি।');
       const field = message.includes('পরিমাণ') || message.includes('স্টকে') ? 'quantity' : message.includes('দাম') ? 'unitPrice' : message.includes('অ্যাকাউন্ট') || message.includes('account') ? 'accountId' : null;

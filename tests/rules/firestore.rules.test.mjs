@@ -120,6 +120,10 @@ describe('income / expense / ledger', () => {
     assertSucceeds(setDoc(doc(ctx.accounts, 'incomeEntries/inc-2'), { approvalStatus: 'pending', amount: 1 })));
   it('accounts cannot create approved income', () =>
     assertFails(setDoc(doc(ctx.accounts, 'incomeEntries/inc-3'), { approvalStatus: 'approved', amount: 1 })));
+  it('accounts credits an inventory sale immediately', () =>
+    assertSucceeds(setDoc(doc(ctx.accounts, 'incomeEntries/inc-sale'), { approvalStatus: 'approved', category: 'ইনভেন্টরি বিক্রয়', amount: 120 })));
+  it('accounts cannot mark another category approved', () =>
+    assertFails(setDoc(doc(ctx.accounts, 'incomeEntries/inc-other'), { approvalStatus: 'approved', category: 'Other Income', amount: 1 })));
   it('accounts cannot approve income', () =>
     assertFails(updateDoc(doc(ctx.accounts, 'incomeEntries/inc-1'), { approvalStatus: 'approved' })));
   it('principal approves income', () =>
