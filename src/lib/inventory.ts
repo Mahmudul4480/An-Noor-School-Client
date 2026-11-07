@@ -18,9 +18,9 @@ import type {
   InventoryStockAlert,
 } from '../types';
 
-const ITEMS_COLLECTION = 'inventoryItems';
-const MOVEMENTS_COLLECTION = 'inventoryMovements';
-const LOTS_COLLECTION = 'inventoryLots';
+export const ITEMS_COLLECTION = 'inventoryItems';
+export const MOVEMENTS_COLLECTION = 'inventoryMovements';
+export const LOTS_COLLECTION = 'inventoryLots';
 const LOCAL_ITEMS_KEY = 'an-noor-inventory-items';
 const LOCAL_MOVEMENTS_KEY = 'an-noor-inventory-movements';
 const LOCAL_LOTS_KEY = 'an-noor-inventory-lots';
@@ -568,7 +568,7 @@ export interface InventorySaleResult {
 }
 
 /** Apply FIFO in memory so the stock drop and the income row can be written together. */
-function consumeLotsInMemory(
+export function consumeLotsInMemory(
   item: InventoryItem,
   lots: InventoryLot[],
   quantity: number,
@@ -641,6 +641,7 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
   const unitPrice = Math.round(Number(input.unitPrice) * 100) / 100;
   if (!quantity || quantity <= 0) throw new Error('বিক্রির পরিমাণ ০-এর বেশি হতে হবে।');
   if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('বিক্রির দাম ০ বা তার বেশি হতে হবে।');
+  if (!input.accountId) throw new Error('টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন।');
 
   const items = await fetchInventoryItems({ includeArchived: true });
   const item = items.find((entry) => entry.id === input.itemId);
@@ -711,6 +712,36 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
 
   await commitSale({ item: updated, lots: consumed.lots, movement, income });
   return { item: updated, movement, income };
+}
+
+/** Put previously sold pieces back on the shelf (admission cancelled). */
+export async function restoreSoldQuantity(itemId: string, quantity: number, note: string): Promise<void> {
+  const qty = Math.floor(quantity);
+  if (qty <= 0) return;
+  const items = await fetchInventoryItems({ includeArchived: true });
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  const updated = normalizeItem({
+    ...item,
+    soldQty: Math.max(0, item.soldQty - qty),
+    updatedAt: new Date().toISOString(),
+  });
+  await persistItem(updated);
+  await persistMovement(
+    normalizeMovement({
+      id: generateId('mov'),
+      itemId: item.id,
+      itemName: item.name,
+      type: 'adjustment',
+      quantity: qty,
+      unitPrice: item.costRate,
+      totalAmount: 0,
+      date: dhakaToday(),
+      note,
+      createdBy: getCurrentActorLabel('Accounts Department'),
+      createdAt: new Date().toISOString(),
+    }),
+  );
 }
 
 export interface InventoryIssueInput {

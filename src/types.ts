@@ -65,6 +65,21 @@ export interface FeeStructureItem {
   amount: number;
   /** Tuition Fee is not discountable per school policy; everything else can be. */
   discountable: boolean;
+  /** Account this line's collected amount is posted to. Missing on older admissions. */
+  accountId?: string;
+}
+
+/** Book / copy / stationery taken from inventory during admission. */
+export interface AdmissionInventoryLine {
+  itemId: string;
+  itemName: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  accountId: string;
+  incomeId?: string;
+  movementId?: string;
 }
 
 export interface FeeStructure {
@@ -127,6 +142,12 @@ export interface Admission {
   dueInvoiceId?: string;
   tuitionReduction?: TuitionReduction;
   receivedInAccountId?: string;
+  /** Stock sold with this admission. Missing on older records. */
+  inventoryLines?: AdmissionInventoryLine[];
+  /** True after a cancelled admission has put that stock back. */
+  inventoryReturned?: boolean;
+  /** How the fee payment was split across accounts once the Principal approved. */
+  accountPostings?: { accountId: string; amount: number; label: string }[];
   scannedFormUrl?: string;
   scannedFormName?: string;
   studentPhotoUrl?: string;

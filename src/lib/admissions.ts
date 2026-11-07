@@ -13,10 +13,12 @@ import { db, storage } from './firebase';
 import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { addStudent, getNextStudentId, updateStudentStatus } from './students';
+import { feeAccountPostings } from './admissionLines';
+import { restoreSoldQuantity } from './inventory';
 import { recordCollection, recordReversal } from './ledger';
 import { generateReceiptNumber } from './receipts';
 import { cancelInvoice, createManualInvoice, formatBillingMonth } from './invoices';
-import { omitUndefined } from './utils';
+import { dhakaToday, omitUndefined } from './utils';
 import { normalizeMobile, provisionGuardianLogin } from './guardians';
 import type {
   Admission,
@@ -30,7 +32,7 @@ import type {
   TuitionReduction,
 } from '../types';
 
-const ADMISSIONS_COLLECTION = 'admissions';
+export const ADMISSIONS_COLLECTION = 'admissions';
 const FEE_STRUCTURES_COLLECTION = 'feeStructures';
 const LOCAL_ADMISSIONS_KEY = 'an-noor-admissions';
 const LOCAL_FEE_STRUCTURES_KEY = 'an-noor-fee-structures';
@@ -166,7 +168,14 @@ function normalizeAdmission(id: string, data: Record<string, unknown>): Admissio
     guardianEmail: data.guardianEmail ? String(data.guardianEmail) : undefined,
     address: data.address ? String(data.address) : undefined,
     academicYear: String(data.academicYear ?? new Date().getFullYear()),
-    feeItems: Array.isArray(data.feeItems) ? (data.feeItems as FeeStructureItem[]) : DEFAULT_FEE_ITEMS,
+    feeItems: Array.isArray(data.feeItems) ? (data.feeItems as FeeStructureItem[]).map((item) => ({
+      ...item,
+      amount: Number(item.amount) || 0,
+      accountId: item.accountId ? String(item.accountId) : undefined,
+    })) : DEFAULT_FEE_ITEMS,
+    inventoryLines: Array.isArray(data.inventoryLines) ? (data.inventoryLines as Admission['inventoryLines']) : undefined,
+    inventoryReturned: data.inventoryReturned === true,
+    accountPostings: Array.isArray(data.accountPostings) ? (data.accountPostings as Admission['accountPostings']) : undefined,
     discounts: Array.isArray(data.discounts) ? (data.discounts as AdmissionDiscount[]) : [],
     grossTotal: Number(data.grossTotal) || 0,
     totalDiscount: Number(data.totalDiscount) || 0,
@@ -487,9 +496,10 @@ export interface CreateAdmissionInput {
   /** Paid today; defaults to grand total */
   paidAmount?: number;
   tuitionReduction?: TuitionReduction;
+  inventoryLines?: Admission['inventoryLines'];
 }
 
-export async function createAdmission(input: CreateAdmissionInput): Promise<Admission> {
+export async function prepareAdmission(input: CreateAdmissionInput): Promise<Admission> {
   const formSerial = await getNextFormSerial(input.academicYear);
   const { grossTotal, totalDiscount, grandTotal } = computeTotals(input.feeItems, input.discounts);
   const now = new Date().toISOString();
@@ -529,6 +539,7 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     scannedFormName: input.scannedFormName,
     studentPhotoUrl: input.studentPhotoUrl,
     receivedInAccountId: input.receivedInAccountId,
+    inventoryLines: input.inventoryLines,
     receiptNumber: generateReceiptNumber(),
     paymentRecorded: false,
     idCardIssued: false,
@@ -543,11 +554,14 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     createdAt: now,
     updatedAt: now,
   };
+  return admission;
+}
 
+export async function writeNewAdmission(admission: Admission): Promise<void> {
   if (isDemoLoginEnabled) {
     const existing = readLocalAdmissions();
     writeLocalAdmissions([...existing, admission]);
-    return admission;
+    return;
   }
 
   await ensureFirebaseSession();
@@ -555,6 +569,11 @@ export async function createAdmission(input: CreateAdmissionInput): Promise<Admi
     doc(db, ADMISSIONS_COLLECTION, admission.id),
     omitUndefined({ ...admission, createdAt: serverTimestamp(), updatedAt: serverTimestamp() } as Record<string, unknown>),
   );
+}
+
+export async function createAdmission(input: CreateAdmissionInput): Promise<Admission> {
+  const admission = await prepareAdmission(input);
+  await writeNewAdmission(admission);
   return admission;
 }
 
@@ -610,15 +629,22 @@ export async function actOnApproval(params: {
 
   if (allApproved) {
     const paidNow = admissionPaidAmount(updated);
-    if (updated.receivedInAccountId && paidNow > 0 && !updated.paymentRecorded) {
-      await recordCollection({
-        accountId: updated.receivedInAccountId,
-        amount: paidNow,
-        reference: `Admission Fee — ${updated.studentName} (${updated.formSerial})`,
-        relatedId: updated.id,
-        date: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
-      });
-      updated.paymentRecorded = true;
+    if (paidNow > 0 && !updated.paymentRecorded) {
+      const postings = feeAccountPostings(updated.feeItems, paidNow, updated.receivedInAccountId);
+      const date = dhakaToday();
+      for (const posting of postings) {
+        await recordCollection({
+          accountId: posting.accountId,
+          amount: posting.amount,
+          reference: `Admission — ${posting.label} — ${updated.studentName} (${updated.formSerial})`,
+          relatedId: updated.id,
+          date,
+        });
+      }
+      if (postings.length) {
+        updated.paymentRecorded = true;
+        updated.accountPostings = postings;
+      }
     }
 
     const studentId = await getNextStudentId(admission.academicYear);
@@ -700,14 +726,28 @@ export async function cancelAdmission(admission: Admission, reason: string, acto
     }
   }
 
-  if (admission.status === 'approved' && admission.receivedInAccountId && admissionPaidAmount(admission) > 0) {
-    await recordReversal({
-      accountId: admission.receivedInAccountId,
-      amount: admissionPaidAmount(admission),
-      reference: `Admission Cancelled — Refund/Reversal (${admission.formSerial})`,
-      relatedId: admission.id,
-      note: `Cancelled by ${actorName}: ${reason}`,
-    });
+  if (admission.inventoryLines?.length && !admission.inventoryReturned) {
+    for (const line of admission.inventoryLines) {
+      await restoreSoldQuantity(line.itemId, line.quantity, `ভর্তি বাতিল ${admission.formSerial} — ${line.itemName} স্টকে ফেরত`);
+    }
+    updated.inventoryReturned = true;
+  }
+
+  if (admission.status === 'approved' && admissionPaidAmount(admission) > 0) {
+    const postings = admission.accountPostings?.length
+      ? admission.accountPostings
+      : admission.receivedInAccountId
+        ? [{ accountId: admission.receivedInAccountId, amount: admissionPaidAmount(admission), label: 'Admission Fee' }]
+        : [];
+    for (const posting of postings) {
+      await recordReversal({
+        accountId: posting.accountId,
+        amount: posting.amount,
+        reference: `Admission Cancelled — ${posting.label} (${admission.formSerial})`,
+        relatedId: admission.id,
+        note: `Cancelled by ${actorName}: ${reason}`,
+      });
+    }
   }
 
   await persistAdmission(updated);

@@ -67,6 +67,7 @@ export interface AdmissionReceiptData {
   dueAmount: number;
   tuitionNote?: string;
   feeItems: Admission['feeItems'];
+  inventoryLines: NonNullable<Admission['inventoryLines']>;
   discounts: Admission['discounts'];
   issuedAt: string;
   statusNote: string;
@@ -75,7 +76,17 @@ export interface AdmissionReceiptData {
 export function buildAdmissionReceipt(
   admission: Admission,
   account?: LedgerAccount,
+  accounts?: LedgerAccount[],
 ): AdmissionReceiptData {
+  const accountName = (id?: string) => accounts?.find((entry) => entry.id === id)?.name || (id && id === account?.id ? account.name : '') || '';
+  const feeItems = admission.feeItems.map((item) => ({
+    ...item,
+    label: item.accountId && accountName(item.accountId) ? `${item.label} — ${accountName(item.accountId)}` : item.label,
+  }));
+  const inventoryLines = (admission.inventoryLines ?? []).map((line) => ({
+    ...line,
+    itemName: `${line.itemName} × ${line.quantity} ${line.unit}${accountName(line.accountId) ? ` — ${accountName(line.accountId)}` : ''}`,
+  }));
   return {
     receiptNumber: admission.receiptNumber ?? generateReceiptNumber(),
     formSerial: admission.formSerial,
@@ -94,7 +105,8 @@ export function buildAdmissionReceipt(
     tuitionNote: admission.tuitionReduction
       ? `Special monthly tuition: ${formatCurrency(admission.tuitionReduction.reducedAmount)} (standard ${formatCurrency(admission.tuitionReduction.standardAmount)}) — ${admission.tuitionReduction.reason}; by ${admission.tuitionReduction.reducedBy}`
       : undefined,
-    feeItems: admission.feeItems,
+    feeItems,
+    inventoryLines,
     discounts: admission.discounts,
     issuedAt: admission.createdAt ?? new Date().toISOString(),
     statusNote:
@@ -212,11 +224,15 @@ export function admissionToDocument(data: AdmissionReceiptData): SchoolReceiptDo
       { label: 'Contact', value: data.guardianContact },
       { label: 'Received In Account', value: data.accountName },
     ],
-    lineItems: data.feeItems.map((item) => ({ label: item.label, amount: item.amount })),
+    lineItems: [
+      ...data.feeItems.map((item) => ({ label: item.label, amount: item.amount })),
+      ...data.inventoryLines.map((line) => ({ label: line.itemName, amount: line.lineTotal })),
+    ],
     totalsHtml: `
         <p>Gross Total: ${formatCurrency(data.grossTotal)}</p>
         ${concession ? `<p class="discount">${escapeHtml(concession)}</p>` : ''}
         <p class="grand">Grand Total: ${formatCurrency(data.grandTotal)}</p>
+        ${data.inventoryLines.length ? `<p>Inventory (ইনভেন্টরি বিক্রয়): ${formatCurrency(data.inventoryLines.reduce((sum, line) => sum + line.lineTotal, 0))}</p>` : ''}
         <p>Paid (জমা): ${formatCurrency(data.paidAmount)}</p>
         <p class="${data.dueAmount > 0 ? 'discount' : ''}">Due (বাকি): ${formatCurrency(data.dueAmount)}</p>
         ${data.tuitionNote ? `<p class="discount">${escapeHtml(data.tuitionNote)}</p>` : ''}`,
@@ -224,6 +240,9 @@ export function admissionToDocument(data: AdmissionReceiptData): SchoolReceiptDo
       { label: 'Gross Total', value: formatCurrency(data.grossTotal), tone: 'muted' },
       ...(concession ? [{ label: 'Concession', value: concession, tone: 'discount' as const }] : []),
       { label: 'Grand Total', value: formatCurrency(data.grandTotal), tone: 'grand' },
+      ...(data.inventoryLines.length
+        ? [{ label: 'Inventory', value: formatCurrency(data.inventoryLines.reduce((sum, line) => sum + line.lineTotal, 0)), tone: 'muted' as const }]
+        : []),
       { label: 'Paid', value: formatCurrency(data.paidAmount), tone: 'muted' },
       { label: 'Due', value: formatCurrency(data.dueAmount), tone: data.dueAmount > 0 ? 'discount' : 'muted' },
       ...(data.tuitionNote ? [{ label: 'Tuition', value: data.tuitionNote, tone: 'discount' as const }] : []),

@@ -137,6 +137,7 @@ export function AdmissionsPanel() {
           <AdmissionReceiptModal
             admission={receiptAdmission}
             account={accounts.find((account) => account.id === receiptAdmission.receivedInAccountId)}
+            accounts={accounts}
             onClose={() => setReceiptAdmission(null)}
           />
         )}

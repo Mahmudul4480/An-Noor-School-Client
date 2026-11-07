@@ -8,7 +8,7 @@ import { recordCollection } from './ledger';
 import { dhakaToday, omitUndefined, toIsoString } from './utils';
 import type { Admission, IncomeEntry } from '../types';
 
-const INCOME_COLLECTION = 'incomeEntries';
+export const INCOME_COLLECTION = 'incomeEntries';
 const LOCAL_INCOME_KEY = 'an-noor-income-entries';
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -130,11 +130,12 @@ export async function createIncomeEntry(input: CreateIncomeInput): Promise<Incom
 }
 
 /** Same income document the Accounts form writes, so a sale can share one batch with stock. */
+export function incomeCreatePayload(entry: IncomeEntry): Record<string, unknown> {
+  return omitUndefined({ ...entry, createdAt: serverTimestamp() }) as Record<string, unknown>;
+}
+
 export function queueIncomeWrite(batch: WriteBatch, entry: IncomeEntry): void {
-  batch.set(
-    doc(db, INCOME_COLLECTION, entry.id),
-    omitUndefined({ ...entry, createdAt: serverTimestamp() }),
-  );
+  batch.set(doc(db, INCOME_COLLECTION, entry.id), incomeCreatePayload(entry));
 }
 
 export async function saveIncomeEntry(entry: IncomeEntry): Promise<void> {
