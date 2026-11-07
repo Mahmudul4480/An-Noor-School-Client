@@ -14,6 +14,22 @@ export interface AccountPosting {
  * Older admissions have no per-line account: the whole paid amount stays on the single account.
  * A partial payment fills lines from the top, each into its own account.
  */
+/**
+ * Accounts a whole admission fee belongs to.
+ * Older admissions keep the single deposit account. Newer ones list each paid line's account.
+ */
+export function admissionFeeAccountIds(admission: {
+  receivedInAccountId?: string;
+  feeItems?: { accountId?: string; amount?: number }[];
+}): string[] {
+  const fromLines = (admission.feeItems ?? [])
+    .filter((item) => (item.amount ?? 0) > 0 && item.accountId)
+    .map((item) => item.accountId as string);
+  const unique = [...new Set(fromLines)];
+  if (unique.length) return unique;
+  return admission.receivedInAccountId ? [admission.receivedInAccountId] : [];
+}
+
 export function feeAccountPostings(
   items: Pick<FeeStructureItem, 'label' | 'amount' | 'accountId'>[],
   paidAmount: number,

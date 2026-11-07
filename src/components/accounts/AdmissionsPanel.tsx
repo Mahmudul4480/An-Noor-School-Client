@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getCurrentActorLabel } from '../../lib/actor';
 import { cn } from '../../lib/utils';
+import { admissionFeeAccountIds } from '../../lib/admissionLines';
 import { cancelAdmission, fetchAdmissions } from '../../lib/admissions';
 import { fetchAccounts } from '../../lib/ledger';
 import { NewAdmissionModal } from './NewAdmissionModal';
@@ -373,7 +374,7 @@ function AdmissionRow({
                 {nextPendingStep && admission.status === 'pending_approval' && (
                   <p className="text-[9px] text-school-muted font-bold uppercase tracking-widest mt-3">
                     Principal Approval Hub-এ approve হবে • Fee account:{' '}
-                    {accounts.find((account) => account.id === admission.receivedInAccountId)?.name ?? 'Not selected'}
+                    {admissionFeeAccountIds(admission).map((id) => accounts.find((account) => account.id === id)?.name).filter(Boolean).join(', ') || 'Not selected'}
                   </p>
                 )}
               </div>
