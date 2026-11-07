@@ -1,6 +1,7 @@
 import { formatDateTime, formatEntryDateTime } from '../../lib/utils';
 import { userErrorMessage } from '../../lib/errorMessages';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Boxes,
@@ -41,6 +42,7 @@ import {
   saveInventoryItem,
   stockValue,
 } from '../../lib/inventory';
+import { parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber } from '../../lib/inventoryQuantity';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import { fetchStudents } from '../../lib/students';
 import type {
@@ -532,9 +534,9 @@ export function InventoryPanel() {
           <ItemFormModal
             item={editItem}
             onClose={() => setShowItemForm(false)}
-            onSaved={async (savedName) => {
+            onSaved={async (text) => {
               setShowItemForm(false);
-              setMessage(`"${savedName}" save হয়েছে।`);
+              setMessage(text);
               await load();
             }}
           />
@@ -586,6 +588,14 @@ export function InventoryPanel() {
   );
 }
 
+type ItemField = 'name' | 'costRate' | 'studentPrice' | 'openingQty' | 'lowStockThreshold';
+
+const itemInputClass = (active: boolean) =>
+  cn(
+    'w-full px-4 py-2.5 border rounded-xl text-xs font-bold outline-none',
+    active ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'bg-slate-50 border-slate-100',
+  );
+
 function ItemFormModal({
   item,
   onClose,
@@ -593,7 +603,7 @@ function ItemFormModal({
 }: {
   item: InventoryItem | null;
   onClose: () => void;
-  onSaved: (name: string) => void | Promise<void>;
+  onSaved: (message: string) => void | Promise<void>;
 }) {
   const [form, setForm] = React.useState({
     name: item?.name ?? '',
@@ -607,28 +617,78 @@ function ItemFormModal({
     note: item?.note ?? '',
   });
   const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState('');
+  const [popup, setPopup] = React.useState('');
+  const [badField, setBadField] = React.useState<ItemField | null>(null);
+  const refs: Record<ItemField, React.RefObject<HTMLInputElement | null>> = {
+    name: React.useRef<HTMLInputElement>(null),
+    costRate: React.useRef<HTMLInputElement>(null),
+    studentPrice: React.useRef<HTMLInputElement>(null),
+    openingQty: React.useRef<HTMLInputElement>(null),
+    lowStockThreshold: React.useRef<HTMLInputElement>(null),
+  };
+
+  const touch = (patch: Partial<typeof form>, field?: ItemField) => {
+    setForm((prev) => ({ ...prev, ...patch }));
+    if (field && badField === field) setBadField(null);
+  };
+
+  const fail = (field: ItemField | null, message: string) => {
+    setBadField(field);
+    setPopup(message);
+    if (field) setTimeout(() => refs[field].current?.focus(), 50);
+  };
+
+  const closePopup = () => {
+    setPopup('');
+    if (badField) setTimeout(() => refs[badField].current?.focus(), 50);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const name = form.name.trim();
+    if (!name) return fail('name', 'আইটেমের নাম লিখুন।');
+
+    const cost = parseMoneyAmount(form.costRate, 'ক্রয় মূল্য লিখুন।');
+    if (cost.ok === false) return fail('costRate', cost.message);
+
+    let studentPrice = cost.value;
+    if (form.purpose === 'student') {
+      const price = parseMoneyAmount(form.studentPrice, 'ছাত্রের দাম লিখুন।');
+      if (price.ok === false) return fail('studentPrice', price.message);
+      if (price.value < cost.value) return fail('studentPrice', 'Student price cost rate-এর চেয়ে কম হতে পারে না।');
+      studentPrice = price.value;
+    }
+
+    let openingQty: number | undefined;
+    if (!item) {
+      const opening = parseOpeningQuantity(form.openingQty, form.unit);
+      if (opening.ok === false) return fail('openingQty', opening.message);
+      openingQty = opening.value;
+    }
+
+    const reorder = parseOptionalWholeNumber(form.lowStockThreshold, 'রিঅর্ডার লেভেল পূর্ণ সংখ্যায় লিখুন (০ বা তার বেশি)।');
+    if (reorder.ok === false) return fail('lowStockThreshold', reorder.message);
+
     setBusy(true);
-    setError('');
+    setBadField(null);
     try {
       await saveInventoryItem({
         id: item?.id,
-        name: form.name,
+        name,
         purpose: form.purpose,
         className: form.className,
         unit: form.unit,
-        costRate: parseFloat(form.costRate) || 0,
-        studentPrice: parseFloat(form.studentPrice) || parseFloat(form.costRate) || 0,
-        openingQty: item ? undefined : parseInt(form.openingQty, 10) || 0,
-        lowStockThreshold: parseInt(form.lowStockThreshold, 10) || 0,
+        costRate: cost.value,
+        studentPrice,
+        openingQty,
+        lowStockThreshold: reorder.value,
         note: form.note || undefined,
       });
-      await onSaved(form.name.trim());
+      const stockLine = openingQty === undefined ? '' : ` বর্তমান স্টক ${openingQty} ${form.unit}।`;
+      await onSaved(`"${name}" সেভ হয়েছে।${stockLine}`);
     } catch (err) {
-      setError(userErrorMessage(err, 'Could not save item.'));
+      const message = userErrorMessage(err, 'আইটেম সেভ করা যায়নি।');
+      fail(message.includes('একই নাম') ? 'name' : null, message);
     } finally {
       setBusy(false);
     }
@@ -636,14 +696,14 @@ function ItemFormModal({
 
   return (
     <Modal title={item ? 'Edit Stock Item' : 'New Stock Item'} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
         <Field label="Store">
           <div className="grid grid-cols-2 gap-2">
             {INVENTORY_PURPOSE_OPTIONS.map((option) => (
               <button
                 key={option.id}
                 type="button"
-                onClick={() => setForm({ ...form, purpose: option.id })}
+                onClick={() => touch({ purpose: option.id })}
                 className={cn(
                   'py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border',
                   form.purpose === option.id
@@ -662,14 +722,16 @@ function ItemFormModal({
           </p>
         </Field>
 
-        <Field label="Item Name">
+        <Field label="Item Name" htmlFor="stock-item-name">
           <input
+            id="stock-item-name"
+            ref={refs.name}
             type="text"
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="e.g. Bengali Letter Khata"
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-            required
+            onChange={(e) => touch({ name: e.target.value }, 'name')}
+            placeholder="যেমন: Photocopier Toner"
+            aria-invalid={badField === 'name'}
+            className={itemInputClass(badField === 'name')}
           />
         </Field>
 
@@ -677,7 +739,7 @@ function ItemFormModal({
           <Field label="Class">
             <select
               value={form.className}
-              onChange={(e) => setForm({ ...form, className: e.target.value })}
+              onChange={(e) => touch({ className: e.target.value })}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
             >
               {INVENTORY_CLASS_OPTIONS.map((option) => (
@@ -690,7 +752,7 @@ function ItemFormModal({
           <Field label="Unit">
             <select
               value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              onChange={(e) => touch({ unit: e.target.value })}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
             >
               {INVENTORY_UNIT_OPTIONS.map((option) => (
@@ -702,71 +764,85 @@ function ItemFormModal({
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={form.purpose === 'school' ? 'Cost Rate ৳' : 'Cost Rate ৳ (Staff price)'}>
+        {!item && (
+          <div className="space-y-1.5">
+            <label htmlFor="opening-qty" className="text-xs font-black text-school-blue">
+              প্রাথমিক পরিমাণ / স্টক সংখ্যা *
+            </label>
             <input
-              type="number"
-              min={0}
+              id="opening-qty"
+              ref={refs.openingQty}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={form.openingQty}
+              onChange={(e) => touch({ openingQty: e.target.value }, 'openingQty')}
+              placeholder="যেমন: ২"
+              aria-invalid={badField === 'openingQty'}
+              className={itemInputClass(badField === 'openingQty')}
+            />
+            <p className="text-[11px] font-medium text-school-muted">
+              প্রথমবার কিনলে এই ঘরে সংখ্যা লিখুন। আগে স্টকে না থাকলেও এখানেই পরিমাণ দিতে হবে। ০ মানে এখনো স্টক নেই।
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={form.purpose === 'school' ? 'Cost Rate ৳' : 'Cost Rate ৳ (Staff price)'} htmlFor="stock-cost-rate">
+            <input
+              id="stock-cost-rate"
+              ref={refs.costRate}
+              type="text"
+              inputMode="decimal"
               value={form.costRate}
-              onChange={(e) => setForm({ ...form, costRate: e.target.value })}
+              onChange={(e) => touch({ costRate: e.target.value }, 'costRate')}
               placeholder="0"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-              required
+              aria-invalid={badField === 'costRate'}
+              className={itemInputClass(badField === 'costRate')}
             />
           </Field>
           {form.purpose === 'student' && (
-            <Field label="Student Price ৳">
+            <Field label="Student Price ৳" htmlFor="stock-student-price">
               <input
-                type="number"
-                min={0}
+                id="stock-student-price"
+                ref={refs.studentPrice}
+                type="text"
+                inputMode="decimal"
                 value={form.studentPrice}
-                onChange={(e) => setForm({ ...form, studentPrice: e.target.value })}
+                onChange={(e) => touch({ studentPrice: e.target.value }, 'studentPrice')}
                 placeholder="0"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-                required
+                aria-invalid={badField === 'studentPrice'}
+                className={itemInputClass(badField === 'studentPrice')}
               />
             </Field>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {!item && (
-            <Field label="Opening Quantity">
-              <input
-                type="number"
-                min={0}
-                value={form.openingQty}
-                onChange={(e) => setForm({ ...form, openingQty: e.target.value })}
-                placeholder="0"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-              />
-            </Field>
-          )}
-          <Field label="Reorder Level (alert)">
-            <input
-              type="number"
-              min={0}
-              value={form.lowStockThreshold}
-              onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-            />
-          </Field>
-        </div>
+        <Field label="Reorder Level (alert)" htmlFor="stock-reorder">
+          <input
+            id="stock-reorder"
+            ref={refs.lowStockThreshold}
+            type="text"
+            inputMode="numeric"
+            value={form.lowStockThreshold}
+            onChange={(e) => touch({ lowStockThreshold: e.target.value }, 'lowStockThreshold')}
+            aria-invalid={badField === 'lowStockThreshold'}
+            className={itemInputClass(badField === 'lowStockThreshold')}
+          />
+        </Field>
 
         <Field label="Note (optional)">
           <input
             type="text"
             value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })}
+            onChange={(e) => touch({ note: e.target.value })}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
           />
         </Field>
 
         <p className="text-[10px] font-bold text-school-muted">
-          Remaining stock reorder level-এ নামলে Principal ও Accounts-এ purchase alert যাবে। Opening qty FIFO lot হিসেবে ঢুকবে।
+          রিঅর্ডার লেভেলের নিচে নামলে Principal ও Accounts-এ সতর্কতা যাবে। প্রাথমিক পরিমাণ স্টক-ইন হিসেবে ইতিহাসে থাকবে।
         </p>
-
-        {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">{error}</div>}
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-5 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase">
@@ -782,7 +858,33 @@ function ItemFormModal({
           </button>
         </div>
       </form>
+      {popup && (
+        <BanglaPopup text={popup} onClose={closePopup} />
+      )}
     </Modal>
+  );
+}
+
+function BanglaPopup({ text, onClose }: { text: string; onClose: () => void }) {
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4"
+      style={{ fontFamily: "'Anek Bangla', sans-serif" }}
+      onClick={onClose}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-bold text-red-600">⚠️ {text}</p>
+        <button type="button" onClick={onClose} className="mt-4 w-full py-2 rounded-xl bg-school-blue text-white text-sm font-black">
+          ঠিক আছে
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1273,10 +1375,10 @@ function RestockModal({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
+      <label htmlFor={htmlFor} className="text-[10px] font-black text-school-muted uppercase tracking-widest">{label}</label>
       {children}
     </div>
   );

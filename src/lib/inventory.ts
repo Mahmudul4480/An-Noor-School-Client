@@ -1,10 +1,11 @@
-import { collection, doc, getDocs, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { createExpense } from './expenses';
+import { openingStockPlan } from './inventoryQuantity';
 import { recordCollection } from './ledger';
-import { omitUndefined, toIsoString } from './utils';
+import { dhakaToday, omitUndefined, toIsoString } from './utils';
 import type {
   InventoryBuyerType,
   InventoryFifoSlice,
@@ -37,7 +38,7 @@ export const INVENTORY_CLASS_OPTIONS = [
   'Class 6',
 ];
 
-export const INVENTORY_UNIT_OPTIONS = ['pcs', 'copy', 'set', 'packet', 'ream', 'box', 'dozen'];
+export { INVENTORY_UNIT_OPTIONS } from './inventoryQuantity';
 
 export const INVENTORY_PURPOSE_OPTIONS: { id: InventoryPurpose; label: string; hint: string }[] = [
   { id: 'student', label: 'For Student', hint: 'Shop / sale to students' },
@@ -253,6 +254,27 @@ async function persistLot(lot: InventoryLot): Promise<void> {
   await setDoc(doc(db, LOTS_COLLECTION, lot.id), omitUndefined({ ...lot }), { merge: true });
 }
 
+/** New item plus its opening lot and stock-in, or the item alone when opening qty is 0. */
+async function commitNewItem(item: InventoryItem, lot?: InventoryLot, movement?: InventoryMovement): Promise<void> {
+  if (isDemoLoginEnabled || !lot || !movement) {
+    await persistItem(item);
+    if (lot) await persistLot(lot);
+    if (movement) await persistMovement(movement);
+    return;
+  }
+
+  await waitForAuthUser();
+  const batch = writeBatch(db);
+  batch.set(doc(db, ITEMS_COLLECTION, item.id), omitUndefined({ ...item }), { merge: true });
+  batch.set(doc(db, LOTS_COLLECTION, lot.id), omitUndefined({ ...lot }), { merge: true });
+  batch.set(
+    doc(db, MOVEMENTS_COLLECTION, movement.id),
+    omitUndefined({ ...movement, createdAt: serverTimestamp() }),
+    { merge: true },
+  );
+  await batch.commit();
+}
+
 export async function fetchInventoryLots(itemId?: string): Promise<InventoryLot[]> {
   let lots: InventoryLot[];
 
@@ -382,7 +404,7 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     throw new Error('এই store ও class-এ একই নামের item আগেই আছে।');
   }
 
-  const openingQty = Math.max(0, Math.floor(input.openingQty ?? 0));
+  const plan = openingStockPlan(input.openingQty ?? 0, input.unit);
   const item = normalizeItem({
     id: generateId('itm'),
     name,
@@ -391,7 +413,7 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     unit: input.unit,
     costRate: input.costRate,
     studentPrice: input.purpose === 'school' ? input.costRate : input.studentPrice,
-    purchasedQty: openingQty,
+    purchasedQty: plan.purchasedQty,
     soldQty: 0,
     lowStockThreshold: input.lowStockThreshold,
     note: input.note?.trim() || undefined,
@@ -400,36 +422,34 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     createdAt: new Date().toISOString(),
   });
 
-  await persistItem(item);
-
-  if (openingQty > 0) {
-    const openingDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    await persistLot(
-      buildLot({
-        item,
-        quantity: openingQty,
-        unitCost: item.costRate,
-        receivedDate: openingDate,
-        note: 'Opening stock',
-        createdBy: item.createdBy,
-      }),
-    );
-    await persistMovement(
-      normalizeMovement({
-        id: generateId('mov'),
-        itemId: item.id,
-        itemName: item.name,
-        type: 'adjustment',
-        quantity: openingQty,
-        unitPrice: item.costRate,
-        totalAmount: openingQty * item.costRate,
-        date: openingDate,
-        note: 'Opening stock (FIFO lot)',
-        createdBy: item.createdBy,
-        createdAt: new Date().toISOString(),
-      }),
-    );
+  if (!plan.movement) {
+    await persistItem(item);
+    return item;
   }
+
+  const openingDate = dhakaToday();
+  const lot = buildLot({
+    item,
+    quantity: plan.movement.quantity,
+    unitCost: item.costRate,
+    receivedDate: openingDate,
+    note: plan.movement.note,
+    createdBy: item.createdBy,
+  });
+  const movement = normalizeMovement({
+    id: generateId('mov'),
+    itemId: item.id,
+    itemName: item.name,
+    type: plan.movement.type,
+    quantity: plan.movement.quantity,
+    unitPrice: item.costRate,
+    totalAmount: plan.movement.quantity * item.costRate,
+    date: openingDate,
+    note: plan.movement.note,
+    createdBy: item.createdBy,
+    createdAt: new Date().toISOString(),
+  });
+  await commitNewItem(item, lot, movement);
 
   return item;
 }
