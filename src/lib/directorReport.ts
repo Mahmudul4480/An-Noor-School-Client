@@ -416,9 +416,14 @@ export async function getDirectorBriefing(
   let admissionCash = 0;
   let admissionBank = 0;
   for (const admission of approvedAdmissions) {
-    const split = splitByAccount(admissionPaidAmount(admission), admission.receivedInAccountId, accountMap, true);
-    admissionCash += split.cash;
-    admissionBank += split.bank;
+    const postings = admission.accountPostings?.length
+      ? admission.accountPostings
+      : [{ accountId: admission.receivedInAccountId, amount: admissionPaidAmount(admission) }];
+    for (const posting of postings) {
+      const split = splitByAccount(posting.amount, posting.accountId, accountMap, true);
+      admissionCash += split.cash;
+      admissionBank += split.bank;
+    }
   }
 
   const incomeByCategory = new Map<string, { cash: number; bank: number; voucher: string }>();

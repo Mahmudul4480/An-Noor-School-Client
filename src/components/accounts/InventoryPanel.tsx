@@ -957,7 +957,7 @@ function SaleModal({
     if (qtyParsed.ok === false) return fail('quantity', qtyParsed.message);
     if (priceParsed.ok === false) return fail('unitPrice', priceParsed.message);
     const saleTotal = Math.round(qtyParsed.value * priceParsed.value * 100) / 100;
-    if (saleTotal > 0 && !accountId) return fail('accountId', 'টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন।');
+    if (!accountId) return fail('accountId', 'টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন। বই, খাতা ও স্টেশনারি সহ প্রতিটি বিক্রির অ্যাকাউন্ট লাগবে।');
     if (saleTotal > 0 && paymentMethod !== 'cash' && !reference.trim()) {
       return fail('reference', 'ব্যাংক বা মোবাইল ব্যাংকিং হলে ডিপোজিট স্লিপ বা ট্রানজ্যাকশন নম্বর দিন।');
     }
@@ -1048,7 +1048,7 @@ function SaleModal({
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="sale-account" className="text-[10px] font-black text-school-muted uppercase tracking-widest">জমা হবে যে অ্যাকাউন্টে</label>
+          <label htmlFor="sale-account" className="text-xs font-black text-school-blue">অ্যাকাউন্ট * (বই / খাতা / স্টেশনারি সহ সব বিক্রি)</label>
           <select
             id="sale-account"
             ref={accountRef}

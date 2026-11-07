@@ -19,11 +19,12 @@ import type { Admission, LedgerAccount } from '../../types';
 interface AdmissionReceiptModalProps {
   admission: Admission;
   account?: LedgerAccount;
+  accounts?: LedgerAccount[];
   onClose: () => void;
 }
 
-export function AdmissionReceiptModal({ admission, account, onClose }: AdmissionReceiptModalProps) {
-  const receipt = buildAdmissionReceipt(admission, account);
+export function AdmissionReceiptModal({ admission, account, accounts, onClose }: AdmissionReceiptModalProps) {
+  const receipt = buildAdmissionReceipt(admission, account, accounts);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
   React.useEffect(() => {

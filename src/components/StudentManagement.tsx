@@ -41,6 +41,7 @@ export function StudentManagement() {
   const [showNewAdmission, setShowNewAdmission] = React.useState(false);
   const [receiptAdmission, setReceiptAdmission] = React.useState<Admission | null>(null);
   const [receiptAccount, setReceiptAccount] = React.useState<LedgerAccount | undefined>();
+  const [receiptAccounts, setReceiptAccounts] = React.useState<LedgerAccount[]>([]);
   const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
@@ -508,9 +509,10 @@ export function StudentManagement() {
               setReceiptAdmission(admission);
               fetchAccounts()
                 .then((accounts) => {
+                  setReceiptAccounts(accounts);
                   setReceiptAccount(accounts.find((account) => account.id === admission.receivedInAccountId));
                 })
-                .catch(() => setReceiptAccount(undefined));
+                .catch(() => { setReceiptAccount(undefined); setReceiptAccounts([]); });
             }}
           />
         )}
@@ -518,6 +520,7 @@ export function StudentManagement() {
           <AdmissionReceiptModal
             admission={receiptAdmission}
             account={receiptAccount}
+            accounts={receiptAccounts}
             onClose={() => {
               setReceiptAdmission(null);
               setReceiptAccount(undefined);

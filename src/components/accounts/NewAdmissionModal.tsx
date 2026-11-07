@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Loader2, Tag, FileWarning } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { MANUAL_ADMISSION_FEE_KEYS, admissionStockError, inventoryLineTotal } from '../../lib/admissionLines';
+import { createAdmissionWithStock } from '../../lib/admissionCheckout';
 import {
   DEFAULT_FEE_ITEMS,
   computeTotals,
-  createAdmission,
   fetchFeeStructure,
   maxDiscountableAmount,
   uploadScannedForm,
@@ -14,14 +15,38 @@ import {
   uploadBirthRegDocument,
   validateDiscount,
 } from '../../lib/admissions';
-import { getFirebaseOperationErrorMessage } from '../../lib/auth';
+import { getFirebaseOperationErrorMessage, isDemoLoginEnabled } from '../../lib/auth';
+import { db } from '../../lib/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { fetchInventoryItems, remainingStock } from '../../lib/inventory';
+import { defaultSalePrice, parseMoneyAmount, parseSaleQuantity } from '../../lib/inventoryQuantity';
 import { toFriendlyError, userErrorMessage } from '../../lib/errorMessages';
 import { showToast } from '../../lib/toast';
 import { prepareStampPhoto, STAMP_PHOTO } from '../../lib/imageUtils';
-import { fetchAccounts } from '../../lib/ledger';
+import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import { getCurrentActorLabel } from '../../lib/actor';
 import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../../lib/schoolConstants';
-import type { Admission, AdmissionDiscount, FeeStructureItem, LedgerAccount } from '../../types';
+import type { Admission, AdmissionDiscount, FeeStructureItem, InventoryItem, LedgerAccount } from '../../types';
+
+type StockDraft = { id: string; itemId: string; quantity: string; unitPrice: string; accountId: string };
+
+function readStockDoc(id: string, data: Record<string, unknown>): InventoryItem {
+  const costRate = Number(data.costRate) || 0;
+  return {
+    id,
+    name: String(data.name ?? ''),
+    className: String(data.className ?? ''),
+    unit: String(data.unit || 'pcs'),
+    costRate,
+    studentPrice: Number(data.studentPrice) || costRate,
+    purchasedQty: Number(data.purchasedQty) || 0,
+    soldQty: Number(data.soldQty) || 0,
+    lowStockThreshold: Number(data.lowStockThreshold) || 0,
+    archived: data.archived === true,
+    purpose: data.purpose === 'school' ? 'school' : 'student',
+    createdAt: '',
+  };
+}
 
 const DISCOUNT_REASON_PRESETS = [
   'Sibling Discount',
@@ -69,6 +94,12 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const [photoProcessing, setPhotoProcessing] = React.useState(false);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
   const [receivedInAccountId, setReceivedInAccountId] = React.useState('');
+  const [feeAccounts, setFeeAccounts] = React.useState<Record<string, string>>({});
+  const [manualAmounts, setManualAmounts] = React.useState<Record<string, string>>({ book: '0', copy: '0', stationery: '0' });
+  const [stockItems, setStockItems] = React.useState<InventoryItem[]>([]);
+  const [stockReady, setStockReady] = React.useState(false);
+  const [stockError, setStockError] = React.useState('');
+  const [stockDrafts, setStockDrafts] = React.useState<StockDraft[]>([]);
   const [error, setError] = React.useState('');
   const [warning, setWarning] = React.useState('');
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
@@ -88,10 +119,37 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   React.useEffect(() => {
     fetchAccounts()
       .then((accountData) => {
-        setAccounts(accountData);
-        setReceivedInAccountId((prev) => prev || accountData[0]?.id || '');
+        const usable = accountData.filter((account) => account.id !== ONLINE_PAYMENT_ACCOUNT_ID);
+        setAccounts(usable);
+        setReceivedInAccountId((prev) => prev || usable.find((account) => account.id === 'main-cash')?.id || usable[0]?.id || '');
       })
       .catch(() => setAccounts([]));
+  }, []);
+
+  React.useEffect(() => {
+    if (isDemoLoginEnabled) {
+      let stop = false;
+      const load = () => fetchInventoryItems()
+        .then((items) => {
+          if (stop) return;
+          setStockItems(items.filter((item) => !item.archived));
+          setStockReady(true);
+          setStockError('');
+        })
+        .catch(() => { if (!stop) { setStockReady(false); setStockError('স্টক এই মুহূর্তে দেখা যাচ্ছে না। এন্ট্রি নেওয়া যাবে না।'); } });
+      void load();
+      const timer = window.setInterval(load, 3000);
+      return () => { stop = true; window.clearInterval(timer); };
+    }
+    const unsubscribe = onSnapshot(collection(db, 'inventoryItems'), (snap) => {
+      setStockItems(snap.docs.map((document) => readStockDoc(document.id, document.data() as Record<string, unknown>)).filter((item) => !item.archived));
+      setStockReady(true);
+      setStockError('');
+    }, () => {
+      setStockReady(false);
+      setStockError('স্টক এই মুহূর্তে দেখা যাচ্ছে না। এন্ট্রি নেওয়া যাবে না।');
+    });
+    return unsubscribe;
   }, []);
 
   React.useEffect(() => {
@@ -105,7 +163,13 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     setLoadingStructure(true);
     fetchFeeStructure(form.classApplied)
       .then((structure) => {
-        if (!cancelled) setFeeItems(structure.items);
+        if (!cancelled) {
+          setFeeItems(structure.items);
+          setManualAmounts(Object.fromEntries(MANUAL_ADMISSION_FEE_KEYS.map((key) => {
+            const found = structure.items.find((item) => item.key === key);
+            return [key, found ? String(found.amount) : '0'];
+          })));
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingStructure(false);
@@ -126,9 +190,16 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const reducedTuitionNum = parseFloat(reducedTuition);
   const tuitionReduced = reduceOpen && reducedTuition.trim() !== '' && Number.isFinite(reducedTuitionNum)
     && reducedTuitionNum >= 0 && reducedTuitionNum < standardTuition;
+  const pricedFeeItems: FeeStructureItem[] = feeItems.map((item) => {
+    if (!(MANUAL_ADMISSION_FEE_KEYS as readonly string[]).includes(item.key)) return item;
+    const parsed = parseMoneyAmount(manualAmounts[item.key] || '0', '');
+    return { ...item, amount: parsed.ok ? parsed.value : 0 };
+  });
   const effectiveFeeItems: FeeStructureItem[] = tuitionReduced
-    ? feeItems.map((item) => (item.key === 'tuitionFee' ? { ...item, amount: reducedTuitionNum } : item))
-    : feeItems;
+    ? pricedFeeItems.map((item) => (item.key === 'tuitionFee' ? { ...item, amount: reducedTuitionNum } : item))
+    : pricedFeeItems;
+  const collectionAccounts = accounts;
+  const lineAccount = (key: string) => feeAccounts[key] || receivedInAccountId;
 
   const totals = computeTotals(effectiveFeeItems, activeDiscounts);
   const maxConcession = maxDiscountableAmount(effectiveFeeItems);
@@ -233,6 +304,57 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       return;
     }
 
+    const feeItemsForSave = effectiveFeeItems.map((item) => ({
+      ...item,
+      accountId: item.amount > 0 ? (lineAccount(item.key) || undefined) : undefined,
+    }));
+    for (const item of feeItemsForSave) {
+      if (item.amount > 0 && !item.accountId) {
+        focusField(`account-${item.key}`, `${item.label} এর টাকা কোন অ্যাকাউন্টে জমা হবে, সেটি বেছে নিন`);
+        return;
+      }
+    }
+
+    const stockPayload: { itemId: string; quantity: number; unitPrice: number; accountId: string }[] = [];
+    for (const draft of stockDrafts) {
+      if (!draft.itemId && !draft.quantity.trim()) continue;
+      if (!draft.itemId) {
+        focusField(`inv-${draft.id}-item`, 'বই, খাতা বা স্টেশনারি আইটেম বেছে নিন');
+        return;
+      }
+      if (!stockReady || stockError) {
+        focusField(`inv-${draft.id}-qty`, stockError || 'স্টক এই মুহূর্তে দেখা যাচ্ছে না। এন্ট্রি নেওয়া যাবে না।');
+        return;
+      }
+      const item = stockItems.find((entry) => entry.id === draft.itemId);
+      if (!item) {
+        focusField(`inv-${draft.id}-item`, 'এই আইটেম স্টকে আর নেই। এন্ট্রি নেওয়া যাবে না।');
+        return;
+      }
+      const live = remainingStock(item);
+      const qty = parseSaleQuantity(draft.quantity, item.unit, live);
+      if (qty.ok === false) {
+        focusField(`inv-${draft.id}-qty`, qty.message);
+        return;
+      }
+      const blocked = admissionStockError(qty.value, live, item.unit);
+      if (blocked) {
+        focusField(`inv-${draft.id}-qty`, blocked);
+        return;
+      }
+      const price = parseMoneyAmount(draft.unitPrice, 'বিক্রির দাম লিখুন।');
+      if (price.ok === false) {
+        focusField(`inv-${draft.id}-price`, price.message);
+        return;
+      }
+      const lineTotal = inventoryLineTotal(qty.value, price.value);
+      if (lineTotal > 0 && !draft.accountId) {
+        focusField(`inv-${draft.id}-account`, 'এই স্টক আইটেমের টাকা কোন অ্যাকাউন্টে জমা হবে, সেটি বেছে নিন');
+        return;
+      }
+      stockPayload.push({ itemId: item.id, quantity: qty.value, unitPrice: price.value, accountId: draft.accountId });
+    }
+
     setSubmitting(true);
     try {
       let scannedFormUrl: string | undefined;
@@ -274,10 +396,10 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
         }
       }
 
-      const admission = await createAdmission({
+      const admission = await createAdmissionWithStock({
         ...form,
         birthRegNo: form.birthRegNo || undefined,
-        feeItems: effectiveFeeItems,
+        feeItems: feeItemsForSave,
         discounts: activeDiscounts,
         paidAmount: paidNum,
         tuitionReduction: tuitionReduced
@@ -295,11 +417,18 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
         birthRegDocName,
         studentPhotoUrl,
         receivedInAccountId,
-      });
+      }, stockPayload);
 
       onCreated(admission);
       onClose();
     } catch (err) {
+      if (err instanceof Error && /স্টক|অ্যাকাউন্ট|পরিমাণ|ইনভেন্টরি|দিন ক্লোজ/.test(err.message)) {
+        setError(err.message);
+        showToast('error', err.message, 'লাল দাগ দেওয়া ঘরটি ঠিক করুন');
+        const draft = stockDrafts.find((line) => line.itemId);
+        if (draft && /স্টক|পরিমাণ/.test(err.message)) focusField(`inv-${draft.id}-qty`, err.message);
+        return;
+      }
       const f = toFriendlyError(err);
       setError(`${f.bn}\n${f.en}`);
       showToast('error', f.bn, f.en);
@@ -337,7 +466,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
             </button>
           </div>
 
-          <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
+          <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
             {/* Student Info */}
             <section className="space-y-4">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Student Information</h4>
@@ -492,7 +621,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               </select>
               {fieldErrors.receivedInAccountId && <p className="text-[11px] font-bold text-red-600">{fieldErrors.receivedInAccountId}</p>}
               <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
-                আজ জমা ৳ {paidNum.toLocaleString()} এই account-এ record হবে
+                প্রতিটি ফির পাশে আলাদা অ্যাকাউন্ট বেছে নিন। খালি থাকলে এই অ্যাকাউন্ট ধরা হবে। আজ ফি বাবদ ৳ {paidNum.toLocaleString()} জমা হবে।
               </p>
             </section>
 
@@ -538,10 +667,14 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                       <tr className="text-school-muted font-black bg-slate-50 uppercase tracking-widest">
                         <th className="p-3">Fee Item</th>
                         <th className="p-3 text-right">Amount</th>
+                        <th className="p-3">অ্যাকাউন্ট</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {feeItems.map((item) => (
+                      {feeItems.map((item) => {
+                        const manual = (MANUAL_ADMISSION_FEE_KEYS as readonly string[]).includes(item.key);
+                        const shown = effectiveFeeItems.find((entry) => entry.key === item.key);
+                        return (
                         <tr key={item.key}>
                           <td className="p-3 font-black text-school-blue uppercase">
                             {item.label}
@@ -562,21 +695,125 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                             )}
                           </td>
                           <td className="p-3 text-right font-bold text-school-blue">
-                            {item.key === 'tuitionFee' && tuitionReduced ? (
+                            {manual ? (
+                              <input
+                                id={`field-fee-${item.key}`}
+                                type="text"
+                                inputMode="decimal"
+                                value={manualAmounts[item.key] ?? '0'}
+                                onChange={(e) => setManualAmounts((prev) => ({ ...prev, [item.key]: e.target.value }))}
+                                className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-right outline-none"
+                              />
+                            ) : item.key === 'tuitionFee' && tuitionReduced ? (
                               <>
                                 <span className="line-through text-school-muted mr-2">৳ {item.amount.toLocaleString()}</span>
                                 <span className="text-amber-700">৳ {reducedTuitionNum.toLocaleString()}</span>
                               </>
                             ) : (
-                              <>৳ {item.amount.toLocaleString()}</>
+                              <>৳ {(shown?.amount ?? item.amount).toLocaleString()}</>
                             )}
                           </td>
+                          <td className="p-3">
+                            <select
+                              id={`field-account-${item.key}`}
+                              value={lineAccount(item.key)}
+                              onChange={(e) => setFeeAccounts((prev) => ({ ...prev, [item.key]: e.target.value }))}
+                              className={cn('w-full min-w-[140px] px-3 py-2 bg-white border rounded-xl text-xs font-bold outline-none', fieldErrors[`account-${item.key}`] ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-200')}
+                            >
+                              <option value="">অ্যাকাউন্ট</option>
+                              {collectionAccounts.map((account) => (
+                                <option key={account.id} value={account.id}>{account.name}</option>
+                              ))}
+                            </select>
+                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
+
+              <div className="rounded-2xl border border-slate-100 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h5 className="text-xs font-black text-school-blue">বই / খাতা / স্টেশনারি — স্টক থেকে</h5>
+                  <button
+                    type="button"
+                    onClick={() => setStockDrafts((prev) => [...prev, { id: `s-${Date.now()}`, itemId: '', quantity: '', unitPrice: '', accountId: receivedInAccountId }])}
+                    className="px-3 py-2 rounded-xl bg-school-blue text-white text-[10px] font-black"
+                  >
+                    আইটেম যোগ করুন
+                  </button>
+                </div>
+                <p className="text-[11px] font-medium text-school-muted">
+                  অভিভাবক চাইলে ভর্তির সাথে স্টকের বই, খাতা বা স্টেশনারি নিতে পারেন। স্টক এখানে লাইভ দেখায়। স্টকের বেশি হলে এন্ট্রি হবে না। টাকা «ইনভেন্টরি বিক্রয়» ইনকামে যাবে।
+                </p>
+                {stockError && <p className="text-[11px] font-bold text-red-600">{stockError}</p>}
+                {stockDrafts.map((draft) => {
+                  const item = stockItems.find((entry) => entry.id === draft.itemId);
+                  const live = item ? remainingStock(item) : null;
+                  return (
+                    <div key={draft.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+                      <label className="text-[10px] font-black text-school-blue md:col-span-2">আইটেম
+                        <select
+                          id={`field-inv-${draft.id}-item`}
+                          value={draft.itemId}
+                          onChange={(e) => {
+                            const next = stockItems.find((entry) => entry.id === e.target.value);
+                            setStockDrafts((prev) => prev.map((row) => row.id === draft.id ? {
+                              ...row,
+                              itemId: e.target.value,
+                              unitPrice: next ? String(defaultSalePrice(next)) : row.unitPrice,
+                            } : row));
+                          }}
+                          className={cn('mt-1 w-full px-3 py-2 border rounded-xl text-xs font-bold', fieldErrors[`inv-${draft.id}-item`] ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-200 bg-white')}
+                        >
+                          <option value="">বেছে নিন</option>
+                          {stockItems.map((entry) => (
+                            <option key={entry.id} value={entry.id}>{entry.name} ({entry.unit})</option>
+                          ))}
+                        </select>
+                        {item && (
+                          <span className={cn('block mt-1 font-bold', (live ?? 0) <= 0 ? 'text-red-600' : 'text-emerald-700')}>
+                            এখন স্টকে {live} {item.unit}
+                          </span>
+                        )}
+                      </label>
+                      <label className="text-[10px] font-black text-school-blue">পরিমাণ
+                        <input
+                          id={`field-inv-${draft.id}-qty`}
+                          value={draft.quantity}
+                          onChange={(e) => setStockDrafts((prev) => prev.map((row) => row.id === draft.id ? { ...row, quantity: e.target.value } : row))}
+                          className={cn('mt-1 w-full px-3 py-2 border rounded-xl text-xs font-bold', fieldErrors[`inv-${draft.id}-qty`] ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-200 bg-white')}
+                        />
+                      </label>
+                      <label className="text-[10px] font-black text-school-blue">দাম ৳
+                        <input
+                          id={`field-inv-${draft.id}-price`}
+                          value={draft.unitPrice}
+                          onChange={(e) => setStockDrafts((prev) => prev.map((row) => row.id === draft.id ? { ...row, unitPrice: e.target.value } : row))}
+                          className={cn('mt-1 w-full px-3 py-2 border rounded-xl text-xs font-bold', fieldErrors[`inv-${draft.id}-price`] ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-200 bg-white')}
+                        />
+                      </label>
+                      <label className="text-[10px] font-black text-school-blue">অ্যাকাউন্ট
+                        <select
+                          id={`field-inv-${draft.id}-account`}
+                          value={draft.accountId}
+                          onChange={(e) => setStockDrafts((prev) => prev.map((row) => row.id === draft.id ? { ...row, accountId: e.target.value } : row))}
+                          className={cn('mt-1 w-full px-3 py-2 border rounded-xl text-xs font-bold', fieldErrors[`inv-${draft.id}-account`] ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-200 bg-white')}
+                        >
+                          <option value="">অ্যাকাউন্ট</option>
+                          {collectionAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>{account.name}</option>
+                          ))}
+                        </select>
+                        <span className="block mt-1 text-school-muted">মোট ৳ {item ? inventoryLineTotal(parseSaleQuantity(draft.quantity, item.unit, remainingStock(item)).ok ? (parseSaleQuantity(draft.quantity, item.unit, remainingStock(item)) as { ok: true; value: number }).value : 0, parseMoneyAmount(draft.unitPrice, '').ok ? (parseMoneyAmount(draft.unitPrice, '') as { ok: true; value: number }).value : 0).toLocaleString() : '0'}</span>
+                        <button type="button" onClick={() => setStockDrafts((prev) => prev.filter((row) => row.id !== draft.id))} className="text-red-600 font-black">বাদ দিন</button>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
 
               {reduceOpen && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
