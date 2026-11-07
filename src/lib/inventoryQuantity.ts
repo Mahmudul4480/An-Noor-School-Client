@@ -10,6 +10,34 @@ export const OPENING_STOCK_NOTE = 'প্রাথমিক স্টক';
 /** Income category used when stock is sold. Also listed with the other income categories. */
 export const INVENTORY_SALE_CATEGORY = 'ইনভেন্টরি বিক্রয়';
 
+/** Counter sale income is credited at once. Other categories are left untouched. */
+export function creditInventorySaleNow<T extends { category: string; createdBy?: string; createdAt: string; approvalStatus: string }>(
+  entry: T,
+  sale: { itemName: string; quantity: number; unit: string; unitPrice: number; movementId: string },
+): T & {
+  approvalStatus: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  saleItemName?: string;
+  saleQuantity?: number;
+  saleUnit?: string;
+  saleUnitPrice?: number;
+  saleMovementId?: string;
+} {
+  if (entry.category !== INVENTORY_SALE_CATEGORY) return entry;
+  return {
+    ...entry,
+    approvalStatus: 'approved',
+    reviewedBy: entry.createdBy,
+    reviewedAt: entry.createdAt,
+    saleItemName: sale.itemName,
+    saleQuantity: sale.quantity,
+    saleUnit: sale.unit,
+    saleUnitPrice: sale.unitPrice,
+    saleMovementId: sale.movementId,
+  };
+}
+
 export function stockUnitAllowsDecimal(unit: string): boolean {
   const normalized = unit.trim().toLowerCase();
   if ((INVENTORY_UNIT_OPTIONS as readonly string[]).includes(normalized)) return false;

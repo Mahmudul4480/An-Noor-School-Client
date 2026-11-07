@@ -120,6 +120,7 @@ export async function createAdmissionWithStock(
         buyerName: input.studentName,
         note: `ভর্তি ${admission.formSerial}`,
         reference: admission.id,
+        postImmediately: false,
       });
       linked.push({ ...line, incomeId: sale.income?.id, movementId: sale.movement.id });
     }

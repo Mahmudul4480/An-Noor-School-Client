@@ -10,6 +10,8 @@ import { fetchApprovedCategories, fetchCategoryRequests, requestCategory } from 
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import { cn } from '../../lib/utils';
 import { IncomeReceiptModal } from './IncomeReceiptModal';
+import { InventorySaleReceiptModal } from './InventorySaleReceiptModal';
+import { INVENTORY_SALE_CATEGORY } from '../../lib/inventoryQuantity';
 import type { CategoryRequest, IncomeEntry, LedgerAccount } from '../../types';
 
 const METHOD_LABEL: Record<NonNullable<IncomeEntry['paymentMethod']>, string> = {
@@ -477,13 +479,19 @@ export function IncomePanel() {
         </motion.div>
       </div>
 
-      {receiptEntry && (
+      {receiptEntry && receiptEntry.category === INVENTORY_SALE_CATEGORY ? (
+        <InventorySaleReceiptModal
+          entry={receiptEntry}
+          account={accounts.find((account) => account.id === receiptEntry.accountId)}
+          onClose={() => setReceiptEntry(null)}
+        />
+      ) : receiptEntry ? (
         <IncomeReceiptModal
           entry={receiptEntry}
           account={accounts.find((account) => account.id === receiptEntry.accountId)}
           onClose={() => setReceiptEntry(null)}
         />
-      )}
+      ) : null}
     </div>
   );
 }

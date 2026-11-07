@@ -5,10 +5,12 @@ import { isDemoLoginEnabled, waitForAuthUser } from './auth';
 import { assertDayAcceptsMoney } from './dayClose';
 import { createExpense } from './expenses';
 import { buildPendingIncomeEntry, queueIncomeWrite, saveIncomeEntry } from './income';
-import { openingStockPlan, planInventorySale } from './inventoryQuantity';
+import { queueLedgerEntry, saveLedgerEntry } from './ledger';
+import { creditInventorySaleNow, openingStockPlan, planInventorySale } from './inventoryQuantity';
 import { dhakaToday, omitUndefined, toIsoString } from './utils';
 import type {
   IncomeEntry,
+  LedgerEntry,
   InventoryBuyerType,
   InventoryFifoSlice,
   InventoryItem,
@@ -558,6 +560,8 @@ export interface InventorySaleInput {
   date?: string;
   note?: string;
   createdBy?: string;
+  /** Counter sale credits the account at once. Admission stock stays pending with the admission. */
+  postImmediately?: boolean;
 }
 
 export interface InventorySaleResult {
@@ -608,12 +612,14 @@ async function commitSale(input: {
   lots: InventoryLot[];
   movement: InventoryMovement;
   income: IncomeEntry | null;
+  ledger: LedgerEntry | null;
 }): Promise<void> {
   if (isDemoLoginEnabled) {
     await persistItem(input.item);
     for (const lot of input.lots) await persistLot(lot);
     await persistMovement(input.movement);
     if (input.income) await saveIncomeEntry(input.income);
+    if (input.ledger) await saveLedgerEntry(input.ledger);
     return;
   }
 
@@ -628,13 +634,14 @@ async function commitSale(input: {
     omitUndefined({ ...input.movement, createdAt: serverTimestamp() }),
   );
   if (input.income) queueIncomeWrite(batch, input.income);
+  if (input.ledger) queueLedgerEntry(batch, input.ledger);
   await batch.commit();
 }
 
 /**
- * Sells stock and, when money is taken, adds a pending Income entry on the same
- * write as the stock drop. The Principal's income approval credits the ledger,
- * so day close and net liquidity pick it up the same way as any other income.
+ * Sells stock. A counter sale credits ইনভেন্টরি বিক্রয় to the chosen account
+ * in the same write as the stock drop. Admission stock passes postImmediately: false
+ * and stays pending with the admission.
  */
 export async function recordInventorySale(input: InventorySaleInput): Promise<InventorySaleResult> {
   const quantity = Math.floor(input.quantity);
@@ -695,7 +702,7 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
     updatedAt: new Date().toISOString(),
   });
 
-  const income = plan.income
+  const drafted = plan.income
     ? await buildPendingIncomeEntry({
         date,
         category: plan.income.category,
@@ -709,8 +716,32 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
         createdBy,
       })
     : null;
+  const immediate = drafted != null && input.postImmediately !== false;
+  const income = drafted && immediate
+    ? creditInventorySaleNow(drafted, {
+        itemName: item.name,
+        quantity,
+        unit: item.unit,
+        unitPrice,
+        movementId: movement.id,
+      })
+    : drafted;
+  const ledger: LedgerEntry | null = income && immediate
+    ? {
+        id: generateId('led'),
+        accountId: input.accountId,
+        type: 'credit',
+        amount: income.amount,
+        reference: `Income — ${income.category}: ${income.description}`,
+        relatedType: 'income',
+        relatedId: income.id,
+        date,
+        note: income.note,
+        createdAt: income.createdAt,
+      }
+    : null;
 
-  await commitSale({ item: updated, lots: consumed.lots, movement, income });
+  await commitSale({ item: updated, lots: consumed.lots, movement, income, ledger });
   return { item: updated, movement, income };
 }
 
