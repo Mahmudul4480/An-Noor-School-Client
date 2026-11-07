@@ -43,19 +43,29 @@
   --site-leaf: #1f8f4a;
   --site-sky: #5cb8f5;
   --site-cream: #fff7e3;
-  background: var(--site-cream);
+  background: #f5f7fb;
   color: var(--site-navy-deep);
-  font-family: var(--font-body);
+  font-family: Poppins, "Anek Bangla", ui-sans-serif, system-ui, sans-serif;
   font-size: 17px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .site-shell :where(h1, h2, h3, h4) {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-family: Poppins, "Anek Bangla", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+}
+
+.site-shell .site-card {
+  background: #fff;
+  border: 1px solid rgba(42, 44, 137, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(20, 21, 63, 0.04);
+  overflow: hidden;
 }
 
 .site-shell .site-wrap {
@@ -83,16 +93,13 @@
   outline-offset: 3px;
 }
 
-.site-shell .arch-photo {
-  border-radius: 120px 120px 24px 24px;
+.site-shell .arch-photo,
+.site-shell .blob-photo {
+  border-radius: 28px;
 }
 
 .site-shell img {
   image-rendering: auto;
-}
-
-.site-shell .blob-photo {
-  border-radius: 58% 42% 52% 48% / 46% 58% 42% 54%;
 }
 
 .site-marquee {

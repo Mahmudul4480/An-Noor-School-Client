@@ -29,8 +29,8 @@ export function MomentsCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <HoverCard className="rounded-[28px] border border-navy/10 bg-white p-3 shadow-[0_8px_24px_rgba(42,44,137,0.08)] sm:p-4">
-        <div className="relative overflow-hidden rounded-[20px] bg-sky/20">
+      <HoverCard className="site-card p-3 sm:p-4">
+        <div className="relative overflow-hidden rounded-2xl bg-[#eef1f6]">
           <AnimatePresence mode="wait">
             <motion.img
               key={photo.src}
@@ -47,16 +47,16 @@ export function MomentsCarousel() {
             />
           </AnimatePresence>
         </div>
-        <p className="px-2 py-3 text-center text-sm font-semibold text-navy-deep">{photo.caption}</p>
+        <p className="px-2 py-3 text-center text-base font-semibold text-navy-deep">{photo.caption}</p>
       </HoverCard>
       <div>
-        <p className="font-arabic text-3xl text-navy" lang="ar" dir="rtl">
+        <p className="font-arabic w-fit text-3xl leading-relaxed text-navy" lang="ar" dir="rtl">
           نور
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-ink/75">
+        <p className="mt-3 text-base leading-relaxed text-navy-deep/85">
           These are the school’s own gatherings — colleagues, sports day, Pitha Utshob — not library pictures.
         </p>
-        <div className="mt-5 flex items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => go(index - 1)}

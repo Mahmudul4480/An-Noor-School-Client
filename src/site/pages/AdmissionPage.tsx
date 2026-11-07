@@ -14,15 +14,15 @@ export default function AdmissionPage() {
           <h2 className="text-3xl font-semibold text-navy-deep">{admission.stepsTitle}</h2>
           <Ribbon>Session 2026–27</Ribbon>
         </div>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/70">{admission.stepsNote}</p>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-navy-deep/80">{admission.stepsNote}</p>
         <ol className="mt-8 grid gap-4 md:grid-cols-2">
           {admission.steps.map((step, index) => (
-            <li key={step.title} className="rounded-3xl bg-gradient-to-br from-[#fffaf0] to-cream p-6 ring-1 ring-navy/10">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-navy text-sm font-bold text-gold">
+            <li key={step.title} className="site-card p-6">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-orange text-base font-semibold text-navy-deep">
                 {index + 1}
               </span>
               <h3 className="mt-3 text-lg font-semibold text-navy-deep">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/75">{step.text}</p>
+              <p className="mt-2 text-base leading-relaxed text-navy-deep/85">{step.text}</p>
             </li>
           ))}
         </ol>
@@ -31,7 +31,7 @@ export default function AdmissionPage() {
       <section className="mx-auto grid max-w-[1200px] gap-5 px-4 sm:px-6 lg:grid-cols-2">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{admission.documentsTitle}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/70">{admission.documentsNote}</p>
+          <p className="mt-3 text-base leading-relaxed text-navy-deep/80">{admission.documentsNote}</p>
           <ul className="mt-5 space-y-3">
             {admission.documents.map((item) => (
               <li key={item} className="flex gap-3 text-sm leading-relaxed text-ink">
@@ -43,7 +43,7 @@ export default function AdmissionPage() {
         </CreamCard>
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{admission.feesTitle}</h2>
-          {showFees ? <FeeTable /> : <p className="mt-4 text-sm leading-relaxed text-ink/75">{admission.feesHidden}</p>}
+          {showFees ? <FeeTable /> : <p className="mt-4 text-base leading-relaxed text-navy-deep/85">{admission.feesHidden}</p>}
         </CreamCard>
       </section>
 

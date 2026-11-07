@@ -46,8 +46,8 @@ export function Wave({
 function WaveFlowers() {
   return (
     <>
-      <SwayingFlower className="absolute -top-2 left-2 h-7 w-7 opacity-80 sm:left-6 sm:h-9 sm:w-9" />
-      <SwayingFlower className="absolute -top-3 right-3 hidden h-8 w-8 opacity-80 md:block" delay={0.6} />
+      <SwayingFlower className="absolute -top-1 left-3 h-5 w-5 opacity-30 sm:left-8" />
+      <SwayingFlower className="absolute -top-1 right-4 hidden h-5 w-5 opacity-30 md:block" delay={0.8} />
     </>
   );
 }
@@ -55,22 +55,19 @@ function WaveFlowers() {
 export function Sticker({
   children,
   className = '',
-  rotate = -2,
+  rotate = 0,
 }: {
   children: ReactNode;
   className?: string;
   rotate?: number;
 }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.span
-      className={`inline-flex items-center rounded-full border border-navy/15 bg-sun px-3 py-1 text-sm font-bold text-navy-deep shadow-[0_6px_16px_rgba(42,44,137,0.12)] ${className}`}
-      style={{ rotate }}
-      whileHover={reduce ? undefined : { rotate: rotate - 3 }}
-      transition={{ duration: 0.35 }}
+    <span
+      className={`inline-flex items-center rounded-full bg-sun px-3 py-1 text-sm font-semibold text-navy-deep ${className}`}
+      style={rotate ? { rotate: `${rotate}deg` } : undefined}
     >
       {children}
-    </motion.span>
+    </span>
   );
 }
 
@@ -109,8 +106,8 @@ export function JoyLink({
   return (
     <motion.span
       className="inline-flex"
-      whileHover={reduce ? undefined : { y: -3, rotate: -2 }}
-      whileTap={reduce ? undefined : { scale: 0.96, y: 1 }}
+      whileHover={reduce ? undefined : { y: -2 }}
+      whileTap={reduce ? undefined : { scale: 0.98, y: 1 }}
       transition={{ type: 'spring', stiffness: 380, damping: 18 }}
     >
       <Link to={to} className={className}>
@@ -131,7 +128,7 @@ export function HoverCard({ children, className = '' }: { children: ReactNode; c
       whileHover={
         reduce
           ? undefined
-          : { y: -8, scale: 1.015, boxShadow: '0 16px 32px rgba(42,44,137,0.12)' }
+          : { y: -4, boxShadow: '0 10px 24px rgba(20,21,63,0.08)' }
       }
       whileTap={reduce ? undefined : { y: -2, scale: 0.985 }}
       transition={cardSpring}
@@ -144,7 +141,7 @@ export function HoverCard({ children, className = '' }: { children: ReactNode; c
 export function ArchFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`arch-photo overflow-hidden border border-white bg-white shadow-[0_12px_28px_rgba(42,44,137,0.12)] ${className}`}
+      className={`arch-photo overflow-hidden border border-navy/10 bg-white shadow-[0_8px_24px_rgba(20,21,63,0.06)] ${className}`}
     >
       {children}
     </div>
@@ -153,7 +150,7 @@ export function ArchFrame({ children, className = '' }: { children: ReactNode; c
 
 export function BlobFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`blob-photo overflow-hidden border border-white bg-white shadow-[0_12px_28px_rgba(42,44,137,0.12)] ${className}`}>
+    <div className={`blob-photo overflow-hidden border border-navy/10 bg-white shadow-[0_8px_24px_rgba(20,21,63,0.06)] ${className}`}>
       {children}
     </div>
   );
@@ -168,17 +165,18 @@ export function SoftCard({
   className?: string;
   accent?: SiteTone;
 }) {
-  const border = {
-    navy: 'border-navy',
-    leaf: 'border-leaf',
-    orange: 'border-orange',
-    sky: 'border-sky',
-    sun: 'border-sun',
-    coral: 'border-coral',
+  const bar = {
+    navy: 'bg-navy',
+    leaf: 'bg-leaf',
+    orange: 'bg-orange',
+    sky: 'bg-sky',
+    sun: 'bg-sun',
+    coral: 'bg-coral',
   }[accent];
   return (
-    <HoverCard className={`rounded-[28px] border bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.08)] ${border} ${className}`}>
-      {children}
+    <HoverCard className={`site-card ${className}`}>
+      <div className={`h-1 ${bar}`} />
+      <div className="p-6 sm:p-8">{children}</div>
     </HoverCard>
   );
 }

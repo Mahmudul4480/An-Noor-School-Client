@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
-import { Art, DriftingButterfly, type ArtName } from '../art';
-import { HoverCard, toneClass, Wave, type SiteTone } from './kit';
+import { Art, type ArtName } from '../art';
+import { HoverCard, type SiteTone } from './kit';
 
 export function PageHero({
   kicker,
@@ -20,25 +20,28 @@ export function PageHero({
   tone?: SiteTone;
   art?: ArtName;
 }) {
-  const theme = toneClass[tone];
-  const titleOnCoral = tone === 'coral' ? 'text-white' : theme.text;
+  const accent = {
+    navy: 'bg-navy',
+    leaf: 'bg-leaf',
+    orange: 'bg-orange',
+    sky: 'bg-sky',
+    sun: 'bg-sun',
+    coral: 'bg-coral',
+  }[tone];
   return (
-    <section className={`relative overflow-hidden ${theme.bg} ${theme.text}`}>
-      <div className="relative mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4 py-12 sm:px-6 sm:py-16">
-        <div>
-          <p className={`text-xs font-bold uppercase tracking-[0.18em] ${theme.lede}`}>{kicker}</p>
-          <h1 className={`mt-2 max-w-3xl text-4xl font-semibold leading-[1.08] sm:text-5xl ${titleOnCoral}`}>{title}</h1>
-          {titleBn && (
-            <p lang="bn" className={`font-bn mt-2 text-xl sm:text-2xl ${theme.lede}`}>
-              {titleBn}
-            </p>
-          )}
-          <p className={`mt-4 max-w-2xl text-base leading-relaxed sm:text-lg ${theme.lede}`}>{lede}</p>
-        </div>
-        <Art name={art} className="hidden h-20 w-20 shrink-0 sm:inline-flex" />
-        <DriftingButterfly className="absolute right-8 top-6 hidden h-12 w-12 md:inline-block" duration={17} />
+    <section className="border-b border-navy/10 bg-white">
+      <div className={`h-1 ${accent}`} />
+      <div className="relative mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-20">
+        <p className="text-sm font-semibold text-navy">{kicker}</p>
+        <h1 className="mt-3 max-w-3xl text-4xl text-navy-deep sm:text-5xl">{title}</h1>
+        {titleBn && (
+          <p lang="bn" className="font-bn mt-2 text-lg text-navy">
+            {titleBn}
+          </p>
+        )}
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-navy-deep/85 sm:text-lg">{lede}</p>
+        <Art name={art} className="absolute right-8 top-16 hidden h-12 w-12 opacity-30 lg:inline-flex" />
       </div>
-      <Wave fill={theme.wave} flowers />
     </section>
   );
 }
@@ -58,10 +61,10 @@ export function SectionHeading({
 }) {
   return (
     <div className="max-w-2xl">
-      <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${light ? 'text-gold' : 'text-navy-soft'}`}>
+      <p className={`text-sm font-semibold ${light ? 'text-gold' : 'text-navy'}`}>
         {kicker}
         {kickerBn && (
-          <span lang="bn" className="font-bn ml-2 normal-case tracking-normal text-crest">
+          <span lang="bn" className="font-bn ml-2 font-medium text-navy-deep/70">
             {kickerBn}
           </span>
         )}
@@ -101,7 +104,7 @@ export function Reveal({
 
 export function Ribbon({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-gold px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-navy-deep shadow-sm">
+    <span className="inline-flex items-center gap-2 rounded-full bg-sun px-3 py-1 text-sm font-semibold text-navy-deep">
       {children}
     </span>
   );
@@ -125,11 +128,10 @@ export function StatGrid({ items }: { items: Stat[] }) {
     <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {items.map((item) => (
         <div key={item.id}>
-        <Lift className="relative h-full overflow-hidden rounded-2xl bg-white px-4 py-5 shadow-[0_10px_30px_-18px_rgba(20,21,63,0.35)] ring-1 ring-navy/10">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gold via-cream to-crest" />
-          <dt className="text-xs font-medium uppercase tracking-wider text-navy/70">
+        <Lift className="site-card relative h-full px-5 py-6">
+          <dt className="text-sm font-semibold text-navy">
             {item.label}
-            <span lang="bn" className="font-bn mt-0.5 block normal-case tracking-normal text-crest">
+            <span lang="bn" className="font-bn mt-0.5 block font-medium text-navy-deep/70">
               {item.bn}
             </span>
           </dt>
@@ -180,11 +182,11 @@ function CountUp({ value }: { value: number }) {
 export function PlaceholderCard({ title, caption }: { title: string; caption: string }) {
   return (
     <HoverCard>
-    <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-[0_8px_24px_rgba(42,44,137,0.06)]">
-      <div className="flex aspect-[4/3] items-end bg-gradient-to-br from-[#e8e7f0] via-[#f6f4ee] to-[#d5d8e4] p-5">
-        <p className="text-sm font-medium text-navy/75">{title}</p>
+    <figure className="site-card">
+      <div className="flex aspect-[4/3] items-end bg-[#eef1f6] p-5">
+        <p className="text-base font-medium text-navy">{title}</p>
       </div>
-      <figcaption className="px-4 py-3 text-xs leading-relaxed text-ink/60">{caption}</figcaption>
+      <figcaption className="px-4 py-3 text-sm leading-relaxed text-navy-deep/70">{caption}</figcaption>
     </figure>
     </HoverCard>
   );
@@ -201,7 +203,7 @@ export function TextLink({ to, children }: { to: string; children: ReactNode }) 
 export function CreamCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <HoverCard
-      className={`rounded-2xl border border-navy/10 bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.06)] sm:p-8 ${className}`}
+      className={`site-card p-6 sm:p-8 ${className}`}
     >
       {children}
     </HoverCard>

@@ -23,24 +23,24 @@ export default function TeachersPage() {
             loading="lazy"
           />
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.principal.title}</p>
+            <p className="text-sm font-semibold text-navy">{site.principal.title}</p>
             <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.principal.name}</h2>
           </div>
         </CreamCard>
         <CreamCard className="flex flex-col justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-soft text-lg font-semibold text-gold">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-navy text-lg font-semibold text-white">
             MK
           </div>
-          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.managingPartner.title}</p>
+          <p className="mt-4 text-sm font-semibold text-navy">{site.managingPartner.title}</p>
           <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.managingPartner.name}</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink/70">{about.partnerNote}</p>
+          <p className="mt-3 text-base leading-relaxed text-navy-deep/85">{about.partnerNote}</p>
         </CreamCard>
       </section>
 
       <section className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{teachersPage.directoryTitle}</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/75">{teachersPage.directoryNote}</p>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-navy-deep/85">{teachersPage.directoryNote}</p>
         </CreamCard>
       </section>
 
@@ -48,7 +48,7 @@ export default function TeachersPage() {
         <h2 className="text-2xl font-semibold text-navy-deep">{teachersPage.galleryTitle}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {moments.map((photo) => (
-            <figure key={photo.id} className="overflow-hidden rounded-[1.6rem] bg-navy-deep shadow-lg ring-1 ring-navy/10">
+            <figure key={photo.id} className="site-card">
               <img
                 src={photo.src}
                 alt={photo.alt}
@@ -57,7 +57,7 @@ export default function TeachersPage() {
                 className="aspect-[16/10] w-full object-cover"
                 loading="lazy"
               />
-              <figcaption className="px-4 py-3 text-sm text-cream">{photo.caption}</figcaption>
+              <figcaption className="px-4 py-3 text-base text-navy-deep">{photo.caption}</figcaption>
             </figure>
           ))}
         </div>
