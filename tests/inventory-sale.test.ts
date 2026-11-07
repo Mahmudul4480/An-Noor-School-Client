@@ -3,11 +3,28 @@ import { describe, it } from 'node:test';
 import { dayEntryBlockMessage } from '../src/lib/dayLock.ts';
 import {
   defaultSalePrice,
+  liveSaleTotal,
   parseSaleQuantity,
   planInventorySale,
 } from '../src/lib/inventoryQuantity.ts';
 
 describe('inventory sale', () => {
+  it('grows the total when quantity grows, including Bangla digits', () => {
+    assert.equal(liveSaleTotal('1', '60').total, 60);
+    assert.equal(liveSaleTotal('2', '60').total, 120);
+    assert.equal(liveSaleTotal('৫', '৬০').total, 300);
+    assert.equal(liveSaleTotal('', '60').total, 0);
+    const shown = liveSaleTotal('২', '৬০');
+    const saved = planInventorySale({
+      name: 'Khata',
+      unit: 'pcs',
+      soldQty: 0,
+      quantity: shown.quantity,
+      unitPrice: shown.unitPrice,
+    });
+    assert.equal(saved.income?.amount, shown.total);
+  });
+
   it('defaults the price to the selling price', () => {
     assert.equal(defaultSalePrice({ studentPrice: 120, costRate: 80 }), 120);
     assert.equal(defaultSalePrice({ studentPrice: 0, costRate: 80 }), 80);

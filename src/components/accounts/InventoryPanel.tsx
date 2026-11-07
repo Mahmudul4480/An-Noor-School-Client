@@ -42,7 +42,7 @@ import {
   saveInventoryItem,
   stockValue,
 } from '../../lib/inventory';
-import { defaultSalePrice, parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber, parseSaleQuantity } from '../../lib/inventoryQuantity';
+import { defaultSalePrice, liveSaleTotal, parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber, parseSaleQuantity } from '../../lib/inventoryQuantity';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
 import type {
   IncomeEntry,
@@ -910,7 +910,7 @@ function SaleModal({
   onSold: (message: string) => void | Promise<void>;
 }) {
   const available = remainingStock(item);
-  const [quantity, setQuantity] = React.useState('');
+  const [quantity, setQuantity] = React.useState(available > 0 ? '1' : '');
   const [unitPrice, setUnitPrice] = React.useState(String(defaultSalePrice(item)));
   const [buyerName, setBuyerName] = React.useState('');
   const [note, setNote] = React.useState('');
@@ -928,8 +928,8 @@ function SaleModal({
   const referenceRef = React.useRef<HTMLInputElement>(null);
 
   const qtyParsed = parseSaleQuantity(quantity, item.unit, available);
-  const priceParsed = parseMoneyAmount(unitPrice, 'বিক্রির দাম লিখুন।');
-  const total = qtyParsed.ok && priceParsed.ok ? Math.round(qtyParsed.value * priceParsed.value * 100) / 100 : 0;
+  const priceParsed = parseMoneyAmount(unitPrice, 'প্রতি পিসের দাম লিখুন।');
+  const live = liveSaleTotal(quantity, unitPrice);
 
   const fail = (field: typeof badField, message: string) => {
     setBadField(field);
@@ -956,7 +956,7 @@ function SaleModal({
     e.preventDefault();
     if (qtyParsed.ok === false) return fail('quantity', qtyParsed.message);
     if (priceParsed.ok === false) return fail('unitPrice', priceParsed.message);
-    const saleTotal = Math.round(qtyParsed.value * priceParsed.value * 100) / 100;
+    const saleTotal = liveSaleTotal(String(qtyParsed.value), String(priceParsed.value)).total;
     if (!accountId) return fail('accountId', 'টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন। বই, খাতা ও স্টেশনারি সহ প্রতিটি বিক্রির অ্যাকাউন্ট লাগবে।');
     if (saleTotal > 0 && paymentMethod !== 'cash' && !reference.trim()) {
       return fail('reference', 'ব্যাংক বা মোবাইল ব্যাংকিং হলে ডিপোজিট স্লিপ বা ট্রানজ্যাকশন নম্বর দিন।');
@@ -1018,7 +1018,7 @@ function SaleModal({
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="sale-price" className="text-xs font-black text-school-blue">একক দাম (৳) *</label>
+          <label htmlFor="sale-price" className="text-xs font-black text-school-blue">প্রতি পিসের দাম (৳) *</label>
           <input
             id="sale-price"
             ref={priceRef}
@@ -1032,7 +1032,7 @@ function SaleModal({
             aria-invalid={badField === 'unitPrice'}
             className={itemInputClass(badField === 'unitPrice')}
           />
-          <p className="text-[11px] font-medium text-school-muted">আইটেমের বিক্রয় দাম বসানো আছে। বদলাতে পারবেন।</p>
+          <p className="text-[11px] font-medium text-school-muted">এটি এক পিসের দাম। পরিমাণ বাড়লে নিচের মোট দাম বাড়বে।</p>
         </div>
 
         <div className="space-y-1.5">
@@ -1118,9 +1118,11 @@ function SaleModal({
           />
         </div>
 
-        <div className="p-4 rounded-2xl border-2 border-school-gold bg-amber-50 flex items-center justify-between">
-          <span className="text-[11px] font-black text-school-muted">মোট</span>
-          <span className="text-lg font-black text-school-blue">৳ {total.toLocaleString('en-BD')}</span>
+        <div id="sale-total" className="p-4 rounded-2xl border-2 border-school-gold bg-amber-50 flex items-center justify-between gap-3">
+          <span className="text-xs font-black text-school-blue">মোট দাম</span>
+          <span className="text-lg font-black text-school-blue text-right">
+            {live.quantity} × ৳ {live.unitPrice.toLocaleString('en-BD')} = ৳ {live.total.toLocaleString('en-BD')}
+          </span>
         </div>
 
         <div className="flex justify-end gap-3">
