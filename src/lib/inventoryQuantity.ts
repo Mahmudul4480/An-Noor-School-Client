@@ -75,6 +75,25 @@ export function parseOptionalWholeNumber(raw: string, invalidMessage: string): P
   return { ok: true, value: Number(trimmed) };
 }
 
+/**
+ * Running total while the user is typing. Stock limits are checked on save;
+ * this still multiplies so মোট দাম grows with the quantity. Bangla digits count.
+ */
+export function liveSaleTotal(quantityRaw: string, priceRaw: string): { quantity: number; unitPrice: number; total: number } {
+  const quantity = looseNumber(quantityRaw);
+  const unitPrice = Math.round(looseNumber(priceRaw) * 100) / 100;
+  return { quantity, unitPrice, total: Math.round(quantity * unitPrice * 100) / 100 };
+}
+
+function looseNumber(raw: string): number {
+  const trimmed = normalizedNumeric(raw);
+  if (!trimmed) return 0;
+  const match = trimmed.match(/^\d+(?:\.\d*)?/);
+  if (!match) return 0;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : 0;
+}
+
 /** Selling price shown on the sale form: the item's sale price, otherwise its cost. */
 export function defaultSalePrice(item: { studentPrice?: number; costRate?: number }): number {
   const selling = Number(item.studentPrice);
