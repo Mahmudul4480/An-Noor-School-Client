@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, CreditCard, Download, Loader2, ArrowLeft } from 'lucide-react';
 import {
@@ -39,13 +40,16 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
     }
   };
 
-  return (
+  const dialog = (
     <AnimatePresence>
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Admission Receipt"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[90] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -114,6 +118,9 @@ export function AdmissionReceiptModal({ admission, account, onClose }: Admission
       </motion.div>
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return dialog;
+  return createPortal(dialog, document.body);
 }
 
 interface IdCardModalProps {
