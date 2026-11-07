@@ -1,3 +1,4 @@
+import { INVENTORY_SALE_CATEGORY } from './inventoryQuantity';
 import { omitUndefined } from './utils';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -15,6 +16,7 @@ export const DEFAULT_INCOME_CATEGORIES = [
   'Book & Stationery',
   'Digital Fee',
   'Asset Sale',
+  INVENTORY_SALE_CATEGORY,
   'Other Income',
 ];
 

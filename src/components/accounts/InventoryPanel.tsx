@@ -42,17 +42,15 @@ import {
   saveInventoryItem,
   stockValue,
 } from '../../lib/inventory';
-import { parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber } from '../../lib/inventoryQuantity';
+import { defaultSalePrice, parseMoneyAmount, parseOpeningQuantity, parseOptionalWholeNumber, parseSaleQuantity } from '../../lib/inventoryQuantity';
 import { fetchAccounts, ONLINE_PAYMENT_ACCOUNT_ID } from '../../lib/ledger';
-import { fetchStudents } from '../../lib/students';
 import type {
-  InventoryBuyerType,
+  IncomeEntry,
   InventoryItem,
   InventoryPurpose,
   InventoryLot,
   InventoryMovement,
   LedgerAccount,
-  Student,
 } from '../../types';
 
 export function InventoryPanel() {
@@ -60,7 +58,6 @@ export function InventoryPanel() {
   const [lots, setLots] = React.useState<InventoryLot[]>([]);
   const [movements, setMovements] = React.useState<InventoryMovement[]>([]);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
-  const [students, setStudents] = React.useState<Student[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
@@ -78,18 +75,16 @@ export function InventoryPanel() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [itemData, movementData, lotData, accountData, studentData] = await Promise.all([
+      const [itemData, movementData, lotData, accountData] = await Promise.all([
         fetchInventoryItems({ includeArchived: true }),
         fetchInventoryMovements(),
         fetchInventoryLots(),
         fetchAccounts(),
-        fetchStudents(),
       ]);
       setItems(itemData);
       setMovements(movementData);
       setLots(lotData);
       setAccounts(accountData);
-      setStudents(studentData.filter((student) => student.status === 'Active'));
     } catch (err) {
       setError(userErrorMessage(err, 'Failed to load inventory.'));
     } finally {
@@ -346,15 +341,24 @@ export function InventoryPanel() {
                             <>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  itemPurpose(item) === 'school' ? setIssueItem(item) : setSaleItem(item)
-                                }
+                                onClick={() => setSaleItem(item)}
                                 disabled={remaining <= 0}
-                                className="p-2 rounded-lg bg-emerald-50 text-emerald-600 disabled:opacity-40"
-                                title={itemPurpose(item) === 'school' ? 'Issue to school' : 'Sell'}
+                                className="px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-black disabled:opacity-40 whitespace-nowrap"
+                                style={{ fontFamily: "'Anek Bangla', sans-serif" }}
                               >
-                                {itemPurpose(item) === 'school' ? <PackageMinus size={14} /> : <ShoppingCart size={14} />}
+                                বিক্রি করুন
                               </button>
+                              {itemPurpose(item) === 'school' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIssueItem(item)}
+                                  disabled={remaining <= 0}
+                                  className="p-2 rounded-lg bg-amber-50 text-school-gold disabled:opacity-40"
+                                  title="Issue to school"
+                                >
+                                  <PackageMinus size={14} />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setRestockItem(item)}
@@ -531,6 +535,7 @@ export function InventoryPanel() {
 
       <AnimatePresence>
         {showItemForm && (
+          <div key="item-form">
           <ItemFormModal
             item={editItem}
             onClose={() => setShowItemForm(false)}
@@ -540,14 +545,14 @@ export function InventoryPanel() {
               await load();
             }}
           />
+          </div>
         )}
 
         {saleItem && (
+          <div key="sale">
           <SaleModal
             item={saleItem}
-            lots={lots.filter((lot) => lot.itemId === saleItem.id)}
             accounts={collectionAccounts}
-            students={students}
             onClose={() => setSaleItem(null)}
             onSold={async (text) => {
               setSaleItem(null);
@@ -555,9 +560,11 @@ export function InventoryPanel() {
               await load();
             }}
           />
+          </div>
         )}
 
         {issueItem && (
+          <div key="issue">
           <IssueModal
             item={issueItem}
             lots={lots.filter((lot) => lot.itemId === issueItem.id)}
@@ -568,9 +575,11 @@ export function InventoryPanel() {
               await load();
             }}
           />
+          </div>
         )}
 
         {restockItem && (
+          <div key="restock">
           <RestockModal
             item={restockItem}
             lots={lots.filter((lot) => lot.itemId === restockItem.id)}
@@ -582,6 +591,7 @@ export function InventoryPanel() {
               await load();
             }}
           />
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -718,7 +728,7 @@ function ItemFormModal({
           <p className="text-[10px] font-bold text-school-muted mt-2">
             {form.purpose === 'school'
               ? 'School office / class / cleaning stock — issue করলে টাকা আসে না'
-              : 'Student shop — বিক্রি হলে ledger-এ টাকা ঢোকে'}
+              : 'Student shop — বিক্রি হলে ইনকামে যোগ হয়'}
           </p>
         </Field>
 
@@ -890,183 +900,228 @@ function BanglaPopup({ text, onClose }: { text: string; onClose: () => void }) {
 
 function SaleModal({
   item,
-  lots,
   accounts,
-  students,
   onClose,
   onSold,
 }: {
   item: InventoryItem;
-  lots: InventoryLot[];
   accounts: LedgerAccount[];
-  students: Student[];
   onClose: () => void;
   onSold: (message: string) => void | Promise<void>;
 }) {
-  const [buyerType, setBuyerType] = React.useState<InventoryBuyerType>('student');
-  const [studentId, setStudentId] = React.useState('');
+  const available = remainingStock(item);
+  const [quantity, setQuantity] = React.useState('');
+  const [unitPrice, setUnitPrice] = React.useState(String(defaultSalePrice(item)));
   const [buyerName, setBuyerName] = React.useState('');
-  const [quantity, setQuantity] = React.useState('1');
+  const [note, setNote] = React.useState('');
+  const [reference, setReference] = React.useState('');
   const [accountId, setAccountId] = React.useState(
     accounts.find((account) => account.id === 'main-cash')?.id ?? accounts[0]?.id ?? '',
   );
-  const [note, setNote] = React.useState('');
+  const [paymentMethod, setPaymentMethod] = React.useState<NonNullable<IncomeEntry['paymentMethod']>>('cash');
   const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState('');
+  const [popup, setPopup] = React.useState('');
+  const [badField, setBadField] = React.useState<'quantity' | 'unitPrice' | 'accountId' | 'reference' | null>(null);
+  const quantityRef = React.useRef<HTMLInputElement>(null);
+  const priceRef = React.useRef<HTMLInputElement>(null);
+  const accountRef = React.useRef<HTMLSelectElement>(null);
+  const referenceRef = React.useRef<HTMLInputElement>(null);
 
-  const available = remainingStock(item);
-  const qty = Math.max(1, parseInt(quantity, 10) || 1);
-  const slices = previewFifoConsumption(lots, qty);
-  const fifoCost = fifoCostTotal(slices);
-  const unitPrice =
-    buyerType === 'staff' ? (qty > 0 ? Math.round((fifoCost / qty) * 100) / 100 : 0) : item.studentPrice;
-  const total = Math.round(qty * unitPrice * 100) / 100;
-  const selectedStudent = students.find((student) => student.studentId === studentId);
+  const qtyParsed = parseSaleQuantity(quantity, item.unit, available);
+  const priceParsed = parseMoneyAmount(unitPrice, 'বিক্রির দাম লিখুন।');
+  const total = qtyParsed.ok && priceParsed.ok ? Math.round(qtyParsed.value * priceParsed.value * 100) / 100 : 0;
+
+  const fail = (field: typeof badField, message: string) => {
+    setBadField(field);
+    setPopup(message);
+    const target = field === 'quantity' ? quantityRef : field === 'unitPrice' ? priceRef : field === 'accountId' ? accountRef : referenceRef;
+    if (field) setTimeout(() => target.current?.focus(), 50);
+  };
+
+  const closePopup = () => {
+    setPopup('');
+    const target = badField === 'quantity' ? quantityRef : badField === 'unitPrice' ? priceRef : badField === 'accountId' ? accountRef : referenceRef;
+    if (badField) setTimeout(() => target.current?.focus(), 50);
+  };
+
+  const onAccount = (id: string) => {
+    const account = accounts.find((entry) => entry.id === id);
+    const method = account?.type === 'bank' || account?.type === 'online' ? 'bank' : account?.type === 'mobile' ? 'mobile' : 'cash';
+    setAccountId(id);
+    setPaymentMethod(method);
+    if (badField === 'accountId') setBadField(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (qtyParsed.ok === false) return fail('quantity', qtyParsed.message);
+    if (priceParsed.ok === false) return fail('unitPrice', priceParsed.message);
+    const saleTotal = Math.round(qtyParsed.value * priceParsed.value * 100) / 100;
+    if (saleTotal > 0 && !accountId) return fail('accountId', 'টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন।');
+    if (saleTotal > 0 && paymentMethod !== 'cash' && !reference.trim()) {
+      return fail('reference', 'ব্যাংক বা মোবাইল ব্যাংকিং হলে ডিপোজিট স্লিপ বা ট্রানজ্যাকশন নম্বর দিন।');
+    }
+
     setBusy(true);
-    setError('');
+    setBadField(null);
     try {
-      await recordInventorySale({
+      const saved = await recordInventorySale({
         itemId: item.id,
-        quantity: qty,
-        buyerType,
-        buyerName: buyerType === 'student' ? selectedStudent?.name ?? '' : buyerName,
-        studentId: buyerType === 'student' ? studentId : undefined,
-        className: buyerType === 'student' ? selectedStudent?.class : undefined,
+        quantity: qtyParsed.value,
+        unitPrice: priceParsed.value,
+        buyerName: buyerName.trim() || undefined,
         accountId,
-        note: note || undefined,
+        paymentMethod,
+        reference: reference.trim() || undefined,
+        note: note.trim() || undefined,
       });
-      await onSold(
-        `${item.name} × ${qty} বিক্রি হয়েছে — ৳ ${total.toLocaleString('en-BD')} ledger-এ credit হয়েছে।`,
-      );
+      const text = saved.income
+        ? `বিক্রি সেভ হয়েছে। ${item.name} × ${saved.movement.quantity} ${item.unit} — ৳ ${saved.income.amount.toLocaleString('en-BD')} «ইনভেন্টরি বিক্রয়» ইনকামে যোগ হয়েছে (${saved.income.receiptNumber})। Principal approve করলে টাকা হিসাবে উঠবে এবং রসিদ তৈরি হবে।`
+        : `বিক্রি সেভ হয়েছে। ${item.name} × ${saved.movement.quantity} ${item.unit} স্টক থেকে কমেছে। টাকা ০ বলে ইনকাম এন্ট্রি হয়নি।`;
+      await onSold(text);
     } catch (err) {
-      setError(userErrorMessage(err, 'Sale failed.'));
+      const message = userErrorMessage(err, 'বিক্রি সেভ করা যায়নি।');
+      const field = message.includes('পরিমাণ') || message.includes('স্টকে') ? 'quantity' : message.includes('দাম') ? 'unitPrice' : message.includes('অ্যাকাউন্ট') || message.includes('account') ? 'accountId' : null;
+      fail(field, message);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal title="Sell From Stock" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal title="বিক্রি করুন" onClose={onClose}>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-          <p className="text-sm font-black text-school-blue uppercase">{item.name}</p>
-          <p className="text-[10px] font-bold text-school-muted mt-0.5">
-            {item.className} • Available {available} {item.unit}
-          </p>
-          <p className="text-[10px] font-bold text-school-muted mt-1">
-            Student ৳ {item.studentPrice} • Staff FIFO cost of oldest lots
+          <p className="text-sm font-black text-school-blue">{item.name}</p>
+          <p className="text-[11px] font-bold text-school-muted mt-0.5">
+            এখন স্টকে {available} {item.unit}
           </p>
         </div>
 
-        {openLots(lots).length > 0 && (
-          <div className="p-4 rounded-2xl border border-slate-100 bg-white space-y-2">
-            <p className="text-[10px] font-black text-school-muted uppercase tracking-widest">FIFO queue (oldest first)</p>
-            {slices.map((slice) => (
-              <p key={slice.lotId} className="text-[11px] font-bold text-school-blue">
-                {slice.lotDate} — {slice.quantity} {item.unit} @ ৳ {slice.unitCost}
-              </p>
-            ))}
-            {buyerType === 'staff' && (
-              <p className="text-[10px] font-bold text-school-gold">Staff pay FIFO cost ৳ {fifoCost.toLocaleString('en-BD')}</p>
-            )}
-          </div>
-        )}
+        <div className="space-y-1.5">
+          <label htmlFor="sale-qty" className="text-xs font-black text-school-blue">বিক্রির পরিমাণ *</label>
+          <input
+            id="sale-qty"
+            ref={quantityRef}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={quantity}
+            onChange={(e) => {
+              setQuantity(e.target.value);
+              if (badField === 'quantity') setBadField(null);
+            }}
+            placeholder="যেমন: ১"
+            aria-invalid={badField === 'quantity'}
+            className={itemInputClass(badField === 'quantity')}
+          />
+        </div>
 
-        <Field label="Buyer Type">
-          <div className="grid grid-cols-2 gap-2">
-            {(['student', 'staff'] as InventoryBuyerType[]).map((type) => (
+        <div className="space-y-1.5">
+          <label htmlFor="sale-price" className="text-xs font-black text-school-blue">একক দাম (৳) *</label>
+          <input
+            id="sale-price"
+            ref={priceRef}
+            type="text"
+            inputMode="decimal"
+            value={unitPrice}
+            onChange={(e) => {
+              setUnitPrice(e.target.value);
+              if (badField === 'unitPrice') setBadField(null);
+            }}
+            aria-invalid={badField === 'unitPrice'}
+            className={itemInputClass(badField === 'unitPrice')}
+          />
+          <p className="text-[11px] font-medium text-school-muted">আইটেমের বিক্রয় দাম বসানো আছে। বদলাতে পারবেন।</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="sale-buyer" className="text-[10px] font-black text-school-muted uppercase tracking-widest">ক্রেতার নাম (ঐচ্ছিক)</label>
+          <input
+            id="sale-buyer"
+            type="text"
+            value={buyerName}
+            onChange={(e) => setBuyerName(e.target.value)}
+            placeholder="নাম না লিখলে কাউন্টার বিক্রি ধরা হবে"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="sale-account" className="text-[10px] font-black text-school-muted uppercase tracking-widest">জমা হবে যে অ্যাকাউন্টে</label>
+          <select
+            id="sale-account"
+            ref={accountRef}
+            value={accountId}
+            onChange={(e) => onAccount(e.target.value)}
+            aria-invalid={badField === 'accountId'}
+            className={itemInputClass(badField === 'accountId')}
+          >
+            <option value="">অ্যাকাউন্ট বেছে নিন</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.type})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-black text-school-muted uppercase tracking-widest">পেমেন্টের ধরন</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              ['cash', 'ক্যাশ'],
+              ['bank', 'ব্যাংক'],
+              ['mobile', 'মোবাইল'],
+            ] as const).map(([id, label]) => (
               <button
-                key={type}
+                key={id}
                 type="button"
-                onClick={() => setBuyerType(type)}
+                onClick={() => setPaymentMethod(id)}
                 className={cn(
-                  'py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border',
-                  buyerType === type
-                    ? 'bg-school-blue text-white border-school-blue'
-                    : 'bg-slate-50 text-school-muted border-slate-100',
+                  'py-2.5 rounded-xl text-[10px] font-black border',
+                  paymentMethod === id ? 'bg-school-blue text-white border-school-blue' : 'bg-slate-50 text-school-muted border-slate-100',
                 )}
               >
-                {type === 'student' ? 'Student' : 'Teacher / Staff'}
+                {label}
               </button>
             ))}
           </div>
-        </Field>
-
-        {buyerType === 'student' ? (
-          <Field label="Student">
-            <select
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-              required
-            >
-              <option value="">Select student...</option>
-              {students.map((student) => (
-                <option key={student.studentId} value={student.studentId}>
-                  {student.studentId} — {student.name} ({student.class})
-                </option>
-              ))}
-            </select>
-          </Field>
-        ) : (
-          <Field label="Teacher / Staff Name">
-            <input
-              type="text"
-              value={buyerName}
-              onChange={(e) => setBuyerName(e.target.value)}
-              placeholder="e.g. Mr. Karim (Teacher)"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-              required
-            />
-          </Field>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Quantity">
-            <input
-              type="number"
-              min={1}
-              max={available}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-            />
-          </Field>
-          <Field label="Received In Account">
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} ({account.type})
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
 
-        <Field label="Note (optional)">
+        {paymentMethod !== 'cash' && (
+          <div className="space-y-1.5">
+            <label htmlFor="sale-reference" className="text-[10px] font-black text-school-muted uppercase tracking-widest">ডিপোজিট স্লিপ / ট্রানজ্যাকশন নম্বর *</label>
+            <input
+              id="sale-reference"
+              ref={referenceRef}
+              type="text"
+              value={reference}
+              onChange={(e) => {
+                setReference(e.target.value);
+                if (badField === 'reference') setBadField(null);
+              }}
+              aria-invalid={badField === 'reference'}
+              className={itemInputClass(badField === 'reference')}
+            />
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label htmlFor="sale-note" className="text-[10px] font-black text-school-muted uppercase tracking-widest">নোট (ঐচ্ছিক)</label>
           <input
+            id="sale-note"
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
           />
-        </Field>
-
-        <div className="p-4 rounded-2xl border-2 border-school-gold bg-amber-50 flex items-center justify-between">
-          <span className="text-[10px] font-black text-school-muted uppercase tracking-widest">
-            {qty} × ৳ {unitPrice}
-          </span>
-          <span className="text-lg font-black text-school-blue">৳ {total.toLocaleString('en-BD')}</span>
         </div>
 
-        {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">{error}</div>}
+        <div className="p-4 rounded-2xl border-2 border-school-gold bg-amber-50 flex items-center justify-between">
+          <span className="text-[11px] font-black text-school-muted">মোট</span>
+          <span className="text-lg font-black text-school-blue">৳ {total.toLocaleString('en-BD')}</span>
+        </div>
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-5 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase">
@@ -1075,13 +1130,14 @@ function SaleModal({
           <button
             type="submit"
             disabled={busy || available <= 0}
-            className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-60 flex items-center gap-2"
+            className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black disabled:opacity-60 flex items-center gap-2"
           >
             {busy && <Loader2 size={14} className="animate-spin" />}
-            Confirm Sale
+            বিক্রি সেভ করুন
           </button>
         </div>
       </form>
+      {popup && <BanglaPopup text={popup} onClose={closePopup} />}
     </Modal>
   );
 }

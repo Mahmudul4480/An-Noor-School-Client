@@ -7,6 +7,9 @@ const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
 
 export const OPENING_STOCK_NOTE = 'প্রাথমিক স্টক';
 
+/** Income category used when stock is sold. Also listed with the other income categories. */
+export const INVENTORY_SALE_CATEGORY = 'ইনভেন্টরি বিক্রয়';
+
 export function stockUnitAllowsDecimal(unit: string): boolean {
   const normalized = unit.trim().toLowerCase();
   if ((INVENTORY_UNIT_OPTIONS as readonly string[]).includes(normalized)) return false;
@@ -70,6 +73,72 @@ export function parseOptionalWholeNumber(raw: string, invalidMessage: string): P
   if (!trimmed) return { ok: true, value: 0 };
   if (!/^\d+$/.test(trimmed)) return { ok: false, message: invalidMessage };
   return { ok: true, value: Number(trimmed) };
+}
+
+/** Selling price shown on the sale form: the item's sale price, otherwise its cost. */
+export function defaultSalePrice(item: { studentPrice?: number; costRate?: number }): number {
+  const selling = Number(item.studentPrice);
+  if (Number.isFinite(selling) && selling > 0) return selling;
+  const cost = Number(item.costRate);
+  return Number.isFinite(cost) && cost > 0 ? cost : 0;
+}
+
+/** Quantity leaving the shelf. Must be above 0 and not more than what is in stock. */
+export function parseSaleQuantity(raw: string, unit: string, available: number): ParsedNumber {
+  const trimmed = normalizedNumeric(raw);
+  if (!trimmed) return { ok: false, message: 'বিক্রির পরিমাণ লিখুন।' };
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return { ok: false, message: 'পরিমাণ ০-এর বেশি সংখ্যায় লিখুন।' };
+  const value = Number(trimmed);
+  if (!Number.isFinite(value) || value <= 0) return { ok: false, message: 'বিক্রির পরিমাণ ০-এর বেশি হতে হবে।' };
+  const quantity = stockUnitAllowsDecimal(unit) ? Math.round(value * 1000) / 1000 : value;
+  if (!stockUnitAllowsDecimal(unit) && !Number.isInteger(value)) {
+    return { ok: false, message: 'এই এককে দশমিক পরিমাণ দেওয়া যাবে না। পূর্ণ সংখ্যা লিখুন।' };
+  }
+  if (quantity > available) return { ok: false, message: `স্টকে মাত্র ${available} ${unit} আছে।` };
+  return { ok: true, value: quantity };
+}
+
+export interface InventorySalePlan {
+  soldQty: number;
+  total: number;
+  income: null | {
+    category: string;
+    source: string;
+    description: string;
+    amount: number;
+    note?: string;
+  };
+}
+
+/** What a sale does to stock and to the Income list. A zero total does not create income. */
+export function planInventorySale(input: {
+  name: string;
+  unit: string;
+  soldQty: number;
+  quantity: number;
+  unitPrice: number;
+  buyerName?: string;
+  note?: string;
+}): InventorySalePlan {
+  const quantity = input.quantity;
+  const unitPrice = Math.round((Number(input.unitPrice) || 0) * 100) / 100;
+  const total = Math.round(quantity * unitPrice * 100) / 100;
+  const buyer = input.buyerName?.trim() ?? '';
+  const extra = input.note?.trim();
+  return {
+    soldQty: input.soldQty + quantity,
+    total,
+    income:
+      total > 0
+        ? {
+            category: INVENTORY_SALE_CATEGORY,
+            source: buyer || 'কাউন্টার বিক্রি',
+            description: `${input.name} × ${quantity} ${input.unit}`,
+            amount: total,
+            note: extra || undefined,
+          }
+        : null,
+  };
 }
 
 export interface OpeningStockPlan {
