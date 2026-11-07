@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Loader2, Tag, FileWarning } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -307,13 +308,16 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     }
   };
 
-  return (
+  const dialog = (
     <AnimatePresence>
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-admission-title"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -323,7 +327,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
         >
           <div className="p-6 border-b border-school-border flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-black text-school-blue uppercase tracking-tight">New Admission</h3>
+              <h3 id="new-admission-title" className="text-lg font-black text-school-blue uppercase tracking-tight">New Admission</h3>
               <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest mt-1">
                 Physical form data entry → Fee breakdown → Department approval
               </p>
@@ -721,6 +725,9 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       </motion.div>
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return dialog;
+  return createPortal(dialog, document.body);
 }
 
 function FormSelect({

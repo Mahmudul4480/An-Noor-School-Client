@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { getCurrentActorLabel } from '../lib/actor';
 import { cn } from '../lib/utils';
-import type { ParsedStudentRow, Student } from '../types';
+import type { Admission, LedgerAccount, ParsedStudentRow, Student } from '../types';
 import { CLASS_OPTIONS, GENDER_OPTIONS, sectionsForClass } from '../lib/schoolConstants';
 import {
   ACCEPTED_STUDENT_FILE_TYPES,
@@ -23,6 +23,9 @@ import {
   parseStudentSpreadsheet,
 } from '../lib/studentImport';
 import { fetchStudents, filterStudents, importStudents, updateStudent } from '../lib/students';
+import { fetchAccounts } from '../lib/ledger';
+import { NewAdmissionModal } from './accounts/NewAdmissionModal';
+import { AdmissionReceiptModal } from './accounts/AdmissionReceiptModal';
 
 export function StudentManagement() {
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -35,6 +38,9 @@ export function StudentManagement() {
   const [previewRows, setPreviewRows] = React.useState<ParsedStudentRow[]>([]);
   const [showPreview, setShowPreview] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
+  const [showNewAdmission, setShowNewAdmission] = React.useState(false);
+  const [receiptAdmission, setReceiptAdmission] = React.useState<Admission | null>(null);
+  const [receiptAccount, setReceiptAccount] = React.useState<LedgerAccount | undefined>();
   const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
@@ -219,7 +225,11 @@ export function StudentManagement() {
             >
               <FileSpreadsheet size={14} /> Excel Template
             </button>
-            <button className="px-6 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNewAdmission(true)}
+              className="px-6 py-2.5 bg-school-gold text-school-blue rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 flex items-center gap-2"
+            >
               <Plus size={14} /> New Admission
             </button>
           </div>
@@ -487,6 +497,32 @@ export function StudentManagement() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNewAdmission && (
+          <NewAdmissionModal
+            onClose={() => setShowNewAdmission(false)}
+            onCreated={(admission) => {
+              setReceiptAdmission(admission);
+              fetchAccounts()
+                .then((accounts) => {
+                  setReceiptAccount(accounts.find((account) => account.id === admission.receivedInAccountId));
+                })
+                .catch(() => setReceiptAccount(undefined));
+            }}
+          />
+        )}
+        {receiptAdmission && (
+          <AdmissionReceiptModal
+            admission={receiptAdmission}
+            account={receiptAccount}
+            onClose={() => {
+              setReceiptAdmission(null);
+              setReceiptAccount(undefined);
+            }}
+          />
         )}
       </AnimatePresence>
 
