@@ -93,7 +93,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [photoProcessing, setPhotoProcessing] = React.useState(false);
   const [accounts, setAccounts] = React.useState<LedgerAccount[]>([]);
-  const [receivedInAccountId, setReceivedInAccountId] = React.useState('');
   const [feeAccounts, setFeeAccounts] = React.useState<Record<string, string>>({});
   const [manualAmounts, setManualAmounts] = React.useState<Record<string, string>>({ book: '0', copy: '0', stationery: '0' });
   const [stockItems, setStockItems] = React.useState<InventoryItem[]>([]);
@@ -107,12 +106,12 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     setFieldErrors((prev) => {
       const next = { ...prev };
       for (const k of Object.keys(prev)) {
-        const v = k === 'receivedInAccountId' ? receivedInAccountId : (form as Record<string, string>)[k];
+        const v = (form as Record<string, string>)[k];
         if (v && String(v).trim()) delete next[k];
       }
       return Object.keys(next).length === Object.keys(prev).length ? prev : next;
     });
-  }, [form, receivedInAccountId]);
+  }, [form]);
   const [submitting, setSubmitting] = React.useState(false);
   const [loadingStructure, setLoadingStructure] = React.useState(true);
 
@@ -121,7 +120,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
       .then((accountData) => {
         const usable = accountData.filter((account) => account.id !== ONLINE_PAYMENT_ACCOUNT_ID);
         setAccounts(usable);
-        setReceivedInAccountId((prev) => prev || usable.find((account) => account.id === 'main-cash')?.id || usable[0]?.id || '');
       })
       .catch(() => setAccounts([]));
   }, []);
@@ -199,7 +197,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     ? pricedFeeItems.map((item) => (item.key === 'tuitionFee' ? { ...item, amount: reducedTuitionNum } : item))
     : pricedFeeItems;
   const collectionAccounts = accounts;
-  const lineAccount = (key: string) => feeAccounts[key] || receivedInAccountId;
+  const lineAccount = (key: string) => feeAccounts[key] || '';
 
   const totals = computeTotals(effectiveFeeItems, activeDiscounts);
   const stockGrand = stockDrafts.reduce((sum, draft) => sum + liveSaleTotal(draft.quantity, draft.unitPrice).total, 0);
@@ -252,9 +250,8 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
     if (birthRegFile && !form.birthRegNo.trim()) errs.birthRegNo = 'জন্ম নিবন্ধন নম্বর লিখুন';
     if (!form.guardianName.trim()) errs.guardianName = 'অভিভাবকের নাম লিখুন';
     if (!form.guardianContact.trim()) errs.guardianContact = 'অভিভাবকের মোবাইল নম্বর লিখুন';
-    if (!receivedInAccountId) errs.receivedInAccountId = 'টাকা কোন অ্যাকাউন্টে জমা হয়েছে নির্বাচন করুন';
     setFieldErrors(errs);
-    const order = ['studentName', 'gender', 'classApplied', 'section', 'academicYear', 'birthRegNo', 'guardianName', 'guardianContact', 'receivedInAccountId'];
+    const order = ['studentName', 'gender', 'classApplied', 'section', 'academicYear', 'birthRegNo', 'guardianName', 'guardianContact'];
     const first = order.find((k) => errs[k]);
     if (first) {
       const el = document.getElementById(`field-${first}`);
@@ -417,7 +414,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
         birthRegDocUrl,
         birthRegDocName,
         studentPhotoUrl,
-        receivedInAccountId,
       }, stockPayload);
 
       onCreated(admission);
@@ -603,29 +599,6 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
               </div>
             </section>
 
-            {/* Payment account */}
-            <section className="space-y-3">
-              <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Admission Fee Deposit Account *</h4>
-              <select
-                id="field-receivedInAccountId"
-                value={receivedInAccountId}
-                onChange={(e) => setReceivedInAccountId(e.target.value)}
-                className={cn('w-full px-4 py-3 bg-slate-50 border rounded-xl text-xs font-bold outline-none', fieldErrors.receivedInAccountId ? 'border-red-500 ring-2 ring-red-300 bg-red-50' : 'border-slate-100')}
-                required
-              >
-                <option value="">Select account...</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.type.toUpperCase()})
-                  </option>
-                ))}
-              </select>
-              {fieldErrors.receivedInAccountId && <p className="text-[11px] font-bold text-red-600">{fieldErrors.receivedInAccountId}</p>}
-              <p className="text-[10px] text-school-muted font-bold uppercase tracking-widest">
-                প্রতিটি ফির পাশে আলাদা অ্যাকাউন্ট বেছে নিন। খালি থাকলে এই অ্যাকাউন্ট ধরা হবে। আজ ফি বাবদ ৳ {paidNum.toLocaleString()} জমা হবে।
-              </p>
-            </section>
-
             {/* Scanned form upload */}
             <section className="space-y-3">
               <h4 className="text-xs font-black text-school-blue uppercase tracking-widest">Scanned Physical Form</h4>
@@ -657,6 +630,9 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   Class select করুন — সেই class-এর Admission Fee ও Tuition Fee আসবে
                 </p>
               )}
+              <p className="text-[11px] font-bold text-school-muted" style={{ fontFamily: "'Anek Bangla', sans-serif" }}>
+                যে লাইনে টাকা আছে, সেই লাইনের অ্যাকাউন্ট বেছে নিন। আজ ফি বাবদ ৳ {paidNum.toLocaleString()} জমা হবে।
+              </p>
               {loadingStructure ? (
                 <div className="py-8 text-center text-school-muted text-xs font-bold uppercase">
                   Loading fee structure...
@@ -740,7 +716,7 @@ export function NewAdmissionModal({ onClose, onCreated }: NewAdmissionModalProps
                   <h5 className="text-xs font-black text-school-blue">বই / খাতা / স্টেশনারি — স্টক থেকে</h5>
                   <button
                     type="button"
-                    onClick={() => setStockDrafts((prev) => [...prev, { id: `s-${Date.now()}`, itemId: '', quantity: '', unitPrice: '', accountId: receivedInAccountId }])}
+                    onClick={() => setStockDrafts((prev) => [...prev, { id: `s-${Date.now()}`, itemId: '', quantity: '', unitPrice: '', accountId: '' }])}
                     className="px-3 py-2 rounded-xl bg-school-blue text-white text-[10px] font-black"
                   >
                     আইটেম যোগ করুন

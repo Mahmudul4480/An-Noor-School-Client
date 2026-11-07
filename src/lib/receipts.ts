@@ -2,6 +2,7 @@ import { formatDateTime } from './utils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { admissionFeeAccountIds } from './admissionLines';
 import type { Admission, Expense, IncomeEntry, LedgerAccount, StudentInvoice } from '../types';
 
 export const SCHOOL_LOGO_URL =
@@ -79,6 +80,7 @@ export function buildAdmissionReceipt(
   accounts?: LedgerAccount[],
 ): AdmissionReceiptData {
   const accountName = (id?: string) => accounts?.find((entry) => entry.id === id)?.name || (id && id === account?.id ? account.name : '') || '';
+  const feeAccountNames = admissionFeeAccountIds(admission).map((id) => accountName(id)).filter(Boolean);
   const feeItems = admission.feeItems.map((item) => ({
     ...item,
     label: item.accountId && accountName(item.accountId) ? `${item.label} — ${accountName(item.accountId)}` : item.label,
@@ -96,7 +98,7 @@ export function buildAdmissionReceipt(
     guardianName: admission.guardianName,
     guardianContact: admission.guardianContact,
     academicYear: admission.academicYear,
-    accountName: account?.name ?? '—',
+    accountName: feeAccountNames.join(', ') || account?.name || '—',
     grossTotal: admission.grossTotal,
     totalDiscount: admission.totalDiscount,
     grandTotal: admission.grandTotal,

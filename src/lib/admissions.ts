@@ -492,7 +492,8 @@ export interface CreateAdmissionInput {
   scannedFormUrl?: string;
   scannedFormName?: string;
   studentPhotoUrl?: string;
-  receivedInAccountId: string;
+  /** Older admissions only. New forms store an account on each fee line instead. */
+  receivedInAccountId?: string;
   /** Paid today; defaults to grand total */
   paidAmount?: number;
   tuitionReduction?: TuitionReduction;

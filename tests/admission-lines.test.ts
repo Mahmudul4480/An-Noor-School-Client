@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  admissionFeeAccountIds,
   admissionStockError,
   feeAccountPostings,
   inventoryLineDescription,
@@ -18,6 +19,43 @@ describe('admission fee accounts', () => {
       'main-cash',
     );
     assert.deepEqual(postings, [{ accountId: 'main-cash', amount: 14500, label: 'Admission Fee' }]);
+  });
+
+  it('names the single account on an older admission and each paid line on a new one', () => {
+    assert.deepEqual(
+      admissionFeeAccountIds({
+        receivedInAccountId: 'main-cash',
+        feeItems: [{ amount: 10000 }, { amount: 4500 }],
+      }),
+      ['main-cash'],
+    );
+    assert.deepEqual(
+      admissionFeeAccountIds({
+        feeItems: [
+          { amount: 10000, accountId: 'cash' },
+          { amount: 0, accountId: 'ignored' },
+          { amount: 2000, accountId: 'bank' },
+          { amount: 500, accountId: 'cash' },
+        ],
+      }),
+      ['cash', 'bank'],
+    );
+  });
+
+  it('posts each line when there is no overall deposit account', () => {
+    assert.deepEqual(
+      feeAccountPostings(
+        [
+          { label: 'Admission Fee', amount: 1000, accountId: 'cash' },
+          { label: 'Tuition Fee', amount: 500, accountId: 'bank' },
+        ],
+        1500,
+      ),
+      [
+        { accountId: 'cash', amount: 1000, label: 'Admission Fee' },
+        { accountId: 'bank', amount: 500, label: 'Tuition Fee' },
+      ],
+    );
   });
 
   it('posts each line to its own account and fills a partial payment from the top', () => {

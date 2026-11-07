@@ -1,3 +1,4 @@
+import { admissionFeeAccountIds } from './admissionLines';
 import { admissionPaidAmount } from './admissions';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, type WriteBatch } from 'firebase/firestore';
 import { db } from './firebase';
@@ -219,6 +220,7 @@ export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
     .map((a) => {
       const date = (a.createdAt || new Date().toISOString()).slice(0, 10);
       const principal = a.approvals?.find((s) => s.department === 'principal');
+      const feeAccounts = admissionFeeAccountIds(a);
       return {
         id: `admission:${a.id}`,
         receiptNumber: a.receiptNumber || a.formSerial,
@@ -227,7 +229,7 @@ export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
         source: `${a.studentName} — ${a.guardianName}`,
         description: `New admission ${a.classApplied}${a.section ? ` (${a.section})` : ''} · ${a.formSerial}`,
         amount: admissionPaidAmount(a),
-        accountId: a.receivedInAccountId || '',
+        accountId: feeAccounts.length === 1 ? feeAccounts[0] : (a.receivedInAccountId || ''),
         paymentMethod: 'cash',
         createdBy: 'Admissions',
         createdAt: a.createdAt,
