@@ -87,8 +87,8 @@
 }
 
 .site-shell .font-bismillah {
-  font-family: "Aref Ruqaa", Amiri, "Noto Naskh Arabic", serif;
-  font-weight: 700;
+  font-family: "Alkalami", Amiri, "Noto Naskh Arabic", serif;
+  font-weight: 400; /* Alkalami has one weight, already heavy */
   line-height: 1.9;
 }
 
