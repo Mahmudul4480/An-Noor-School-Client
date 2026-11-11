@@ -23,11 +23,11 @@ import { Reveal } from '../components/ui';
 
 const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-const programArt: Record<string, { art: ArtName; tone: string; border: string }> = {
-  islamic: { art: 'crescent', tone: 'bg-sun', border: 'border-sun' },
-  hifz: { art: 'quran', tone: 'bg-[#e7f6ee]', border: 'border-leaf' },
-  arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky' },
-  english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange' },
+const programArt: Record<string, { art: ArtName; tone: string; border: string; wash: string }> = {
+  islamic: { art: 'crescent', tone: 'bg-sun', border: 'border-sun', wash: 'from-[#FFF3C4]' },
+  hifz: { art: 'quran', tone: 'bg-[#cdeedb]', border: 'border-leaf', wash: 'from-[#DDF3E6]' },
+  arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky', wash: 'from-[#DCEFFD]' },
+  english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange', wash: 'from-[#FFE6C7]' },
 };
 export default function HomePage() {
   const reduce = useReducedMotion();
@@ -106,8 +106,8 @@ export default function HomePage() {
           {stats.map((item, index) => (
             <li key={item.id}>
               <Reveal delay={index * 0.04}>
-                <HoverCard className="flex min-h-28 flex-col justify-center rounded-[24px] border border-navy/10 bg-white px-4 py-5 text-center text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.06)]">
-                  <p className="text-2xl font-semibold text-navy sm:text-3xl">
+                <HoverCard className="flex min-h-28 flex-col justify-center rounded-[24px] border border-sun/60 bg-gradient-to-br from-navy to-navy-deep px-4 py-5 text-center text-white shadow-[0_12px_26px_rgba(20,21,63,0.25)]">
+                  <p className="text-2xl font-bold text-sun sm:text-3xl">
                     {item.value === null ? item.pending : item.value}
                   </p>
                   <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
@@ -132,7 +132,7 @@ export default function HomePage() {
             return (
               <div key={program.id} className="h-full">
               <Reveal className="h-full" delay={index * 0.08}>
-              <HoverCard className="h-full rounded-[28px] border border-navy/10 bg-white p-6 shadow-[0_8px_24px_rgba(42,44,137,0.06)]">
+              <HoverCard className={`h-full rounded-[28px] border-2 bg-gradient-to-br to-white p-6 shadow-[0_10px_26px_rgba(42,44,137,0.10)] ${look.border} ${look.wash}`}>
                 <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
                   <Art name={look.art} className="h-12 w-12 text-navy" />
                 </div>
@@ -148,7 +148,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-[#F3F5FF] py-12 sm:py-16">
+      <section className="bg-gradient-to-b from-[#E9EBFF] to-white py-12 sm:py-16">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
           <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">
             <SplitText text={home.pathTitle} />
@@ -158,10 +158,17 @@ export default function HomePage() {
             {classes.map((item, index) => (
               <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
                 <Reveal delay={Math.min(index, 6) * 0.05}>
-                <HoverCard className="rounded-[24px] border border-navy/10 bg-white px-4 py-4 text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.05)]">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-sm font-bold">{String(index + 1).padStart(2, '0')}</span>
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
+                <HoverCard
+                  className={`rounded-[24px] border-2 bg-gradient-to-r to-white px-4 py-4 text-navy-deep shadow-[0_8px_20px_rgba(42,44,137,0.10)] ${
+                    item.stage === 'Early years' ? 'border-sun from-[#FFF0B8]' : 'border-navy/25 from-[#DFE2FF]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-deep text-sm font-bold text-sun">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <h3 className="text-xl font-semibold text-navy">{item.name}</h3>
+                    <span className="rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-bold text-navy">{item.stage}</span>
                   </div>
                   {item.sections.length > 0 && (
                     <p className="mt-1 text-sm font-semibold">{item.sections.join(' · ')}</p>
@@ -185,8 +192,8 @@ export default function HomePage() {
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-navy-deep/75">{dayAtSchool.note}</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {dayAtSchool.steps.map((step, index) => (
-            <HoverCard key={step.label} className="rounded-[24px] border border-dashed border-navy/20 bg-white p-5">
-              <p className="text-xs font-bold uppercase tracking-wide text-navy">0{index + 1}</p>
+            <HoverCard key={step.label} className="rounded-[24px] border border-dashed border-navy/30 bg-gradient-to-br from-[#E9EBFF] to-white p-5">
+              <p className="inline-flex rounded-full bg-sun px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-navy-deep">0{index + 1}</p>
               <h3 className="mt-1 text-lg font-semibold text-navy-deep">{step.label}</h3>
               <p className="mt-1 text-sm text-navy-deep/70">{step.text}</p>
             </HoverCard>

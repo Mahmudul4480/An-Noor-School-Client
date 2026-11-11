@@ -45,6 +45,9 @@
   --site-cream: #ffffff;
   /* The public site uses white where the brand cream used to be; the portal token is untouched. */
   --color-cream: #ffffff;
+  /* English type on the public site: Anton for display, League Spartan for text. Bangla stays Anek Bangla. */
+  --font-display: "Anton", "Anek Bangla", "League Spartan", sans-serif;
+  --font-body: "League Spartan", "Anek Bangla", ui-sans-serif, system-ui, sans-serif;
   background: var(--site-cream);
   color: var(--site-navy-deep);
   font-family: var(--font-body);
@@ -54,10 +57,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.site-shell :where(h1, h2, h3, h4) {
+.site-shell :where(h1, h2) {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-weight: 400; /* Anton has one weight; avoid synthetic bold */
+  letter-spacing: 0.01em;
+  line-height: 1.18;
+}
+
+.site-shell :where(h3, h4) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .site-shell .site-wrap {

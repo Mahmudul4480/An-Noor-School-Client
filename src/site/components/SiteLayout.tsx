@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Facebook, Mail, MapPin, Menu, X } from 'lucide-react';
+import { Mail, MapPin, Menu, Phone, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
-import { JoyLink, Wave } from './kit';
+import { FacebookButton, JoyLink, Wave } from './kit';
 import { ScrollProgress } from './motion';
 
 export function SiteLayout() {
@@ -43,10 +43,10 @@ function Ticker() {
   ];
   const line = `${items.join('   ·   ')}   ·   ${items.join('   ·   ')}   ·   `;
   return (
-    <div className="bg-navy text-white">
+    <div className="bg-gradient-to-r from-sun via-[#FFD95A] to-sun text-navy-deep">
       <p className="sr-only">{items.join('. ')}</p>
       <div className="overflow-hidden" aria-hidden="true">
-        <div className="site-marquee flex w-max py-2 text-sm font-medium">
+        <div className="site-marquee flex w-max py-2 text-sm font-semibold">
           <span className="px-6">{line}</span>
           <span className="site-marquee-copy px-6">{line}</span>
         </div>
@@ -81,8 +81,8 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b border-navy/10 bg-white text-navy-deep ${
-        scrolled ? 'shadow-[0_10px_0_0_rgba(42,44,137,0.08)]' : ''
+      className={`sticky top-0 z-40 border-b border-sun/50 bg-gradient-to-r from-navy-deep via-navy to-navy-deep text-white ${
+        scrolled ? 'shadow-[0_12px_28px_rgba(20,21,63,0.32)]' : ''
       }`}
     >
       <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-2.5 sm:px-6">
@@ -92,11 +92,11 @@ function Header() {
             alt={site.name}
             width={720}
             height={720}
-            className="h-14 w-14 object-contain sm:h-16 sm:w-16"
+            className="h-14 w-14 rounded-2xl bg-white object-contain p-1 shadow-[0_6px_16px_rgba(0,0,0,0.25)] sm:h-16 sm:w-16"
           />
           <span className="hidden min-[1680px]:block">
             <span className="block text-sm font-semibold leading-tight">{site.name}</span>
-            <span lang="bn" className="font-bn block text-xs text-navy/70">
+            <span lang="bn" className="font-bn block text-xs text-white/75">
               {site.nameBn}
             </span>
           </span>
@@ -109,7 +109,7 @@ function Header() {
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `min-h-11 text-sm font-semibold transition hover:text-orange ${isActive ? 'text-orange' : 'text-navy'}`
+                `inline-flex min-h-11 items-center text-sm font-semibold transition hover:text-sun ${isActive ? 'text-sun' : 'text-white'}`
               }
             >
               {item.label}
@@ -126,13 +126,14 @@ function Header() {
           </JoyLink>
           <JoyLink
             to="/login"
-            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-navy/20 px-4 py-2 text-sm font-bold text-navy sm:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-white/45 px-4 py-2 text-sm font-bold text-white sm:inline-flex"
           >
             Portal Login
           </JoyLink>
+          <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" className="hidden sm:inline-flex" />
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-navy text-navy xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/80 text-white xl:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
@@ -189,69 +190,84 @@ function Header() {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative mt-8 overflow-hidden bg-navy-deep text-white">
+    <footer className="relative mt-8 overflow-hidden bg-gradient-to-b from-navy-deep to-[#0C0D2B] text-white">
       <Wave fill="#14153F" flip flowers className="bg-cream" />
-      <div className="relative mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
+      <div className="relative mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] md:gap-12">
         <div>
-          <img src={site.logo} alt="" width={720} height={720} className="h-20 w-20 object-contain" />
-          <p className="mt-4 text-lg font-semibold text-white">{site.name}</p>
-          <p lang="bn" className="font-bn text-sm text-cream/80">
-            {site.nameBn}
-          </p>
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-cream/75">{site.tagline}</p>
-          <p lang="bn" className="font-bn mt-1 text-sm text-cream/70">
+          <div className="flex items-center gap-4">
+            <img
+              src={site.logo}
+              alt=""
+              width={720}
+              height={720}
+              className="h-16 w-16 shrink-0 rounded-2xl bg-white object-contain p-1"
+            />
+            <div>
+              <p className="text-lg font-bold leading-tight text-white">{site.name}</p>
+              <p lang="bn" className="font-bn mt-0.5 text-sm text-white/80">
+                {site.nameBn}
+              </p>
+            </div>
+          </div>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/80">{site.tagline}</p>
+          <p lang="bn" className="font-bn mt-1 max-w-sm text-sm leading-relaxed text-white/70">
             {site.taglineBn}
           </p>
+          <div className="mt-5 flex items-center gap-3">
+            <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" />
+            <a
+              href={site.facebook}
+              className="text-sm font-semibold text-white hover:text-gold"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Follow us on Facebook
+            </a>
+          </div>
         </div>
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Visit</h2>
-          <ul className="mt-4 space-y-3 text-sm text-cream/85">
-            <li className="flex gap-2">
-              <MapPin size={16} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-gold">Visit</p>
+          <ul className="mt-4 space-y-3 text-sm leading-relaxed text-white/85">
+            <li className="grid grid-cols-[20px_1fr] gap-3">
+              <MapPin size={18} className="mt-0.5 text-gold" aria-hidden="true" />
               <span>
                 {site.address.line}
                 {!site.address.confirmed && (
-                  <span className="mt-1 block text-xs text-cream/60">Exact pin to be confirmed</span>
+                  <span className="mt-1 block text-xs text-white/60">Exact pin to be confirmed</span>
                 )}
               </span>
             </li>
-            <li className="flex gap-2">
-              <Mail size={16} className="mt-0.5 shrink-0 text-gold" aria-hidden="true" />
-              <a className="hover:text-gold" href={`mailto:${site.email}`}>
+            <li className="grid grid-cols-[20px_1fr] gap-3">
+              <Mail size={18} className="mt-0.5 text-gold" aria-hidden="true" />
+              <a className="break-all hover:text-gold" href={`mailto:${site.email}`}>
                 {site.email}
               </a>
             </li>
-            <li>{phoneDisplay()}</li>
+            <li className="grid grid-cols-[20px_1fr] gap-3">
+              <Phone size={18} className="mt-0.5 text-gold" aria-hidden="true" />
+              <span>{phoneDisplay()}</span>
+            </li>
           </ul>
         </div>
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Explore</h2>
-          <ul className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-gold">Explore</p>
+          <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
             {nav.map((item) => (
               <li key={item.href}>
-                <Link className="text-cream/85 hover:text-gold" to={item.href}>
+                <Link className="text-white/85 hover:text-gold" to={item.href}>
                   {item.label}
                 </Link>
               </li>
             ))}
             <li>
-              <Link className="text-cream/85 hover:text-gold" to="/login">
+              <Link className="text-white/85 hover:text-gold" to="/login">
                 Portal Login
               </Link>
             </li>
           </ul>
-          <a
-            href={site.facebook}
-            className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-white hover:text-gold"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Facebook size={16} aria-hidden="true" />
-            Facebook
-          </a>
         </div>
       </div>
-      <div className="relative border-t border-white/10 px-4 py-4 text-center text-xs text-cream/60 sm:px-6">
+      <div className="relative border-t border-white/10 px-4 py-4 text-center text-xs text-white/60 sm:px-6">
         © {year} {site.name}. All rights reserved. Estd. {site.established}.
       </div>
     </footer>
