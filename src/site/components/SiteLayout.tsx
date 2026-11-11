@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Facebook, Mail, MapPin, Menu, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
 import { JoyLink, Wave } from './kit';
+import { ScrollProgress } from './motion';
 
 export function SiteLayout() {
   const { pathname } = useLocation();
@@ -20,6 +21,7 @@ export function SiteLayout() {
       >
         Skip to content
       </a>
+      <ScrollProgress />
       <Ticker />
       <Header />
       <main id="main">

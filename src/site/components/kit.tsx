@@ -6,16 +6,16 @@ import { SwayingFlower } from '../art';
 export type SiteTone = 'navy' | 'leaf' | 'orange' | 'sky' | 'sun' | 'coral';
 
 export const toneClass: Record<SiteTone, { bg: string; text: string; lede: string; wave: string }> = {
-  navy: { bg: 'bg-navy', text: 'text-white', lede: 'text-white/85', wave: '#FFF7E3' },
-  leaf: { bg: 'bg-leaf', text: 'text-white', lede: 'text-white/90', wave: '#FFF7E3' },
-  orange: { bg: 'bg-orange', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  sky: { bg: 'bg-sky', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  sun: { bg: 'bg-sun', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  coral: { bg: 'bg-coral', text: 'text-white', lede: 'text-navy-deep', wave: '#FFF7E3' },
+  navy: { bg: 'bg-navy', text: 'text-white', lede: 'text-white/85', wave: '#FFFFFF' },
+  leaf: { bg: 'bg-leaf', text: 'text-white', lede: 'text-white/90', wave: '#FFFFFF' },
+  orange: { bg: 'bg-orange', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  sky: { bg: 'bg-sky', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  sun: { bg: 'bg-sun', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  coral: { bg: 'bg-coral', text: 'text-white', lede: 'text-navy-deep', wave: '#FFFFFF' },
 };
 
 export function Wave({
-  fill = '#FFF7E3',
+  fill = '#FFFFFF',
   className = '',
   flip = false,
   flowers = false,

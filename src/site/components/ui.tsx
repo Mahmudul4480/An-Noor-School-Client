@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
 import { Art, DriftingButterfly, type ArtName } from '../art';
 import { HoverCard, toneClass, Wave, type SiteTone } from './kit';
+import { SplitText } from './motion';
 
 export function PageHero({
   kicker,
@@ -27,7 +28,9 @@ export function PageHero({
       <div className="relative mx-auto flex max-w-[1200px] items-end justify-between gap-4 px-4 py-12 sm:px-6 sm:py-16">
         <div>
           <p className={`text-xs font-bold uppercase tracking-[0.18em] ${theme.lede}`}>{kicker}</p>
-          <h1 className={`mt-2 max-w-3xl text-4xl font-semibold leading-[1.08] sm:text-5xl ${titleOnCoral}`}>{title}</h1>
+          <h1 className={`mt-2 max-w-3xl text-4xl font-semibold leading-[1.08] sm:text-5xl ${titleOnCoral}`}>
+            <SplitText text={title} immediate delay={0.1} />
+          </h1>
           {titleBn && (
             <p lang="bn" className={`font-bn mt-2 text-xl sm:text-2xl ${theme.lede}`}>
               {titleBn}
@@ -67,7 +70,7 @@ export function SectionHeading({
         )}
       </p>
       <h2 className={`mt-2 text-3xl font-semibold leading-tight sm:text-4xl ${light ? 'text-white' : 'text-navy-deep'}`}>
-        {title}
+        <SplitText text={title} />
       </h2>
       {text && (
         <p className={`mt-3 text-base leading-relaxed ${light ? 'text-white/75' : 'text-ink/80'}`}>{text}</p>

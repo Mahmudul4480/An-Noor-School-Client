@@ -42,7 +42,9 @@
   --site-coral: #f0443a;
   --site-leaf: #1f8f4a;
   --site-sky: #5cb8f5;
-  --site-cream: #fff7e3;
+  --site-cream: #ffffff;
+  /* The public site uses white where the brand cream used to be; the portal token is untouched. */
+  --color-cream: #ffffff;
   background: var(--site-cream);
   color: var(--site-navy-deep);
   font-family: var(--font-body);
@@ -95,6 +97,21 @@
   border-radius: 58% 42% 52% 48% / 46% 58% 42% 54%;
 }
 
+/* A slow highlight that travels across a line of text. */
+.site-shell .text-shine {
+  background: linear-gradient(100deg, var(--site-navy) 0%, var(--site-navy) 40%, var(--site-orange) 50%, var(--site-navy) 60%, var(--site-navy) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: site-shine 5s ease-in-out infinite;
+}
+
+@keyframes site-shine {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
 .site-marquee {
   animation: site-marquee 46s linear infinite;
 }
@@ -113,6 +130,11 @@
   .site-shell *::before,
   .site-shell *::after {
     scroll-behavior: auto !important;
+  }
+  .site-shell .text-shine {
+    animation: none;
+    background: none;
+    color: var(--site-navy);
   }
   .site-marquee {
     animation: none;
