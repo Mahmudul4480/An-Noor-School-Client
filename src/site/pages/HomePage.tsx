@@ -108,14 +108,16 @@ export default function HomePage() {
       <section className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((item, index) => (
-            <li key={item.id}>
-              <Reveal delay={index * 0.04}>
-                <HoverCard className="flex min-h-28 flex-col justify-center rounded-[24px] border border-sun/60 bg-gradient-to-br from-navy to-navy-deep px-4 py-5 text-center text-white shadow-[0_12px_26px_rgba(20,21,63,0.25)]">
-                  <p className="text-2xl font-bold text-sun sm:text-3xl">
-                    {item.value === null ? item.pending : item.value}
-                  </p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
-                  <p lang="bn" className="font-bn text-sm">{item.bn}</p>
+            <li key={item.id} className="h-full">
+              <Reveal className="h-full" delay={index * 0.04}>
+                <HoverCard className="flex h-full min-h-36 flex-col items-center justify-center rounded-[24px] border border-sun/60 bg-gradient-to-br from-navy to-navy-deep px-4 py-5 text-center text-white shadow-[0_12px_26px_rgba(20,21,63,0.25)]">
+                  {item.value === null ? (
+                    <p className="text-lg font-bold leading-tight text-sun sm:text-xl">{item.pending}</p>
+                  ) : (
+                    <p className="font-display text-4xl leading-none tracking-wide text-sun sm:text-5xl">{item.value}</p>
+                  )}
+                  <p className="mt-2 text-sm font-semibold leading-snug text-white/90">{item.label}</p>
+                  <p lang="bn" className="font-bn mt-0.5 text-base font-semibold leading-relaxed text-sun">{item.bn}</p>
                 </HoverCard>
               </Reveal>
             </li>
@@ -140,10 +142,10 @@ export default function HomePage() {
                 <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
                   <Art name={look.art} className="h-12 w-12 text-navy" />
                 </div>
-                <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy">{program.titleAr}</p>
-                <h3 className="text-2xl font-semibold text-navy-deep">{program.title}</h3>
-                <p lang="bn" className="font-bn text-sm font-semibold text-navy">{program.titleBn}</p>
-                <p className="mt-2 text-sm leading-relaxed text-navy-deep/75">{program.text}</p>
+                <p lang="ar" dir="rtl" className="font-arabic text-3xl font-bold leading-[1.7] text-navy">{program.titleAr}</p>
+                <h3 className="mt-1 text-2xl text-navy-deep">{program.title}</h3>
+                <p lang="bn" className="font-bn mt-0.5 text-base font-semibold leading-relaxed text-navy">{program.titleBn}</p>
+                <p className="mt-2 text-base leading-relaxed text-navy-deep/80">{program.text}</p>
               </HoverCard>
               </Reveal>
               </div>
@@ -175,9 +177,9 @@ export default function HomePage() {
                     <span className="rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-bold text-navy">{item.stage}</span>
                   </div>
                   {item.sections.length > 0 && (
-                    <p className="mt-1 text-sm font-semibold">{item.sections.join(' · ')}</p>
+                    <p className="mt-2 text-base font-semibold text-navy">{item.sections.join(' · ')}</p>
                   )}
-                  <p className="mt-1 text-sm leading-relaxed opacity-90">{item.text}</p>
+                  <p className="mt-1 text-base leading-relaxed text-navy-deep/80">{item.text}</p>
                 </HoverCard>
                 </Reveal>
               </li>
