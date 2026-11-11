@@ -14,6 +14,7 @@ const TeachersPage = lazy(() => import('./site/pages/TeachersPage'));
 const NoticesPage = lazy(() => import('./site/pages/NoticesPage'));
 const GalleryPage = lazy(() => import('./site/pages/GalleryPage'));
 const ContactPage = lazy(() => import('./site/pages/ContactPage'));
+const DepartmentPage = lazy(() => import('./site/pages/DepartmentPage'));
 
 function PageFallback() {
   return (
@@ -51,6 +52,7 @@ function App() {
           <Route path="/notices" element={<PublicPage><NoticesPage /></PublicPage>} />
           <Route path="/gallery" element={<PublicPage><GalleryPage /></PublicPage>} />
           <Route path="/contact" element={<PublicPage><ContactPage /></PublicPage>} />
+          <Route path="/departments/:id" element={<PublicPage><DepartmentPage /></PublicPage>} />
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route

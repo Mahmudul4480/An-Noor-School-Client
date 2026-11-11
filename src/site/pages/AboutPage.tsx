@@ -70,9 +70,14 @@ export default function AboutPage() {
             </div>
           </CreamCard>
           <CreamCard className="flex flex-col justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-navy text-xl font-semibold text-gold" aria-hidden="true">
-              MK
-            </div>
+            <img
+            src={site.managingPartner.photo}
+            alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
+            width={site.managingPartner.photoWidth}
+            height={site.managingPartner.photoHeight}
+            className="aspect-[3/4] w-full max-w-[260px] rounded-2xl object-cover object-top"
+            loading="lazy"
+          />
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-crest">
               {site.managingPartner.title}
             </p>

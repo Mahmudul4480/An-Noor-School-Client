@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { Art, type ArtName } from '../art';
+import { ArrowRight, CalendarDays } from 'lucide-react';
 import {
   admission,
   classes,
   dayAtSchool,
+  departmentNews,
+  departmentsPage,
   home,
+  moments,
   noticesPage,
   photos,
   programs,
@@ -14,6 +16,7 @@ import {
   stats,
 } from '../content';
 import { Seo } from '../seo';
+import { DeptIcon } from '../components/DeptIcon';
 import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
 import { useReducedMotion, motion } from 'motion/react';
@@ -23,14 +26,15 @@ import { Reveal } from '../components/ui';
 
 const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-const programArt: Record<string, { art: ArtName; tone: string; border: string; wash: string }> = {
-  islamic: { art: 'crescent', tone: 'bg-sun', border: 'border-sun', wash: 'from-[#FFF3C4]' },
-  hifz: { art: 'quran', tone: 'bg-[#cdeedb]', border: 'border-leaf', wash: 'from-[#DDF3E6]' },
-  arabic: { art: 'book', tone: 'bg-sky/40', border: 'border-sky', wash: 'from-[#DCEFFD]' },
-  english: { art: 'pencil', tone: 'bg-orange/25', border: 'border-orange', wash: 'from-[#FFE6C7]' },
+const programArt: Record<string, { border: string; wash: string }> = {
+  islamic: { border: 'border-sun', wash: 'from-[#FFF3C4]' },
+  hifz: { border: 'border-leaf', wash: 'from-[#DDF3E6]' },
+  arabic: { border: 'border-sky', wash: 'from-[#DCEFFD]' },
+  english: { border: 'border-orange', wash: 'from-[#FFE6C7]' },
 };
 export default function HomePage() {
   const reduce = useReducedMotion();
+  const featuredNews = departmentNews.filter((item) => item.featured);
   return (
     <>
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
@@ -59,11 +63,12 @@ export default function HomePage() {
         </div>
         <div className="relative mx-auto -mt-6 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-24">
           <motion.div
-            className="rounded-[32px] border border-navy/10 bg-white/95 p-6 shadow-[0_24px_60px_rgba(20,21,63,0.18)] backdrop-blur sm:p-10 lg:grid lg:grid-cols-[1.25fr_0.75fr] lg:items-end lg:gap-10"
+            className="ribbon-frame rounded-[34px] p-[5px] shadow-[0_24px_60px_rgba(20,21,63,0.22)]"
             initial={reduce ? false : { opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.25, ease: heroEase }}
           >
+          <div className="rounded-[29px] bg-gradient-to-br from-white via-[#F1F3FF] to-[#FFF4CC] p-6 sm:p-10 lg:grid lg:grid-cols-[1.25fr_0.75fr] lg:items-end lg:gap-10">
             <div className="mb-6 flex items-center justify-center gap-4 lg:col-span-2">
               <span aria-hidden="true" className="hidden h-px flex-1 bg-gradient-to-r from-transparent to-sun sm:block" />
               <p lang="ar" dir="rtl" className="font-bismillah text-center text-3xl text-navy sm:text-4xl lg:text-5xl">
@@ -95,12 +100,13 @@ export default function HomePage() {
                 </JoyLink>
                 <JoyLink
                   to="/about"
-                  className="inline-flex min-h-11 items-center rounded-full border border-navy/20 bg-white px-5 py-3 text-base font-bold text-navy"
+                  className="inline-flex min-h-11 items-center rounded-full bg-gradient-to-r from-navy to-navy-deep px-5 py-3 text-base font-bold text-white shadow-[0_8px_20px_rgba(20,21,63,0.25)]"
                 >
                   {home.secondaryCta}
                 </JoyLink>
               </div>
             </div>
+          </div>
           </motion.div>
         </div>
       </section>
@@ -138,20 +144,65 @@ export default function HomePage() {
             return (
               <div key={program.id} className="h-full">
               <Reveal className="h-full" delay={index * 0.08}>
-              <HoverCard className={`h-full rounded-[28px] border-2 bg-gradient-to-br to-white p-6 shadow-[0_10px_26px_rgba(42,44,137,0.10)] ${look.border} ${look.wash}`}>
-                <div className={`mb-3 inline-flex rounded-2xl p-2 ${look.tone}`}>
-                  <Art name={look.art} className="h-12 w-12 text-navy" />
-                </div>
-                <p lang="ar" dir="rtl" className="font-arabic text-3xl font-bold leading-[1.7] text-navy">{program.titleAr}</p>
+              <Link to={`/departments/${program.id}`} className="block h-full rounded-[28px]">
+              <HoverCard className={`flex h-full flex-col rounded-[28px] border-2 bg-gradient-to-br to-white p-6 shadow-[0_10px_26px_rgba(42,44,137,0.10)] ${look.border} ${look.wash}`}>
+                <DeptIcon id={program.id} className="mb-3" />
+                <p lang="ar" dir="rtl" className="font-bismillah text-3xl text-navy">{program.titleAr}</p>
                 <h3 className="mt-1 text-2xl text-navy-deep">{program.title}</h3>
                 <p lang="bn" className="font-bn mt-0.5 text-base font-semibold leading-relaxed text-navy">{program.titleBn}</p>
                 <p className="mt-2 text-base leading-relaxed text-navy-deep/80">{program.text}</p>
+                <span className="mt-auto inline-flex items-center gap-2 pt-4 text-base font-bold text-navy">
+                  {departmentsPage.cardCta} <ArrowRight size={18} aria-hidden="true" />
+                </span>
               </HoverCard>
+              </Link>
               </Reveal>
               </div>
             );
           })}
         </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-4 pb-12 sm:px-6 sm:pb-16">
+        <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">
+          <SplitText text={departmentsPage.featuredTitle} />
+        </h2>
+        <p lang="bn" className="font-bn mt-1 text-lg font-semibold text-navy">
+          {departmentsPage.featuredTitleBn}
+        </p>
+        {featuredNews.length === 0 ? (
+          <div className="ribbon-frame mt-6 rounded-[26px] p-[3px]">
+            <div className="rounded-[23px] bg-gradient-to-br from-white to-[#FFF6D6] p-6 text-base leading-relaxed text-navy-deep/80">
+              {departmentsPage.featuredEmpty}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {featuredNews.map((item) => (
+              <Link key={item.id} to={`/departments/${item.department}`} className="block h-full rounded-[24px]">
+                <HoverCard className="h-full overflow-hidden rounded-[24px] border border-navy/15 bg-white shadow-[0_10px_26px_rgba(42,44,137,0.10)]">
+                  {item.photo && (
+                    <ImageReveal>
+                      <img
+                        src={item.photo.src}
+                        alt={item.photo.alt}
+                        width={item.photo.width}
+                        height={item.photo.height}
+                        className="aspect-[16/10] w-full object-cover"
+                        loading="lazy"
+                      />
+                    </ImageReveal>
+                  )}
+                  <div className="p-5">
+                    <p className="inline-flex rounded-full bg-sun px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-navy-deep">{item.date}</p>
+                    <h3 className="mt-2 text-xl text-navy">{item.title}</h3>
+                    <p className="mt-2 text-base leading-relaxed text-navy-deep/80">{item.body}</p>
+                  </div>
+                </HoverCard>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="bg-gradient-to-b from-[#E9EBFF] to-white py-12 sm:py-16">
@@ -160,7 +211,8 @@ export default function HomePage() {
             <SplitText text={home.pathTitle} />
           </h2>
           <p className="mt-3 max-w-2xl text-navy-deep/75">{home.pathText}</p>
-          <ol className="mt-8 space-y-3">
+          <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <ol className="space-y-3">
             {classes.map((item, index) => (
               <li key={item.id} style={{ marginLeft: `${Math.min(index, 8) * 10}px` }} className="max-w-xl">
                 <Reveal delay={Math.min(index, 6) * 0.05}>
@@ -185,6 +237,43 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
+          <aside className="lg:sticky lg:top-28">
+            <h3 className="text-2xl text-navy">{home.pathGalleryTitle}</h3>
+            <p lang="bn" className="font-bn text-base font-semibold text-navy/80">
+              {home.pathGalleryTitleBn}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {moments.slice(0, 4).map((photo, index) => (
+                <Link
+                  key={photo.id}
+                  to="/gallery"
+                  className={`block overflow-hidden border-2 border-sun shadow-[0_10px_24px_rgba(42,44,137,0.18)] ${
+                    index % 3 === 0 ? 'rounded-[90px_90px_20px_20px]' : 'rounded-[20px]'
+                  } ${index % 2 === 1 ? 'mt-6' : ''}`}
+                >
+                  <ImageReveal>
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      width={photo.width}
+                      height={photo.height}
+                      className="aspect-[4/5] w-full object-cover transition-transform duration-500 hover:scale-105"
+                      loading="lazy"
+                    />
+                  </ImageReveal>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-6">
+              <JoyLink
+                to="/gallery"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-navy to-navy-deep px-5 py-3 text-base font-bold text-white shadow-[0_8px_20px_rgba(20,21,63,0.25)]"
+              >
+                {home.pathGalleryCta} <ArrowRight size={18} aria-hidden="true" />
+              </JoyLink>
+            </div>
+          </aside>
+          </div>
           <p className="mt-4 text-sm text-navy-deep/60">{home.pathFootnote}</p>
         </div>
       </section>
@@ -289,9 +378,12 @@ export default function HomePage() {
               )}
             </HoverCard>
           ))}
-          <HoverCard className="rounded-[24px] border border-navy/10 bg-white p-5">
-            <h3 className="text-xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h3>
-            <p className="mt-2 text-sm text-navy-deep/75">{noticesPage.eventsNote}</p>
+          <HoverCard className="rounded-[24px] border border-sun/60 bg-gradient-to-br from-navy to-navy-deep p-5 text-white shadow-[0_12px_26px_rgba(20,21,63,0.25)]">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sun text-navy-deep">
+              <CalendarDays size={22} aria-hidden="true" />
+            </span>
+            <h3 className="mt-3 text-xl font-semibold text-sun">{noticesPage.eventsTitle}</h3>
+            <p className="mt-2 text-base leading-relaxed text-white/85">{noticesPage.eventsNote}</p>
           </HoverCard>
         </div>
       </section>

@@ -92,6 +92,18 @@
   line-height: 1.9;
 }
 
+/* Animated brand ribbon used as a frame: the colours travel along the edge. */
+.site-shell .ribbon-frame {
+  background: linear-gradient(90deg, #2a2c89, #ffc928, #f7931e, #1f8f4a, #5cb8f5, #2a2c89);
+  background-size: 200% 100%;
+  animation: site-ribbon 7s linear infinite;
+}
+
+@keyframes site-ribbon {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}
+
 .site-shell ::selection {
   background: var(--site-sun);
   color: var(--site-navy-deep);
@@ -147,6 +159,9 @@
   .site-shell *::before,
   .site-shell *::after {
     scroll-behavior: auto !important;
+  }
+  .site-shell .ribbon-frame {
+    animation: none;
   }
   .site-shell .text-shine {
     animation: none;
