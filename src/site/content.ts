@@ -67,6 +67,9 @@ export const site = {
   managingPartner: {
     name: 'Md. Kamruzzaman',
     title: 'Managing Partner',
+    photo: '/site/managing-partner.webp',
+    photoWidth: 900,
+    photoHeight: 1200,
   },
 };
 
@@ -200,6 +203,37 @@ export const programs: Program[] = [
     text: 'English is both a subject and the language of the national curriculum here: reading, writing, and clear speech.',
   },
 ];
+
+export type DepartmentNews = {
+  id: string;
+  /** A programme id: 'islamic' | 'hifz' | 'arabic' | 'english'. */
+  department: string;
+  date: string;
+  title: string;
+  body: string;
+  photo?: { src: string; alt: string; width: number; height: number };
+  /** Featured items also show on the home page. */
+  featured?: boolean;
+};
+
+/**
+ * TODO: add real department news supplied by the school.
+ * Never invent a story, a name or a result. A child's photograph or name needs parental consent first.
+ */
+export const departmentNews: DepartmentNews[] = [];
+
+export const departmentsPage = {
+  kicker: 'Department',
+  intro: 'News, achievements and updates from this department are collected on this page.',
+  updatesTitle: 'Department updates',
+  updatesTitleBn: 'বিভাগের খবর',
+  updatesEmpty: 'Updates from this department will appear here when the school publishes them. Nothing is listed until then.',
+  othersTitle: 'Other departments',
+  cardCta: 'Open department',
+  featuredTitle: 'Featured news',
+  featuredTitleBn: 'বিশেষ খবর',
+  featuredEmpty: 'Featured news from the departments will appear here when the school publishes it — an achievement, a milestone, a story worth sharing.',
+};
 
 export type ClassBand = {
   id: string;
@@ -452,6 +486,9 @@ export const home = {
     'Three early-years classes, each with two named sections, then Class 1 through Class 7. The names below are the school’s own.',
   // TODO: publish a per-class subject list and age guide when the school provides them.
   pathFootnote: 'A subject list and age guide for each class will be added when the school provides them.',
+  pathGalleryTitle: 'School life in pictures',
+  pathGalleryTitleBn: 'ছবিতে স্কুল',
+  pathGalleryCta: 'Open the gallery',
   valuesKicker: 'What we hold',
   valuesTitle: 'The character the crest is for',
   momentsKicker: 'Moments',
@@ -506,8 +543,8 @@ export const about = {
   visionNote: 'The school’s own vision statement will be placed here once it is confirmed.',
   leadershipTitle: 'Leadership',
   leadershipText: 'Two names the school has asked us to carry. Biographies will lengthen when they are written by the people themselves.',
-  // TODO: add Md. Kamruzzaman's photograph and a short biography when the school provides them.
-  partnerNote: 'A photograph and a short biography will be added when the school provides them.',
+  // TODO: add Md. Kamruzzaman's short biography when the school provides it.
+  partnerNote: 'A short biography will be added when the school provides it.',
 };
 
 export type JourneyMilestone = {

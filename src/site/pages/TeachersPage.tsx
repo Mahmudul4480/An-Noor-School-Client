@@ -28,9 +28,14 @@ export default function TeachersPage() {
           </div>
         </CreamCard>
         <CreamCard className="flex flex-col justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-navy to-navy-soft text-lg font-semibold text-gold">
-            MK
-          </div>
+          <img
+            src={site.managingPartner.photo}
+            alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
+            width={site.managingPartner.photoWidth}
+            height={site.managingPartner.photoHeight}
+            className="aspect-[3/4] w-full max-w-[260px] rounded-2xl object-cover object-top"
+            loading="lazy"
+          />
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.managingPartner.title}</p>
           <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.managingPartner.name}</h2>
           <p className="mt-3 text-sm leading-relaxed text-ink/70">{about.partnerNote}</p>
