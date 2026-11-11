@@ -60,6 +60,8 @@ export const site = {
   principal: {
     name: 'Fatema Sultana Moona',
     title: 'Principal',
+    /** Fuller title shown with the leadership on the About page. */
+    aboutTitle: 'Principal and Member Secretary',
     photo: '/site/principal.webp',
     photoWidth: 900,
     photoHeight: 1176,
