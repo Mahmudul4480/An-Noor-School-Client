@@ -42,7 +42,12 @@
   --site-coral: #f0443a;
   --site-leaf: #1f8f4a;
   --site-sky: #5cb8f5;
-  --site-cream: #fff7e3;
+  --site-cream: #ffffff;
+  /* The public site uses white where the brand cream used to be; the portal token is untouched. */
+  --color-cream: #ffffff;
+  /* English type on the public site: Anton for display, League Spartan for text. Bangla stays Anek Bangla. */
+  --font-display: "Anton", "Anek Bangla", "League Spartan", sans-serif;
+  --font-body: "League Spartan", "Anek Bangla", ui-sans-serif, system-ui, sans-serif;
   background: var(--site-cream);
   color: var(--site-navy-deep);
   font-family: var(--font-body);
@@ -52,10 +57,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.site-shell :where(h1, h2, h3, h4) {
+.site-shell :where(h1, h2) {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-weight: 400; /* Anton has one weight; avoid synthetic bold */
+  letter-spacing: 0.01em;
+  line-height: 1.18;
+}
+
+.site-shell :where(h3, h4) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .site-shell .site-wrap {
@@ -71,6 +84,12 @@
 
 .site-shell .font-arabic {
   font-family: Amiri, "Noto Naskh Arabic", serif;
+}
+
+.site-shell .font-bismillah {
+  font-family: "Alkalami", Amiri, "Noto Naskh Arabic", serif;
+  font-weight: 400; /* Alkalami has one weight, already heavy */
+  line-height: 1.9;
 }
 
 .site-shell ::selection {
@@ -95,6 +114,21 @@
   border-radius: 58% 42% 52% 48% / 46% 58% 42% 54%;
 }
 
+/* A slow highlight that travels across a line of text. */
+.site-shell .text-shine {
+  background: linear-gradient(100deg, var(--site-navy) 0%, var(--site-navy) 40%, var(--site-orange) 50%, var(--site-navy) 60%, var(--site-navy) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: site-shine 5s ease-in-out infinite;
+}
+
+@keyframes site-shine {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
 .site-marquee {
   animation: site-marquee 46s linear infinite;
 }
@@ -113,6 +147,11 @@
   .site-shell *::before,
   .site-shell *::after {
     scroll-behavior: auto !important;
+  }
+  .site-shell .text-shine {
+    animation: none;
+    background: none;
+    color: var(--site-navy);
   }
   .site-marquee {
     animation: none;

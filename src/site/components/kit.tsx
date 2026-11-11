@@ -1,21 +1,22 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
+import { Facebook } from 'lucide-react';
 import { SwayingFlower } from '../art';
 
 export type SiteTone = 'navy' | 'leaf' | 'orange' | 'sky' | 'sun' | 'coral';
 
 export const toneClass: Record<SiteTone, { bg: string; text: string; lede: string; wave: string }> = {
-  navy: { bg: 'bg-navy', text: 'text-white', lede: 'text-white/85', wave: '#FFF7E3' },
-  leaf: { bg: 'bg-leaf', text: 'text-white', lede: 'text-white/90', wave: '#FFF7E3' },
-  orange: { bg: 'bg-orange', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  sky: { bg: 'bg-sky', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  sun: { bg: 'bg-sun', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFF7E3' },
-  coral: { bg: 'bg-coral', text: 'text-white', lede: 'text-navy-deep', wave: '#FFF7E3' },
+  navy: { bg: 'bg-navy', text: 'text-white', lede: 'text-white/85', wave: '#FFFFFF' },
+  leaf: { bg: 'bg-leaf', text: 'text-white', lede: 'text-white/90', wave: '#FFFFFF' },
+  orange: { bg: 'bg-orange', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  sky: { bg: 'bg-sky', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  sun: { bg: 'bg-sun', text: 'text-navy-deep', lede: 'text-navy-deep/80', wave: '#FFFFFF' },
+  coral: { bg: 'bg-coral', text: 'text-white', lede: 'text-navy-deep', wave: '#FFFFFF' },
 };
 
 export function Wave({
-  fill = '#FFF7E3',
+  fill = '#FFFFFF',
   className = '',
   flip = false,
   flowers = false,
@@ -117,6 +118,39 @@ export function JoyLink({
         {children}
       </Link>
     </motion.span>
+  );
+}
+
+/** Round Facebook button: a soft pulse ring, a small bob, and a wiggle on hover. */
+export function FacebookButton({ href, label, className = '' }: { href: string; label: string; className?: string }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={label}
+      className={`relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-[0_8px_18px_rgba(24,119,242,0.45)] ${className}`}
+      whileHover={reduce ? undefined : { scale: 1.15, rotate: [0, -12, 10, -6, 0] }}
+      whileTap={reduce ? undefined : { scale: 0.92 }}
+      transition={{ duration: 0.5 }}
+    >
+      {!reduce && (
+        <motion.span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full border-2 border-[#7FB2FF]"
+          animate={{ scale: [1, 1.65], opacity: [0.75, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+        />
+      )}
+      <motion.span
+        className="relative inline-flex"
+        animate={reduce ? undefined : { y: [0, -2, 0] }}
+        transition={reduce ? undefined : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <Facebook size={20} aria-hidden="true" />
+      </motion.span>
+    </motion.a>
   );
 }
 
