@@ -56,33 +56,33 @@ export default function AboutPage() {
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           <CreamCard className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
             <img
+              src={site.managingPartner.photo}
+              alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
+              width={site.managingPartner.photoWidth}
+              height={site.managingPartner.photoHeight}
+              className="aspect-[3/4] w-full rounded-2xl object-cover object-top"
+              loading="lazy"
+            />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.managingPartner.title}</p>
+              <h3 className="mt-1 text-2xl font-semibold text-navy-deep">{site.managingPartner.name}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.partnerNote}</p>
+            </div>
+          </CreamCard>
+          <CreamCard className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
+            <img
               src={site.principal.photo}
-              alt={`Portrait of ${site.principal.name}, Principal.`}
+              alt={`Portrait of ${site.principal.name}, ${site.principal.title}.`}
               width={site.principal.photoWidth}
               height={site.principal.photoHeight}
               className="aspect-[3/4] w-full rounded-2xl object-cover object-top"
               loading="lazy"
             />
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.principal.title}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-crest">{site.principal.aboutTitle}</p>
               <h3 className="mt-1 text-2xl font-semibold text-navy-deep">{site.principal.name}</h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/75">{home.principalNote}</p>
             </div>
-          </CreamCard>
-          <CreamCard className="flex flex-col justify-center">
-            <img
-            src={site.managingPartner.photo}
-            alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
-            width={site.managingPartner.photoWidth}
-            height={site.managingPartner.photoHeight}
-            className="aspect-[3/4] w-full max-w-[260px] rounded-2xl object-cover object-top"
-            loading="lazy"
-          />
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-crest">
-              {site.managingPartner.title}
-            </p>
-            <h3 className="mt-1 text-2xl font-semibold text-navy-deep">{site.managingPartner.name}</h3>
-            <p className="mt-3 text-sm leading-relaxed text-ink/75">{about.partnerNote}</p>
           </CreamCard>
         </div>
       </section>
