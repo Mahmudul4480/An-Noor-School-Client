@@ -50,6 +50,8 @@ export const site = {
   curriculumLine: 'National Curriculum (English Version)',
   curriculumBlend: 'Blended with Islamic, moral and ethical values',
   bismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+  /** Same words without harakat, for the large calligraphic line in the home hero. */
+  bismillahPlain: 'بسم الله الرحمن الرحيم',
   verse: {
     arabic: 'رَبِّ زِدْنِي عِلْمًا',
     translation: 'My Lord, increase me in knowledge.',
