@@ -78,7 +78,7 @@ export default function HomePage() {
               <h1 className="mt-4 text-4xl font-semibold leading-[1.08] text-navy-deep sm:text-6xl">
                 <SplitText text={site.name} immediate delay={0.45} stagger={0.09} />
               </h1>
-              <p className="text-shine mt-3 text-lg font-semibold">{site.tagline}</p>
+              <p className="text-shine mt-3 text-2xl font-bold leading-snug sm:text-3xl lg:text-4xl">{site.tagline}</p>
               <p lang="bn" className="font-bn mt-1 text-base leading-relaxed text-navy/80">
                 <SplitText text={site.taglineBn} immediate delay={0.9} />
               </p>
