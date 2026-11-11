@@ -64,11 +64,15 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.25, ease: heroEase }}
           >
-            <div>
-              <p lang="ar" dir="rtl" className="font-arabic text-2xl text-navy sm:text-3xl">
+            <div className="mb-6 flex items-center justify-center gap-4 lg:col-span-2">
+              <span aria-hidden="true" className="hidden h-px flex-1 bg-gradient-to-r from-transparent to-sun sm:block" />
+              <p lang="ar" dir="rtl" className="font-bismillah text-center text-3xl text-navy sm:text-4xl lg:text-5xl">
                 {site.bismillah}
               </p>
-              <div className="mt-4">
+              <span aria-hidden="true" className="hidden h-px flex-1 bg-gradient-to-l from-transparent to-sun sm:block" />
+            </div>
+            <div>
+              <div>
                 <Sticker rotate={-2}>{site.sessionLabel}</Sticker>
               </div>
               <h1 className="mt-4 text-4xl font-semibold leading-[1.08] text-navy-deep sm:text-6xl">

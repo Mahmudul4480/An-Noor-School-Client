@@ -86,6 +86,12 @@
   font-family: Amiri, "Noto Naskh Arabic", serif;
 }
 
+.site-shell .font-bismillah {
+  font-family: "Aref Ruqaa", Amiri, "Noto Naskh Arabic", serif;
+  font-weight: 700;
+  line-height: 1.9;
+}
+
 .site-shell ::selection {
   background: var(--site-sun);
   color: var(--site-navy-deep);
