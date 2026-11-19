@@ -109,7 +109,7 @@ export function InquiryForm({ id = 'inquiry' }: { id?: string }) {
       )}
       <button
         type="submit"
-        className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-navy/20 transition hover:bg-navy-soft"
+        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-navy px-5 py-3 text-base font-semibold text-white transition hover:bg-navy-soft"
       >
         <Send size={16} aria-hidden="true" />
         Send by {mode}
@@ -120,7 +120,7 @@ export function InquiryForm({ id = 'inquiry' }: { id?: string }) {
 }
 
 const inputClass =
-  'w-full rounded-2xl border border-navy/15 bg-white/70 px-3 py-3 text-sm text-ink shadow-inner outline-none focus:border-navy focus:bg-white';
+  'w-full rounded-2xl border border-navy/15 bg-white px-3 py-3 text-base text-navy-deep outline-none focus:border-navy';
 
 function Field({
   label,

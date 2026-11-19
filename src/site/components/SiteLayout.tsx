@@ -81,8 +81,8 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b border-sun/50 bg-gradient-to-r from-navy-deep via-navy to-navy-deep text-white ${
-        scrolled ? 'shadow-[0_12px_28px_rgba(20,21,63,0.32)]' : ''
+      className={`sticky top-0 z-40 border-b border-navy/10 bg-white text-navy-deep ${
+        scrolled ? 'shadow-[0_1px_0_rgba(42,44,137,0.04)]' : ''
       }`}
     >
       <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-2.5 sm:px-6">
@@ -92,11 +92,11 @@ function Header() {
             alt={site.name}
             width={720}
             height={720}
-            className="h-14 w-14 rounded-2xl bg-white object-contain p-1 shadow-[0_6px_16px_rgba(0,0,0,0.25)] sm:h-16 sm:w-16"
+            className="h-12 w-12 object-contain sm:h-14 sm:w-14"
           />
           <span className="hidden min-[1680px]:block">
             <span className="block text-sm font-semibold leading-tight">{site.name}</span>
-            <span lang="bn" className="font-bn block text-xs text-white/75">
+            <span lang="bn" className="font-bn block text-xs text-navy/70">
               {site.nameBn}
             </span>
           </span>
@@ -109,7 +109,11 @@ function Header() {
               to={item.href}
               end={item.href === '/'}
               className={({ isActive }) =>
-                `inline-flex min-h-11 items-center text-sm font-semibold transition hover:text-sun ${isActive ? 'text-sun' : 'text-white'}`
+                `relative inline-flex min-h-11 items-center text-sm font-medium text-navy transition hover:text-navy ${
+                  isActive
+                    ? 'font-semibold after:absolute after:inset-x-0 after:bottom-2 after:h-0.5 after:rounded-full after:bg-orange'
+                    : ''
+                }`
               }
             >
               {item.label}
@@ -120,20 +124,20 @@ function Header() {
         <div className="ml-auto flex items-center gap-2 xl:ml-4">
           <JoyLink
             to="/admission"
-            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-orange px-4 py-2 text-sm font-bold text-navy-deep shadow-[0_8px_18px_rgba(42,44,137,0.12)]"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-orange px-4 py-2 text-sm font-semibold text-navy-deep"
           >
             Admission <span lang="bn" className="font-bn font-semibold">/ ভর্তি</span>
           </JoyLink>
           <JoyLink
             to="/login"
-            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-white/45 px-4 py-2 text-sm font-bold text-white sm:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-navy/15 px-4 py-2 text-sm font-semibold text-navy sm:inline-flex"
           >
             Portal Login
           </JoyLink>
           <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" className="hidden sm:inline-flex" />
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/80 text-white xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-navy/20 text-navy xl:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
@@ -152,7 +156,7 @@ function Header() {
             initial={reduce ? false : { opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? undefined : { opacity: 0, y: -8 }}
-            className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-5rem)] overflow-y-auto border-t border-white/10 bg-navy-deep px-4 py-4 shadow-2xl xl:hidden"
+            className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-5rem)] overflow-y-auto border-t border-navy/10 bg-white px-4 py-3 shadow-[0_12px_32px_rgba(20,21,63,0.08)] xl:hidden"
           >
             <ul className="space-y-1">
               {nav.map((item) => (
@@ -161,13 +165,13 @@ function Header() {
                     to={item.href}
                     end={item.href === '/'}
                     className={({ isActive }) =>
-                      `flex items-baseline justify-between rounded-2xl px-3 py-3 ${
-                        isActive ? 'bg-white/10 text-gold' : 'text-white'
+                      `flex min-h-11 items-baseline justify-between rounded-2xl px-3 py-3 ${
+                        isActive ? 'bg-navy/5 font-semibold text-navy' : 'text-navy-deep'
                       }`
                     }
                   >
                     <span className="font-medium">{item.label}</span>
-                    <span lang="bn" className="font-bn text-sm text-cream/80">
+                    <span lang="bn" className="font-bn text-sm text-navy/70">
                       {item.bn}
                     </span>
                   </NavLink>
@@ -176,7 +180,7 @@ function Header() {
             </ul>
             <Link
               to="/login"
-              className="mt-3 flex items-center justify-center rounded-full border border-gold/60 px-4 py-3 text-sm font-semibold text-gold"
+              className="mt-3 flex min-h-11 items-center justify-center rounded-full border border-navy/15 px-4 py-3 text-sm font-semibold text-navy"
             >
               Portal Login
             </Link>
@@ -190,8 +194,8 @@ function Header() {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative mt-8 overflow-hidden bg-gradient-to-b from-navy-deep to-[#0C0D2B] text-white">
-      <Wave fill="#14153F" flip flowers className="bg-cream" />
+    <footer className="relative mt-8 overflow-hidden bg-navy-deep text-white">
+      <Wave fill="#14153F" flip className="bg-[#f5f7fb]" />
       <div className="relative mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] md:gap-12">
         <div>
           <div className="flex items-center gap-4">

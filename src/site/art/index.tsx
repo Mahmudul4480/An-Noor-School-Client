@@ -187,8 +187,8 @@ function Butterfly() {
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
       <motion.g
         style={{ transformOrigin: '32px 34px' }}
-        animate={reduce ? undefined : { scaleX: [1, 0.45, 1] }}
-        transition={reduce ? undefined : { duration: 0.55, repeat: Infinity, ease: 'easeInOut' }}
+        animate={reduce ? undefined : { scaleX: [1, 0.72, 1] }}
+        transition={reduce ? undefined : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
       >
         <ellipse cx="20" cy="28" rx="12" ry="14" fill="#5CB8F5" stroke="#2A2C89" strokeWidth="3" />
         <ellipse cx="44" cy="28" rx="12" ry="14" fill="#5CB8F5" stroke="#2A2C89" strokeWidth="3" />
@@ -204,22 +204,24 @@ function Butterfly() {
 /** A butterfly that flaps and drifts. Stays out of the text column. */
 export function DriftingButterfly({
   className = '',
-  duration = 16,
+  duration = 26,
   delay = 0,
+  size = 'h-7 w-7',
 }: {
   className?: string;
   duration?: number;
   delay?: number;
+  size?: string;
 }) {
   const reduce = useReducedMotion();
   return (
     <motion.span
       aria-hidden="true"
       className={`pointer-events-none ${className}`}
-      animate={reduce ? undefined : { x: [0, 28, 8, 36, 0], y: [0, -14, 6, -10, 0] }}
+      animate={reduce ? undefined : { x: [0, 8, -3, 6, 0], y: [0, -5, 2, -3, 0] }}
       transition={reduce ? undefined : { duration, delay, repeat: Infinity, ease: 'easeInOut' }}
     >
-      <Art name="butterfly" className="h-10 w-10 sm:h-12 sm:w-12" />
+      <Art name="butterfly" className={size} />
     </motion.span>
   );
 }
@@ -232,8 +234,8 @@ export function SwayingFlower({ className = '', delay = 0 }: { className?: strin
       aria-hidden="true"
       className={`pointer-events-none ${className}`}
       style={{ transformOrigin: '50% 100%' }}
-      animate={reduce ? undefined : { rotate: [-3, 3, -3], scale: [0.96, 1.04, 0.96] }}
-      transition={reduce ? undefined : { duration: 6.5, delay, repeat: Infinity, ease: 'easeInOut' }}
+      animate={reduce ? undefined : { rotate: [-1.5, 1.5, -1.5] }}
+      transition={reduce ? undefined : { duration: 10, delay, repeat: Infinity, ease: 'easeInOut' }}
     >
       <Art name="flower" className="h-full w-full" />
     </motion.span>
