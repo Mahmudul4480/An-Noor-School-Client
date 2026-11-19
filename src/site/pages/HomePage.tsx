@@ -412,8 +412,8 @@ function HeroStudents({ reduce }: { reduce: boolean | null }) {
           <img
             src="/site/hero-students.png"
             alt="An-Noor students in school uniform"
-            width={831}
-            height={740}
+            width={834}
+            height={742}
             decoding="async"
             className="h-auto w-[min(18.5rem,calc(100vw-3.5rem))] sm:w-[22rem] lg:h-[38rem] lg:w-auto"
           />
