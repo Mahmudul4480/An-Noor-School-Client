@@ -1,4 +1,4 @@
-import { admission, fees, formatBdt, seo, showFees } from '../content';
+import { admission, fees, formatBdt, seo, showFees, site } from '../content';
 import { Seo } from '../seo';
 import { InquiryForm } from '../components/InquiryForm';
 import { CreamCard, PageHero, Ribbon } from '../components/ui';
@@ -12,7 +12,7 @@ export default function AdmissionPage() {
       <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-3xl font-semibold text-navy-deep">{admission.stepsTitle}</h2>
-          <Ribbon>Session 2026–27</Ribbon>
+          <Ribbon>{site.sessionLabel}</Ribbon>
         </div>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/70">{admission.stepsNote}</p>
         <ol className="mt-8 grid gap-4 md:grid-cols-2">

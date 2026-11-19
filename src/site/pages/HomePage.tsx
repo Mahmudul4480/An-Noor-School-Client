@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import {
@@ -21,6 +22,7 @@ import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
 import { useReducedMotion, motion } from 'motion/react';
 import { BlobFrame, HoverCard, JoyLink, SoftCard, Sticker } from '../components/kit';
+import { Art, SwayingFlower } from '../art';
 import { ImageReveal, ParallaxPhoto, SplitText } from '../components/motion';
 import { Reveal } from '../components/ui';
 
@@ -61,35 +63,30 @@ export default function HomePage() {
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent sm:h-28"
           />
         </div>
-        <div className="relative mx-auto -mt-6 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-24">
+        <div className="relative mx-auto -mt-6 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-16 lg:pt-20">
           <motion.div
-            className="ribbon-frame rounded-[34px] p-[5px] shadow-[0_24px_60px_rgba(20,21,63,0.22)]"
+            className="relative"
             initial={reduce ? false : { opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.25, ease: heroEase }}
           >
-          <div className="rounded-[29px] bg-gradient-to-br from-white via-[#F1F3FF] to-[#FFF4CC] p-6 sm:p-10 lg:grid lg:grid-cols-[1.25fr_0.75fr] lg:items-end lg:gap-10">
-            <div className="mb-6 flex items-center justify-center gap-4 lg:col-span-2">
-              <span aria-hidden="true" className="hidden h-px flex-1 bg-gradient-to-r from-transparent to-sun sm:block" />
-              <p lang="ar" dir="rtl" className="font-bismillah text-center text-3xl text-navy sm:text-4xl lg:text-5xl">
+          <div className="ribbon-frame rounded-[34px] p-[5px] shadow-[0_24px_60px_rgba(20,21,63,0.22)]">
+          <div className="rounded-[29px] bg-gradient-to-br from-white via-[#F1F3FF] to-[#FFF4CC] px-6 pt-6 sm:px-8 sm:pt-8 lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(260px,1.08fr)] lg:items-end lg:gap-4 lg:px-8 lg:pt-6">
+            <div className="pb-6 lg:pb-8">
+              <p lang="ar" dir="rtl" className="font-bismillah w-fit text-3xl text-navy sm:text-4xl">
                 {site.bismillahPlain}
               </p>
-              <span aria-hidden="true" className="hidden h-px flex-1 bg-gradient-to-l from-transparent to-sun sm:block" />
-            </div>
-            <div>
-              <div>
+              <div className="mt-4">
                 <Sticker rotate={-2}>{site.sessionLabel}</Sticker>
               </div>
-              <h1 className="mt-4 text-4xl font-semibold leading-[1.08] text-navy-deep sm:text-6xl">
+              <h1 className="mt-4 max-w-xl text-4xl font-semibold leading-[1.05] text-navy-deep sm:text-5xl lg:max-w-[20rem] lg:text-[2.65rem]">
                 <SplitText text={site.name} immediate delay={0.45} stagger={0.09} />
               </h1>
-              <p className="text-shine mt-3 text-2xl font-bold leading-snug sm:text-3xl lg:text-4xl">{site.tagline}</p>
-              <p lang="bn" className="font-bn mt-1 text-base leading-relaxed text-navy/80">
+              <p className="text-shine mt-3 max-w-xl text-2xl font-bold leading-snug lg:max-w-[20rem] lg:text-[1.65rem]">{site.tagline}</p>
+              <p lang="bn" className="font-bn mt-1 max-w-xl text-base leading-relaxed text-navy lg:max-w-[22rem]">
                 <SplitText text={site.taglineBn} immediate delay={0.9} />
               </p>
-            </div>
-            <div className="mt-5 lg:mt-0">
-              <p className="text-base leading-relaxed text-navy-deep/80">{home.lede}</p>
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-navy-deep/80 lg:max-w-[18.5rem]">{home.lede}</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <JoyLink
                   to="/admission"
@@ -106,6 +103,8 @@ export default function HomePage() {
                 </JoyLink>
               </div>
             </div>
+            <HeroStudents reduce={reduce} />
+          </div>
           </div>
           </motion.div>
         </div>
@@ -388,5 +387,47 @@ export default function HomePage() {
         </div>
       </section>
     </>
+  );
+}
+
+function HeroStudents({ reduce }: { reduce: boolean | null }) {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setWide(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+  const float = wide ? (reduce ? -36 : [-28, -44, -28]) : reduce ? 0 : [0, -8, 0];
+  return (
+    <div className="relative mt-8 h-64 sm:h-72 lg:mt-0 lg:h-[20rem]">
+      <motion.div
+        className="pointer-events-none absolute bottom-0 left-1/2 z-10 w-max -translate-x-1/2 lg:left-auto lg:-right-3 lg:translate-x-0"
+        animate={{ y: float }}
+        transition={reduce ? { duration: 0 } : { duration: 5.6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <picture className="block h-full">
+          <source srcSet="/site/hero-students.webp" type="image/webp" />
+          <img
+            src="/site/hero-students.png"
+            alt="An-Noor students in school uniform"
+            width={831}
+            height={740}
+            decoding="async"
+            className="h-auto w-[min(18.5rem,calc(100vw-3.5rem))] sm:w-[22rem] lg:h-[38rem] lg:w-auto"
+          />
+        </picture>
+        <SwayingFlower className="absolute bottom-20 right-2 h-7 w-7 opacity-75" />
+        <motion.span
+          aria-hidden="true"
+          className="absolute left-1 top-1"
+          animate={reduce ? undefined : { y: [0, -6, 0] }}
+          transition={reduce ? undefined : { duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Art name="butterfly" className="h-8 w-8 opacity-80" />
+        </motion.span>
+      </motion.div>
+    </div>
   );
 }

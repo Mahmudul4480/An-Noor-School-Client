@@ -231,10 +231,9 @@ function Footer() {
             <li className="grid grid-cols-[20px_1fr] gap-3">
               <MapPin size={18} className="mt-0.5 text-gold" aria-hidden="true" />
               <span>
-                {site.address.line}
-                {!site.address.confirmed && (
-                  <span className="mt-1 block text-xs text-white/60">Exact pin to be confirmed</span>
-                )}
+                <a className="hover:text-gold" href={site.address.mapUrl} target="_blank" rel="noreferrer">
+                  {site.address.line}
+                </a>
               </span>
             </li>
             <li className="grid grid-cols-[20px_1fr] gap-3">
@@ -245,7 +244,14 @@ function Footer() {
             </li>
             <li className="grid grid-cols-[20px_1fr] gap-3">
               <Phone size={18} className="mt-0.5 text-gold" aria-hidden="true" />
-              <span>{phoneDisplay()}</span>
+              <span>
+                <a className="block hover:text-gold" href={`tel:${site.phoneTel}`}>
+                  Office {site.phone}
+                </a>
+                <a className="mt-1 block hover:text-gold" href={`tel:${site.principalPhoneTel}`}>
+                  Principal {site.principalPhone}
+                </a>
+              </span>
             </li>
           </ul>
         </div>

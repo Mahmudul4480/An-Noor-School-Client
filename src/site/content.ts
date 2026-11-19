@@ -14,27 +14,25 @@ export const site = {
   tagline: 'Committed to building a moral foundation',
   taglineBn: 'নৈতিক ভিত্তি গড়ে তুলতে প্রতিশ্রুতিবদ্ধ',
   established: 2023,
-  sessionLabel: 'Admission Open 2026–27',
-  sessionShort: '2026–27',
+  sessionLabel: 'Admission Open 2027',
+  sessionShort: '2027',
   email: 'annoorinternationalschool@gmail.com',
-  /**
-   * TODO: confirm the official phone and WhatsApp before publishing a number.
-   * Leave both empty to show "Call: coming soon" and to send inquiries by email.
-   * The campus photograph shows numbers on the building sign — do not copy them
-   * here until the school confirms which line is current.
-   */
-  phone: '',
-  /** Digits only, country code, no plus. Example: "8801XXXXXXXXX". */
-  whatsapp: '',
+  /** Office line. Shown on tel: links and the WhatsApp inquiry button. */
+  phone: '+880 1841-587780',
+  /** E.164 for tel: links. */
+  phoneTel: '+8801841587780',
+  principalPhone: '+880 1841-587787',
+  principalPhoneTel: '+8801841587787',
+  /** Digits only, country code, no plus. Office WhatsApp. */
+  whatsapp: '8801841587780',
   address: {
     line: 'Near Goni Bakery, Rahamotgonj, Chattogram',
     locality: 'Chattogram',
     country: 'Bangladesh',
-    /**
-     * TODO: confirm the exact campus address and map pin.
-     * "Near Goni Bakery, Rahamotgonj" was supplied as unconfirmed.
-     */
-    confirmed: false,
+    confirmed: true,
+    mapUrl: 'https://maps.app.goo.gl/E6yo8dVKLoGrA6L16',
+    /** Same pin as mapUrl, in a form a page can embed. */
+    mapEmbed: 'https://www.google.com/maps?q=22.3485787,91.8356579&z=16&output=embed',
   },
   facebook: 'https://facebook.com/An.Noor.International.School',
   /**
@@ -90,7 +88,7 @@ export const seo = {
     path: '/',
     title: 'An-Noor International School · Chattogram',
     description:
-      'An-Noor International School in Chattogram offers English and Arabic based education, Islamic values, and modern academics from Play to Class 7, with a Hifz department. Admission is open for 2026–27.',
+      'An-Noor International School in Chattogram offers English and Arabic based education, Islamic values, and modern academics from Play to Class 7, with a Hifz department. Admission Open 2027.',
   },
   about: {
     path: '/about',
@@ -106,9 +104,9 @@ export const seo = {
   },
   admission: {
     path: '/admission',
-    title: 'Admission 2026–27 · An-Noor International School',
+    title: 'Admission Open 2027 · An-Noor International School',
     description:
-      'Admission is open for session 2026–27 at An-Noor International School, Chattogram. Inquire for Play through Class 7.',
+      'Admission Open 2027 at An-Noor International School, Chattogram. Inquire for Play through Class 7.',
   },
   facilities: {
     path: '/facilities',
@@ -126,7 +124,7 @@ export const seo = {
     path: '/notices',
     title: 'Notices & events · An-Noor International School',
     description:
-      'School notices, events, and the academic calendar for An-Noor International School. Admission is open for 2026–27.',
+      'School notices, events, and the academic calendar for An-Noor International School. Admission Open 2027.',
   },
   gallery: {
     path: '/gallery',
@@ -138,7 +136,7 @@ export const seo = {
     path: '/contact',
     title: 'Contact · An-Noor International School',
     description:
-      'Write to An-Noor International School in Chattogram. Email annoorinternationalschool@gmail.com.',
+      'Contact An-Noor International School in Chattogram. Office +880 1841-587780. Email annoorinternationalschool@gmail.com. Near Goni Bakery, Rahamotgonj.',
   },
 } as const;
 
@@ -499,10 +497,10 @@ export const home = {
   // TODO: replace with Fatema Sultana Moona's own message. Do not present drafted sentences as her quotation.
   principalNote:
     'A message in the Principal’s own words will be published here. The portrait is hers; the sentences should be too.',
-  admissionKicker: 'Session 2026–27',
+  admissionKicker: 'Admission Open 2027',
   admissionTitle: 'Admission is open',
   admissionText:
-    'Families may inquire now for Play through Class 7. The form below opens an email to the school — or WhatsApp, once a number is confirmed. It is not stored on this website.',
+    'Families may inquire now for Play through Class 7. The form below opens WhatsApp to the office. It is not stored on this website.',
 };
 
 /**
@@ -601,7 +599,7 @@ export const journey = {
     },
     {
       no: '05',
-      year: '2026–27',
+      year: '2027',
       title: 'Admission is open',
       text: 'Families can inquire now for Play through Class 7. The next chapter is the one they will write with the school.',
       placeholder: false,
@@ -623,7 +621,7 @@ export const academics = {
 
 export const admission = {
   kicker: 'Admission',
-  title: 'Session 2026–27 is open',
+  title: 'Admission Open 2027',
   titleBn: 'ভর্তি চলছে',
   lede: 'Inquire for a place from Play through Class 7. The office confirms the next step — a visit, a form, the papers they actually need.',
   // TODO: replace these steps with the office's exact admission procedure.
@@ -648,7 +646,7 @@ export const admission = {
   ],
   feesTitle: 'Fees',
   feesHidden:
-    'The fee schedule will be published on this page after the school confirms the figures for session 2026–27. Until then, ask the office — the inquiry form reaches them directly.',
+    'The fee schedule will be published on this page after the school confirms the figures. Until then, ask the office — the inquiry form reaches them directly.',
   feesVisibleNote: 'Figures published at the school’s confirmation. Ask the office before you pay anyone.',
   formTitle: 'Send an inquiry',
   formText: 'Nothing is saved on this website. Submitting opens WhatsApp if a school number is set, otherwise your email app, with the message already written.',
@@ -725,11 +723,11 @@ export const noticesPage = {
   kicker: 'Notices & events',
   title: 'What families need to know',
   titleBn: 'নোটিশ ও ইভেন্ট',
-  lede: 'Admission for 2026–27 is the notice we can publish today. Further notices, events, and calendar dates wait on the school.',
+  lede: 'Admission Open 2027 is the notice we can publish today. Further notices, events, and calendar dates wait on the school.',
   notices: [
     {
       id: 'admission-2026',
-      title: 'Admission open for session 2026–27',
+      title: 'Admission Open 2027',
       date: 'Current',
       body: 'Families may inquire for Play through Class 7. Use the inquiry form, or write to the school email. The office confirms documents and, once approved for the website, fees.',
       href: '/admission',
@@ -740,7 +738,7 @@ export const noticesPage = {
   eventsNote: 'Dated events will appear here when the school publishes them. Nothing is listed until then.',
   // TODO: replace this shell with the school's academic calendar — terms, exams, holidays.
   calendarTitle: 'Academic calendar',
-  calendarNote: 'Term dates, exams, and holidays for session 2026–27 will be published here by the school. The months below are only a frame.',
+  calendarNote: 'Term dates, exams, and holidays for 2027 will be published here by the school. The months below are only a frame.',
   months: [
     'January',
     'February',
@@ -785,12 +783,12 @@ export const contactPage = {
   kicker: 'Contact',
   title: 'Write to the school',
   titleBn: 'যোগাযোগ',
-  lede: 'Email reaches the office today. The phone line and the map pin will be added when the school confirms them.',
-  // TODO: confirm office hours and publish them. Do not guess a timetable.
+  lede: 'Call the office, write by email, or open the map. The school is near Goni Bakery, Rahamotgonj, Chattogram.',
   hoursTitle: 'Office hours',
-  hoursNote: 'Office hours will be listed here once the school confirms them.',
+  hoursNote: 'The office is open 8:00 am–2:30 pm, Saturday–Thursday.',
+  schoolDaysNote: 'School days are Sunday–Thursday.',
   mapTitle: 'Map',
-  mapNote: 'An embedded map will appear here when the campus pin is confirmed. Until then, please do not navigate from a guess.',
+  mapNote: 'The pin opens the campus on Google Maps.',
   phoneLabel: 'Call: coming soon',
   phoneNote: 'The office number will be shown here after the school confirms it.',
 };
