@@ -1,5 +1,5 @@
-import { Facebook, Mail, MapPin } from 'lucide-react';
-import { contactPage, phoneDisplay, seo, site } from '../content';
+import { Facebook, Mail, MapPin, Phone } from 'lucide-react';
+import { contactPage, seo, site } from '../content';
 import { Seo } from '../seo';
 import { InquiryForm } from '../components/InquiryForm';
 import { CreamCard, PageHero } from '../components/ui';
@@ -29,9 +29,24 @@ export default function ContactPage() {
                   {site.email}
                 </a>
               </li>
-              <li>
-                <p className="font-medium text-navy-deep">{phoneDisplay()}</p>
-                {!site.phone.trim() && <p className="mt-1 text-xs text-ink/60">{contactPage.phoneNote}</p>}
+              <li className="flex gap-3">
+                <Phone className="mt-0.5 text-navy" size={18} aria-hidden="true" />
+                <span>
+                  <a className="block font-medium text-navy underline-offset-4 hover:underline" href={`tel:${site.phoneTel}`}>
+                    Office {site.phone}
+                  </a>
+                  <a className="mt-1 block font-medium text-navy underline-offset-4 hover:underline" href={`tel:${site.principalPhoneTel}`}>
+                    Principal {site.principalPhone}
+                  </a>
+                  <a
+                    className="mt-2 inline-flex min-h-11 items-center font-semibold text-navy underline-offset-4 hover:underline"
+                    href={`https://wa.me/${site.whatsapp}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    WhatsApp the office
+                  </a>
+                </span>
               </li>
             </ul>
             <a
@@ -46,7 +61,8 @@ export default function ContactPage() {
           </CreamCard>
           <CreamCard>
             <h2 className="text-lg font-semibold text-navy-deep">{contactPage.hoursTitle}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink/75">{contactPage.hoursNote}</p>
+            <p className="mt-3 text-base leading-relaxed text-navy-deep/85">{contactPage.hoursNote}</p>
+            <p className="mt-2 text-base leading-relaxed text-navy-deep/85">{contactPage.schoolDaysNote}</p>
           </CreamCard>
           <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-navy-deep to-navy-soft p-6 text-white shadow-lg">
             <div
@@ -60,9 +76,23 @@ export default function ContactPage() {
             />
             <div className="relative">
               <h2 className="text-lg font-semibold">{contactPage.mapTitle}</h2>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-cream/85">{contactPage.mapNote}</p>
-              <p className="mt-4 text-sm text-gold">{site.address.line}</p>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-cream/85">{site.address.line}</p>
+              <a
+                href={site.address.mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex min-h-11 items-center rounded-full bg-sun px-4 py-2 text-sm font-semibold text-navy-deep"
+              >
+                Open in Google Maps
+              </a>
             </div>
+            <iframe
+              title="Map of An-Noor International School"
+              src={site.address.mapEmbed}
+              className="mt-4 h-56 w-full rounded-2xl border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
         </div>
         <CreamCard>

@@ -56,7 +56,7 @@ export function MomentsCarousel() {
         <p className="mt-3 text-sm leading-relaxed text-ink/75">
           These are the school’s own gatherings — colleagues, sports day, Pitha Utshob — not library pictures.
         </p>
-        <div className="mt-5 flex items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => go(index - 1)}
