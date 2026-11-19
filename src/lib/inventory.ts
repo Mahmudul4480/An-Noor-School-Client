@@ -1,11 +1,16 @@
-import { collection, doc, getDocs, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
+import { assertDayAcceptsMoney } from './dayClose';
 import { createExpense } from './expenses';
-import { recordCollection } from './ledger';
-import { omitUndefined, toIsoString } from './utils';
+import { buildPendingIncomeEntry, queueIncomeWrite, saveIncomeEntry } from './income';
+import { queueLedgerEntry, saveLedgerEntry } from './ledger';
+import { creditInventorySaleNow, openingStockPlan, planInventorySale } from './inventoryQuantity';
+import { dhakaToday, omitUndefined, toIsoString } from './utils';
 import type {
+  IncomeEntry,
+  LedgerEntry,
   InventoryBuyerType,
   InventoryFifoSlice,
   InventoryItem,
@@ -15,9 +20,9 @@ import type {
   InventoryStockAlert,
 } from '../types';
 
-const ITEMS_COLLECTION = 'inventoryItems';
-const MOVEMENTS_COLLECTION = 'inventoryMovements';
-const LOTS_COLLECTION = 'inventoryLots';
+export const ITEMS_COLLECTION = 'inventoryItems';
+export const MOVEMENTS_COLLECTION = 'inventoryMovements';
+export const LOTS_COLLECTION = 'inventoryLots';
 const LOCAL_ITEMS_KEY = 'an-noor-inventory-items';
 const LOCAL_MOVEMENTS_KEY = 'an-noor-inventory-movements';
 const LOCAL_LOTS_KEY = 'an-noor-inventory-lots';
@@ -37,7 +42,7 @@ export const INVENTORY_CLASS_OPTIONS = [
   'Class 6',
 ];
 
-export const INVENTORY_UNIT_OPTIONS = ['pcs', 'copy', 'set', 'packet', 'ream', 'box', 'dozen'];
+export { INVENTORY_UNIT_OPTIONS } from './inventoryQuantity';
 
 export const INVENTORY_PURPOSE_OPTIONS: { id: InventoryPurpose; label: string; hint: string }[] = [
   { id: 'student', label: 'For Student', hint: 'Shop / sale to students' },
@@ -253,6 +258,27 @@ async function persistLot(lot: InventoryLot): Promise<void> {
   await setDoc(doc(db, LOTS_COLLECTION, lot.id), omitUndefined({ ...lot }), { merge: true });
 }
 
+/** New item plus its opening lot and stock-in, or the item alone when opening qty is 0. */
+async function commitNewItem(item: InventoryItem, lot?: InventoryLot, movement?: InventoryMovement): Promise<void> {
+  if (isDemoLoginEnabled || !lot || !movement) {
+    await persistItem(item);
+    if (lot) await persistLot(lot);
+    if (movement) await persistMovement(movement);
+    return;
+  }
+
+  await waitForAuthUser();
+  const batch = writeBatch(db);
+  batch.set(doc(db, ITEMS_COLLECTION, item.id), omitUndefined({ ...item }), { merge: true });
+  batch.set(doc(db, LOTS_COLLECTION, lot.id), omitUndefined({ ...lot }), { merge: true });
+  batch.set(
+    doc(db, MOVEMENTS_COLLECTION, movement.id),
+    omitUndefined({ ...movement, createdAt: serverTimestamp() }),
+    { merge: true },
+  );
+  await batch.commit();
+}
+
 export async function fetchInventoryLots(itemId?: string): Promise<InventoryLot[]> {
   let lots: InventoryLot[];
 
@@ -382,7 +408,7 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     throw new Error('এই store ও class-এ একই নামের item আগেই আছে।');
   }
 
-  const openingQty = Math.max(0, Math.floor(input.openingQty ?? 0));
+  const plan = openingStockPlan(input.openingQty ?? 0, input.unit);
   const item = normalizeItem({
     id: generateId('itm'),
     name,
@@ -391,7 +417,7 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     unit: input.unit,
     costRate: input.costRate,
     studentPrice: input.purpose === 'school' ? input.costRate : input.studentPrice,
-    purchasedQty: openingQty,
+    purchasedQty: plan.purchasedQty,
     soldQty: 0,
     lowStockThreshold: input.lowStockThreshold,
     note: input.note?.trim() || undefined,
@@ -400,36 +426,34 @@ export async function saveInventoryItem(input: SaveInventoryItemInput): Promise<
     createdAt: new Date().toISOString(),
   });
 
-  await persistItem(item);
-
-  if (openingQty > 0) {
-    const openingDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    await persistLot(
-      buildLot({
-        item,
-        quantity: openingQty,
-        unitCost: item.costRate,
-        receivedDate: openingDate,
-        note: 'Opening stock',
-        createdBy: item.createdBy,
-      }),
-    );
-    await persistMovement(
-      normalizeMovement({
-        id: generateId('mov'),
-        itemId: item.id,
-        itemName: item.name,
-        type: 'adjustment',
-        quantity: openingQty,
-        unitPrice: item.costRate,
-        totalAmount: openingQty * item.costRate,
-        date: openingDate,
-        note: 'Opening stock (FIFO lot)',
-        createdBy: item.createdBy,
-        createdAt: new Date().toISOString(),
-      }),
-    );
+  if (!plan.movement) {
+    await persistItem(item);
+    return item;
   }
+
+  const openingDate = dhakaToday();
+  const lot = buildLot({
+    item,
+    quantity: plan.movement.quantity,
+    unitCost: item.costRate,
+    receivedDate: openingDate,
+    note: plan.movement.note,
+    createdBy: item.createdBy,
+  });
+  const movement = normalizeMovement({
+    id: generateId('mov'),
+    itemId: item.id,
+    itemName: item.name,
+    type: plan.movement.type,
+    quantity: plan.movement.quantity,
+    unitPrice: item.costRate,
+    totalAmount: plan.movement.quantity * item.costRate,
+    date: openingDate,
+    note: plan.movement.note,
+    createdBy: item.createdBy,
+    createdAt: new Date().toISOString(),
+  });
+  await commitNewItem(item, lot, movement);
 
   return item;
 }
@@ -527,54 +551,133 @@ export async function restockInventoryItem(input: RestockInput): Promise<Invento
 export interface InventorySaleInput {
   itemId: string;
   quantity: number;
-  buyerType: InventoryBuyerType;
-  buyerName: string;
-  studentId?: string;
-  className?: string;
+  /** What the buyer pays per unit. Defaults are chosen in the form; this is the edited price. */
+  unitPrice: number;
+  buyerName?: string;
   accountId: string;
+  paymentMethod?: 'cash' | 'bank' | 'mobile';
+  reference?: string;
   date?: string;
   note?: string;
   createdBy?: string;
+  /** Counter sale credits the account at once. Admission stock stays pending with the admission. */
+  postImmediately?: boolean;
 }
 
 export interface InventorySaleResult {
   item: InventoryItem;
   movement: InventoryMovement;
+  /** Pending income row. Null when the sale total is 0. */
+  income: IncomeEntry | null;
+}
+
+/** Apply FIFO in memory so the stock drop and the income row can be written together. */
+export function consumeLotsInMemory(
+  item: InventoryItem,
+  lots: InventoryLot[],
+  quantity: number,
+): { slices: InventoryFifoSlice[]; lots: InventoryLot[] } {
+  let working = lots.filter((lot) => lot.itemId === item.id);
+  const onHand = remainingStock(item);
+  const lotRemaining = working.reduce((sum, lot) => sum + lot.remainingQty, 0);
+  if (onHand > 0 && lotRemaining === 0) {
+    working = [
+      buildLot({
+        item,
+        quantity: onHand,
+        unitCost: item.costRate,
+        receivedDate: (item.createdAt || dhakaToday()).slice(0, 10),
+        note: 'Opening / legacy stock',
+        createdBy: item.createdBy,
+      }),
+    ];
+  }
+
+  const slices = previewFifoConsumption(working, quantity);
+  const taken = slices.reduce((sum, slice) => sum + slice.quantity, 0);
+  if (taken < quantity) {
+    throw new Error(`FIFO stock-এ মাত্র ${taken} ${item.unit} আছে।`);
+  }
+
+  const changed = working.flatMap((lot) => {
+    const slice = slices.find((entry) => entry.lotId === lot.id);
+    if (!slice) return [];
+    return [{ ...lot, remainingQty: Math.max(0, lot.remainingQty - slice.quantity) }];
+  });
+  return { slices, lots: changed };
+}
+
+async function commitSale(input: {
+  item: InventoryItem;
+  lots: InventoryLot[];
+  movement: InventoryMovement;
+  income: IncomeEntry | null;
+  ledger: LedgerEntry | null;
+}): Promise<void> {
+  if (isDemoLoginEnabled) {
+    await persistItem(input.item);
+    for (const lot of input.lots) await persistLot(lot);
+    await persistMovement(input.movement);
+    if (input.income) await saveIncomeEntry(input.income);
+    if (input.ledger) await saveLedgerEntry(input.ledger);
+    return;
+  }
+
+  await waitForAuthUser();
+  const batch = writeBatch(db);
+  batch.set(doc(db, ITEMS_COLLECTION, input.item.id), omitUndefined({ ...input.item }), { merge: true });
+  for (const lot of input.lots) {
+    batch.set(doc(db, LOTS_COLLECTION, lot.id), omitUndefined({ ...lot }), { merge: true });
+  }
+  batch.set(
+    doc(db, MOVEMENTS_COLLECTION, input.movement.id),
+    omitUndefined({ ...input.movement, createdAt: serverTimestamp() }),
+  );
+  if (input.income) queueIncomeWrite(batch, input.income);
+  if (input.ledger) queueLedgerEntry(batch, input.ledger);
+  await batch.commit();
 }
 
 /**
- * Sells stock over the counter. Students pay the student price, staff pay cost.
- * The collected amount is credited to the selected account straight away.
+ * Sells stock. A counter sale credits ইনভেন্টরি বিক্রয় to the chosen account
+ * in the same write as the stock drop. Admission stock passes postImmediately: false
+ * and stays pending with the admission.
  */
 export async function recordInventorySale(input: InventorySaleInput): Promise<InventorySaleResult> {
   const quantity = Math.floor(input.quantity);
-  if (!quantity || quantity <= 0) throw new Error('Valid quantity দিন।');
-  if (!input.buyerName.trim()) throw new Error('Buyer name লিখুন।');
-  if (!input.accountId) throw new Error('Receiving account select করুন।');
+  const unitPrice = Math.round(Number(input.unitPrice) * 100) / 100;
+  if (!quantity || quantity <= 0) throw new Error('বিক্রির পরিমাণ ০-এর বেশি হতে হবে।');
+  if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('বিক্রির দাম ০ বা তার বেশি হতে হবে।');
+  if (!input.accountId) throw new Error('টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন।');
 
   const items = await fetchInventoryItems({ includeArchived: true });
   const item = items.find((entry) => entry.id === input.itemId);
   if (!item) throw new Error('Item not found.');
-  if (itemPurpose(item) === 'school') {
-    throw new Error('For School item বিক্রি হয় না। Issue to school ব্যবহার করুন।');
-  }
+  if (item.archived) throw new Error('আর্কাইভ করা আইটেম বিক্রি করা যাবে না।');
 
   const available = remainingStock(item);
   if (quantity > available) {
-    throw new Error(`Stock-এ মাত্র ${available} ${item.unit} আছে।`);
+    throw new Error(`স্টকে মাত্র ${available} ${item.unit} আছে।`);
   }
 
-  const fifoSlices = await consumeFifoLots(item, quantity);
-  const fifoCost = fifoCostTotal(fifoSlices);
-  const unitPrice =
-    input.buyerType === 'staff'
-      ? quantity > 0
-        ? Math.round((fifoCost / quantity) * 100) / 100
-        : 0
-      : item.studentPrice;
-  const totalAmount = Math.round(quantity * unitPrice * 100) / 100;
-  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const fifoNote = fifoSlices.map((slice) => `${slice.lotDate}×${slice.quantity}@${slice.unitCost}`).join(', ');
+  const date = input.date || dhakaToday();
+  await assertDayAcceptsMoney(date);
+
+  const plan = planInventorySale({
+    name: item.name,
+    unit: item.unit,
+    soldQty: item.soldQty,
+    quantity,
+    unitPrice,
+    buyerName: input.buyerName,
+    note: input.note,
+  });
+  if (plan.income && !input.accountId) throw new Error('টাকা কোন অ্যাকাউন্টে জমা হবে সেটি বেছে নিন।');
+
+  const lots = await fetchInventoryLots(item.id);
+  const consumed = consumeLotsInMemory(item, lots, quantity);
+  const fifoNote = consumed.slices.map((slice) => `${slice.lotDate}×${slice.quantity}@${slice.unitCost}`).join(', ');
+  const createdBy = input.createdBy ?? getCurrentActorLabel('Accounts Department');
 
   const movement = normalizeMovement({
     id: generateId('mov'),
@@ -583,46 +686,93 @@ export async function recordInventorySale(input: InventorySaleInput): Promise<In
     type: 'sale',
     quantity,
     unitPrice,
-    totalAmount,
-    buyerType: input.buyerType,
-    buyerName: input.buyerName.trim(),
-    studentId: input.studentId || undefined,
-    className: input.className || undefined,
-    accountId: input.accountId,
+    totalAmount: plan.total,
+    buyerName: input.buyerName?.trim() || undefined,
+    accountId: input.accountId || undefined,
     date,
-    note: [input.note?.trim(), `FIFO: ${fifoNote}`].filter(Boolean).join(' • ') || undefined,
-    createdBy: input.createdBy ?? getCurrentActorLabel('Accounts Department'),
+    note: [plan.income?.note, fifoNote ? `FIFO: ${fifoNote}` : ''].filter(Boolean).join(' • ') || undefined,
+    createdBy,
     createdAt: new Date().toISOString(),
-    fifoSlices,
+    fifoSlices: consumed.slices,
   });
 
   const updated = normalizeItem({
     ...item,
-    soldQty: item.soldQty + quantity,
+    soldQty: plan.soldQty,
     updatedAt: new Date().toISOString(),
   });
 
+  const drafted = plan.income
+    ? await buildPendingIncomeEntry({
+        date,
+        category: plan.income.category,
+        source: plan.income.source,
+        description: plan.income.description,
+        amount: plan.income.amount,
+        accountId: input.accountId,
+        paymentMethod: input.paymentMethod ?? 'cash',
+        reference: input.reference,
+        note: [plan.income.note, `স্টক বিক্রি ${movement.id}`].filter(Boolean).join(' • ') || undefined,
+        createdBy,
+      })
+    : null;
+  const immediate = drafted != null && input.postImmediately !== false;
+  const income = drafted && immediate
+    ? creditInventorySaleNow(drafted, {
+        itemName: item.name,
+        quantity,
+        unit: item.unit,
+        unitPrice,
+        movementId: movement.id,
+      })
+    : drafted;
+  const ledger: LedgerEntry | null = income && immediate
+    ? {
+        id: generateId('led'),
+        accountId: input.accountId,
+        type: 'credit',
+        amount: income.amount,
+        reference: `Income — ${income.category}: ${income.description}`,
+        relatedType: 'income',
+        relatedId: income.id,
+        date,
+        note: income.note,
+        createdAt: income.createdAt,
+      }
+    : null;
+
+  await commitSale({ item: updated, lots: consumed.lots, movement, income, ledger });
+  return { item: updated, movement, income };
+}
+
+/** Put previously sold pieces back on the shelf (admission cancelled). */
+export async function restoreSoldQuantity(itemId: string, quantity: number, note: string): Promise<void> {
+  const qty = Math.floor(quantity);
+  if (qty <= 0) return;
+  const items = await fetchInventoryItems({ includeArchived: true });
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  const updated = normalizeItem({
+    ...item,
+    soldQty: Math.max(0, item.soldQty - qty),
+    updatedAt: new Date().toISOString(),
+  });
   await persistItem(updated);
-  await persistMovement(movement);
-
-  if (totalAmount > 0) {
-    await recordCollection({
-      accountId: input.accountId,
-      amount: totalAmount,
-      reference: `Store Sale — ${item.name} × ${quantity} (${input.buyerName.trim()})`,
-      relatedId: movement.id,
-      relatedType: 'inventory',
-      date,
-      note:
-        input.buyerType === 'staff'
-          ? `Staff purchase at FIFO cost • ${fifoNote}`
-          : input.studentId
-            ? `Student ID: ${input.studentId}`
-            : `FIFO: ${fifoNote}`,
-    });
-  }
-
-  return { item: updated, movement };
+  await persistMovement(
+    normalizeMovement({
+      id: generateId('mov'),
+      itemId: item.id,
+      itemName: item.name,
+      type: 'adjustment',
+      quantity: qty,
+      unitPrice: item.costRate,
+      totalAmount: 0,
+      date: dhakaToday(),
+      note,
+      createdBy: getCurrentActorLabel('Accounts Department'),
+      createdAt: new Date().toISOString(),
+    }),
+  );
 }
 
 export interface InventoryIssueInput {
@@ -679,7 +829,7 @@ export async function issueInventoryStock(input: InventoryIssueInput): Promise<I
 
   await persistItem(updated);
   await persistMovement(movement);
-  return { item: updated, movement };
+  return { item: updated, movement, income: null };
 }
 
 /** Write off damaged or lost stock without touching the ledger. */

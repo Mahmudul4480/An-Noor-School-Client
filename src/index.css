@@ -83,6 +83,24 @@
   font-family: Amiri, "Noto Naskh Arabic", serif;
 }
 
+.site-shell .font-bismillah {
+  font-family: "Alkalami", Amiri, "Noto Naskh Arabic", serif;
+  font-weight: 400; /* Alkalami has one weight, already heavy */
+  line-height: 1.9;
+}
+
+/* Animated brand ribbon used as a frame: the colours travel along the edge. */
+.site-shell .ribbon-frame {
+  background: linear-gradient(90deg, #2a2c89, #ffc928, #f7931e, #1f8f4a, #5cb8f5, #2a2c89);
+  background-size: 200% 100%;
+  animation: site-ribbon 7s linear infinite;
+}
+
+@keyframes site-ribbon {
+  from { background-position: 0% 0; }
+  to { background-position: 200% 0; }
+}
+
 .site-shell ::selection {
   background: var(--site-sun);
   color: var(--site-navy-deep);
@@ -102,6 +120,20 @@
   image-rendering: auto;
 }
 
+/* A slow highlight that travels across a line of text. */
+.site-shell .text-shine {
+  background: linear-gradient(100deg, var(--site-navy) 0%, var(--site-navy) 40%, var(--site-orange) 50%, var(--site-navy) 60%, var(--site-navy) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: site-shine 5s ease-in-out infinite;
+}
+
+@keyframes site-shine {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
 .site-marquee {
   animation: site-marquee 46s linear infinite;
 }
@@ -120,6 +152,14 @@
   .site-shell *::before,
   .site-shell *::after {
     scroll-behavior: auto !important;
+  }
+  .site-shell .ribbon-frame {
+    animation: none;
+  }
+  .site-shell .text-shine {
+    animation: none;
+    background: none;
+    color: var(--site-navy);
   }
   .site-marquee {
     animation: none;

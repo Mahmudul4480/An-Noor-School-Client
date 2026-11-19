@@ -120,6 +120,10 @@ describe('income / expense / ledger', () => {
     assertSucceeds(setDoc(doc(ctx.accounts, 'incomeEntries/inc-2'), { approvalStatus: 'pending', amount: 1 })));
   it('accounts cannot create approved income', () =>
     assertFails(setDoc(doc(ctx.accounts, 'incomeEntries/inc-3'), { approvalStatus: 'approved', amount: 1 })));
+  it('accounts credits an inventory sale immediately', () =>
+    assertSucceeds(setDoc(doc(ctx.accounts, 'incomeEntries/inc-sale'), { approvalStatus: 'approved', category: 'ইনভেন্টরি বিক্রয়', amount: 120 })));
+  it('accounts cannot mark another category approved', () =>
+    assertFails(setDoc(doc(ctx.accounts, 'incomeEntries/inc-other'), { approvalStatus: 'approved', category: 'Other Income', amount: 1 })));
   it('accounts cannot approve income', () =>
     assertFails(updateDoc(doc(ctx.accounts, 'incomeEntries/inc-1'), { approvalStatus: 'approved' })));
   it('principal approves income', () =>
@@ -420,4 +424,16 @@ describe('guardian attendance projection & merge save', () => {
       Object.keys(recs).forEach((sid) => tx.set(doc(ctx.teacher, 'studentAttendance', `${today}_${sid}`), sa({ studentId: sid })));
     }));
   });
+});
+
+describe('super admin guardian dashboard preview (read-only)', () => {
+  const seedAtt = () => env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'studentAttendance', '2026-11-01_STU-2'), { studentId: 'STU-2', date: '2026-11-01' }));
+  it('master admin reads any student', () => assertSucceeds(getDoc(doc(ctx.admin, 'students/STU-2'))));
+  it('master admin reads that student invoices', () => assertSucceeds(getDocs(query(collection(ctx.admin, 'studentInvoices'), where('studentId', '==', 'STU-2')))));
+  it('master admin reads that student attendance', async () => { await seedAtt(); await assertSucceeds(getDoc(doc(ctx.admin, 'studentAttendance/2026-11-01_STU-2'))); });
+  it('master admin missing student read succeeds (not-found handled in UI)', () => assertSucceeds(getDoc(doc(ctx.admin, 'students/ANS-2026-001'))));
+  it('guardian still cannot read another child', () => assertFails(getDoc(doc(ctx.guardian, 'students/STU-2'))));
+  it('guardian cannot read another child attendance', async () => { await seedAtt(); await assertFails(getDoc(doc(ctx.guardian, 'studentAttendance/2026-11-01_STU-2'))); });
+  it('teacher cannot read full student doc', () => assertFails(getDoc(doc(ctx.teacher, 'students/STU-1'))));
+  it('stranger cannot read student', () => assertFails(getDoc(doc(ctx.stranger, 'students/STU-1'))));
 });

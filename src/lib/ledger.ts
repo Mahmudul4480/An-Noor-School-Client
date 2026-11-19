@@ -7,6 +7,7 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  type WriteBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
@@ -171,6 +172,22 @@ export async function addEntry(input: Omit<LedgerEntry, 'id' | 'createdAt'>): Pr
 
   await addDoc(collection(db, ENTRIES_COLLECTION), omitUndefined({ ...entry, createdAt: serverTimestamp() }));
   return entry;
+}
+
+export const LEDGER_ENTRIES_COLLECTION = ENTRIES_COLLECTION;
+
+export function queueLedgerEntry(batch: WriteBatch, entry: LedgerEntry): void {
+  batch.set(doc(db, ENTRIES_COLLECTION, entry.id), omitUndefined({ ...entry, createdAt: serverTimestamp() }));
+}
+
+export async function saveLedgerEntry(entry: LedgerEntry): Promise<void> {
+  if (isDemoLoginEnabled) {
+    const entries = readLocal<LedgerEntry[]>(LOCAL_ENTRIES_KEY, []);
+    writeLocal(LOCAL_ENTRIES_KEY, [...entries, entry]);
+    return;
+  }
+  await waitForAuthUser();
+  await setDoc(doc(db, ENTRIES_COLLECTION, entry.id), omitUndefined({ ...entry, createdAt: serverTimestamp() }));
 }
 
 export async function recordCollection(params: {

@@ -21,10 +21,10 @@ export function JourneyTimeline() {
       </div>
 
       <ol className="relative mx-auto mt-14 max-w-3xl px-4 sm:px-6">
-        <div className="absolute bottom-2 left-[7px] top-2 w-px bg-navy/15" aria-hidden="true" />
+        <div className="absolute bottom-2 left-[6px] top-2 w-[3px] rounded-full bg-gradient-to-b from-sun via-orange to-leaf" aria-hidden="true" />
         {journey.milestones.map((step, index) => (
           <li key={step.no} className="relative pb-8 pl-10 last:pb-0">
-            <span className="absolute left-0 top-6 h-[15px] w-[15px] rounded-full border-2 border-navy bg-white" aria-hidden="true" />
+            <span className="absolute left-0 top-6 h-[15px] w-[15px] rounded-full border-[3px] border-navy bg-sun shadow-[0_0_0_4px_rgba(255,201,40,0.35)]" aria-hidden="true" />
             <motion.article
               className="site-card p-6 sm:p-7"
               initial={reduce ? false : { opacity: 0, y: 12 }}

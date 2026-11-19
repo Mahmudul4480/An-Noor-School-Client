@@ -14,27 +14,25 @@ export const site = {
   tagline: 'Committed to building a moral foundation',
   taglineBn: 'নৈতিক ভিত্তি গড়ে তুলতে প্রতিশ্রুতিবদ্ধ',
   established: 2023,
-  sessionLabel: 'Admission Open 2026–27',
-  sessionShort: '2026–27',
+  sessionLabel: 'Admission Open 2027',
+  sessionShort: '2027',
   email: 'annoorinternationalschool@gmail.com',
-  /**
-   * TODO: confirm the official phone and WhatsApp before publishing a number.
-   * Leave both empty to show "Call: coming soon" and to send inquiries by email.
-   * The campus photograph shows numbers on the building sign — do not copy them
-   * here until the school confirms which line is current.
-   */
-  phone: '',
-  /** Digits only, country code, no plus. Example: "8801XXXXXXXXX". */
-  whatsapp: '',
+  /** Office line. Shown on tel: links and the WhatsApp inquiry button. */
+  phone: '+880 1841-587780',
+  /** E.164 for tel: links. */
+  phoneTel: '+8801841587780',
+  principalPhone: '+880 1841-587787',
+  principalPhoneTel: '+8801841587787',
+  /** Digits only, country code, no plus. Office WhatsApp. */
+  whatsapp: '8801841587780',
   address: {
     line: 'Near Goni Bakery, Rahamotgonj, Chattogram',
     locality: 'Chattogram',
     country: 'Bangladesh',
-    /**
-     * TODO: confirm the exact campus address and map pin.
-     * "Near Goni Bakery, Rahamotgonj" was supplied as unconfirmed.
-     */
-    confirmed: false,
+    confirmed: true,
+    mapUrl: 'https://maps.app.goo.gl/E6yo8dVKLoGrA6L16',
+    /** Same pin as mapUrl, in a form a page can embed. */
+    mapEmbed: 'https://www.google.com/maps?q=22.3485787,91.8356579&z=16&output=embed',
   },
   facebook: 'https://facebook.com/An.Noor.International.School',
   /**
@@ -50,6 +48,8 @@ export const site = {
   curriculumLine: 'National Curriculum (English Version)',
   curriculumBlend: 'Blended with Islamic, moral and ethical values',
   bismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+  /** Same words without harakat, for the large calligraphic line in the home hero. */
+  bismillahPlain: 'بسم الله الرحمن الرحيم',
   verse: {
     arabic: 'رَبِّ زِدْنِي عِلْمًا',
     translation: 'My Lord, increase me in knowledge.',
@@ -65,6 +65,9 @@ export const site = {
   managingPartner: {
     name: 'Md. Kamruzzaman',
     title: 'Managing Partner',
+    photo: '/site/managing-partner.webp',
+    photoWidth: 900,
+    photoHeight: 1200,
   },
 };
 
@@ -85,7 +88,7 @@ export const seo = {
     path: '/',
     title: 'An-Noor International School · Chattogram',
     description:
-      'An-Noor International School in Chattogram offers English and Arabic based education, Islamic values, and modern academics from Play to Class 6, with a Hifz department. Admission is open for 2026–27.',
+      'An-Noor International School in Chattogram offers English and Arabic based education, Islamic values, and modern academics from Play to Class 7, with a Hifz department. Admission Open 2027.',
   },
   about: {
     path: '/about',
@@ -101,9 +104,9 @@ export const seo = {
   },
   admission: {
     path: '/admission',
-    title: 'Admission 2026–27 · An-Noor International School',
+    title: 'Admission Open 2027 · An-Noor International School',
     description:
-      'Admission is open for session 2026–27 at An-Noor International School, Chattogram. Inquire for Play through Class 6.',
+      'Admission Open 2027 at An-Noor International School, Chattogram. Inquire for Play through Class 7.',
   },
   facilities: {
     path: '/facilities',
@@ -121,7 +124,7 @@ export const seo = {
     path: '/notices',
     title: 'Notices & events · An-Noor International School',
     description:
-      'School notices, events, and the academic calendar for An-Noor International School. Admission is open for 2026–27.',
+      'School notices, events, and the academic calendar for An-Noor International School. Admission Open 2027.',
   },
   gallery: {
     path: '/gallery',
@@ -133,7 +136,7 @@ export const seo = {
     path: '/contact',
     title: 'Contact · An-Noor International School',
     description:
-      'Write to An-Noor International School in Chattogram. Email annoorinternationalschool@gmail.com.',
+      'Contact An-Noor International School in Chattogram. Office +880 1841-587780. Email annoorinternationalschool@gmail.com. Near Goni Bakery, Rahamotgonj.',
   },
 } as const;
 
@@ -148,7 +151,7 @@ export type Stat = {
 
 export const stats: Stat[] = [
   { id: 'estd', label: 'Established', bn: 'প্রতিষ্ঠা', value: 2023, pending: '' },
-  { id: 'classes', label: 'Classes, Play to 6', bn: 'শ্রেণি', value: 9, pending: '' },
+  { id: 'classes', label: 'Classes, Play to 7', bn: 'শ্রেণি', value: 10, pending: '' },
   { id: 'sections', label: 'Named early-years sections', bn: 'শাখা', value: 6, pending: '' },
   {
     id: 'learners',
@@ -198,6 +201,37 @@ export const programs: Program[] = [
     text: 'English is both a subject and the language of the national curriculum here: reading, writing, and clear speech.',
   },
 ];
+
+export type DepartmentNews = {
+  id: string;
+  /** A programme id: 'islamic' | 'hifz' | 'arabic' | 'english'. */
+  department: string;
+  date: string;
+  title: string;
+  body: string;
+  photo?: { src: string; alt: string; width: number; height: number };
+  /** Featured items also show on the home page. */
+  featured?: boolean;
+};
+
+/**
+ * TODO: add real department news supplied by the school.
+ * Never invent a story, a name or a result. A child's photograph or name needs parental consent first.
+ */
+export const departmentNews: DepartmentNews[] = [];
+
+export const departmentsPage = {
+  kicker: 'Department',
+  intro: 'News, achievements and updates from this department are collected on this page.',
+  updatesTitle: 'Department updates',
+  updatesTitleBn: 'বিভাগের খবর',
+  updatesEmpty: 'Updates from this department will appear here when the school publishes them. Nothing is listed until then.',
+  othersTitle: 'Other departments',
+  cardCta: 'Open department',
+  featuredTitle: 'Featured news',
+  featuredTitleBn: 'বিশেষ খবর',
+  featuredEmpty: 'Featured news from the departments will appear here when the school publishes it — an achievement, a milestone, a story worth sharing.',
+};
 
 export type ClassBand = {
   id: string;
@@ -267,6 +301,14 @@ export const classes: ClassBand[] = [
   {
     id: 'c6',
     name: 'Class 6',
+    stage: 'Primary',
+    sections: [],
+    text: 'The same blend continues — national curriculum, English version, with Islamic studies, Arabic, and Hifz.',
+  },
+  {
+    // TODO: confirm the Class 7 description with the school.
+    id: 'c7',
+    name: 'Class 7',
     stage: 'Primary',
     sections: [],
     text: 'The senior class of the school. The same blend — national curriculum, English version, with Islamic studies, Arabic, and Hifz.',
@@ -426,7 +468,7 @@ export const photoPlaceholders: PhotoPlaceholder[] = [
 
 export const home = {
   kicker: 'Chattogram · Estd. 2023',
-  lede: 'An English and Arabic school for children from Play to Class 6, where Islamic character and the national curriculum share the same day — including a Hifz department.',
+  lede: 'An English and Arabic school for children from Play to Class 7, where Islamic character and the national curriculum share the same day — including a Hifz department.',
   primaryCta: 'Admission',
   primaryCtaBn: 'ভর্তি',
   secondaryCta: 'The school',
@@ -437,11 +479,14 @@ export const home = {
     'Islamic studies, Hifz, Arabic, and English are not extras pasted on at the end. They are how An-Noor describes its education, next to the national curriculum in the English version.',
   pathKicker: 'A child’s path',
   pathKickerBn: 'পথ',
-  pathTitle: 'From the first classroom to Class 6',
+  pathTitle: 'From the first classroom to Class 7',
   pathText:
-    'Three early-years classes, each with two named sections, then Class 1 through Class 6. The names below are the school’s own.',
+    'Three early-years classes, each with two named sections, then Class 1 through Class 7. The names below are the school’s own.',
   // TODO: publish a per-class subject list and age guide when the school provides them.
   pathFootnote: 'A subject list and age guide for each class will be added when the school provides them.',
+  pathGalleryTitle: 'School life in pictures',
+  pathGalleryTitleBn: 'ছবিতে স্কুল',
+  pathGalleryCta: 'Open the gallery',
   valuesKicker: 'What we hold',
   valuesTitle: 'The character the crest is for',
   momentsKicker: 'Moments',
@@ -452,10 +497,10 @@ export const home = {
   // TODO: replace with Fatema Sultana Moona's own message. Do not present drafted sentences as her quotation.
   principalNote:
     'A message in the Principal’s own words will be published here. The portrait is hers; the sentences should be too.',
-  admissionKicker: 'Session 2026–27',
+  admissionKicker: 'Admission Open 2027',
   admissionTitle: 'Admission is open',
   admissionText:
-    'Families may inquire now for Play through Class 6. The form below opens an email to the school — or WhatsApp, once a number is confirmed. It is not stored on this website.',
+    'Families may inquire now for Play through Class 7. The form below opens WhatsApp to the office. It is not stored on this website.',
 };
 
 /**
@@ -496,8 +541,8 @@ export const about = {
   visionNote: 'The school’s own vision statement will be placed here once it is confirmed.',
   leadershipTitle: 'Leadership',
   leadershipText: 'Two names the school has asked us to carry. Biographies will lengthen when they are written by the people themselves.',
-  // TODO: add Md. Kamruzzaman's photograph and a short biography when the school provides them.
-  partnerNote: 'A photograph and a short biography will be added when the school provides them.',
+  // TODO: add Md. Kamruzzaman's short biography when the school provides it.
+  partnerNote: 'A short biography will be added when the school provides it.',
 };
 
 export type JourneyMilestone = {
@@ -554,9 +599,9 @@ export const journey = {
     },
     {
       no: '05',
-      year: '2026–27',
+      year: '2027',
       title: 'Admission is open',
-      text: 'Families can inquire now for Play through Class 6. The next chapter is the one they will write with the school.',
+      text: 'Families can inquire now for Play through Class 7. The next chapter is the one they will write with the school.',
       placeholder: false,
     },
   ] as JourneyMilestone[],
@@ -564,21 +609,21 @@ export const journey = {
 
 export const academics = {
   kicker: 'Academics',
-  title: 'Play to Class 6, in English and Arabic',
-  titleBn: 'প্লে থেকে ষষ্ঠ শ্রেণি',
+  title: 'Play to Class 7, in English and Arabic',
+  titleBn: 'প্লে থেকে সপ্তম শ্রেণি',
   lede: 'Nine classes. Six named sections in the early years. Islamic studies, Hifz, Arabic, and English running with the national curriculum.',
   bannerTitle: 'As the school writes it on the building',
   classesTitle: 'Classes and sections',
-  classesText: 'Play, Nursery, and KG each have two sections. Class 1 to Class 6 are listed as single classes.',
+  classesText: 'Play, Nursery, and KG each have two sections. Class 1 to Class 7 are listed as single classes.',
   // TODO: add the weekly subject grid and any Hifz timetable the school wants families to see.
   syllabusNote: 'A weekly subject grid, and the shape of the Hifz timetable, will be published when the school provides them.',
 };
 
 export const admission = {
   kicker: 'Admission',
-  title: 'Session 2026–27 is open',
+  title: 'Admission Open 2027',
   titleBn: 'ভর্তি চলছে',
-  lede: 'Inquire for a place from Play through Class 6. The office confirms the next step — a visit, a form, the papers they actually need.',
+  lede: 'Inquire for a place from Play through Class 7. The office confirms the next step — a visit, a form, the papers they actually need.',
   // TODO: replace these steps with the office's exact admission procedure.
   stepsTitle: 'How to begin',
   stepsNote: 'An outline so families know where to start. The office’s exact procedure replaces this when they confirm it.',
@@ -601,7 +646,7 @@ export const admission = {
   ],
   feesTitle: 'Fees',
   feesHidden:
-    'The fee schedule will be published on this page after the school confirms the figures for session 2026–27. Until then, ask the office — the inquiry form reaches them directly.',
+    'The fee schedule will be published on this page after the school confirms the figures. Until then, ask the office — the inquiry form reaches them directly.',
   feesVisibleNote: 'Figures published at the school’s confirmation. Ask the office before you pay anyone.',
   formTitle: 'Send an inquiry',
   formText: 'Nothing is saved on this website. Submitting opens WhatsApp if a school number is set, otherwise your email app, with the message already written.',
@@ -678,13 +723,13 @@ export const noticesPage = {
   kicker: 'Notices & events',
   title: 'What families need to know',
   titleBn: 'নোটিশ ও ইভেন্ট',
-  lede: 'Admission for 2026–27 is the notice we can publish today. Further notices, events, and calendar dates wait on the school.',
+  lede: 'Admission Open 2027 is the notice we can publish today. Further notices, events, and calendar dates wait on the school.',
   notices: [
     {
       id: 'admission-2026',
-      title: 'Admission open for session 2026–27',
+      title: 'Admission Open 2027',
       date: 'Current',
-      body: 'Families may inquire for Play through Class 6. Use the inquiry form, or write to the school email. The office confirms documents and, once approved for the website, fees.',
+      body: 'Families may inquire for Play through Class 7. Use the inquiry form, or write to the school email. The office confirms documents and, once approved for the website, fees.',
       href: '/admission',
     },
   ] as Notice[],
@@ -693,7 +738,7 @@ export const noticesPage = {
   eventsNote: 'Dated events will appear here when the school publishes them. Nothing is listed until then.',
   // TODO: replace this shell with the school's academic calendar — terms, exams, holidays.
   calendarTitle: 'Academic calendar',
-  calendarNote: 'Term dates, exams, and holidays for session 2026–27 will be published here by the school. The months below are only a frame.',
+  calendarNote: 'Term dates, exams, and holidays for 2027 will be published here by the school. The months below are only a frame.',
   months: [
     'January',
     'February',
@@ -738,12 +783,12 @@ export const contactPage = {
   kicker: 'Contact',
   title: 'Write to the school',
   titleBn: 'যোগাযোগ',
-  lede: 'Email reaches the office today. The phone line and the map pin will be added when the school confirms them.',
-  // TODO: confirm office hours and publish them. Do not guess a timetable.
+  lede: 'Call the office, write by email, or open the map. The school is near Goni Bakery, Rahamotgonj, Chattogram.',
   hoursTitle: 'Office hours',
-  hoursNote: 'Office hours will be listed here once the school confirms them.',
+  hoursNote: 'The office is open 8:00 am–2:30 pm, Saturday–Thursday.',
+  schoolDaysNote: 'School days are Sunday–Thursday.',
   mapTitle: 'Map',
-  mapNote: 'An embedded map will appear here when the campus pin is confirmed. Until then, please do not navigate from a guess.',
+  mapNote: 'The pin opens the campus on Google Maps.',
   phoneLabel: 'Call: coming soon',
   phoneNote: 'The office number will be shown here after the school confirms it.',
 };

@@ -1,3 +1,4 @@
+import { dayEntryBlockMessage } from './dayLock';
 import { omitUndefined } from './utils';
 import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { toIsoString } from './utils';
@@ -160,6 +161,12 @@ export async function fetchPendingDayCloses(): Promise<DayCloseRecord[]> {
 /** A day is locked only after the Principal approves its close. */
 export async function isDayClosed(date: string): Promise<boolean> {
   return dayCloseStatus(await getDayCloseRecord(date)) === 'approved';
+}
+
+/** Refuse new income (including an inventory sale) on a locked or pending-close day. */
+export async function assertDayAcceptsMoney(date: string): Promise<void> {
+  const message = dayEntryBlockMessage(dayCloseStatus(await getDayCloseRecord(date)));
+  if (message) throw new Error(message);
 }
 
 async function writeRecord(record: DayCloseRecord, isNew: boolean) {

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
 import { Art, type ArtName } from '../art';
 import { HoverCard, type SiteTone } from './kit';
+import { SplitText } from './motion';
 
 export function PageHero({
   kicker,
@@ -70,7 +71,7 @@ export function SectionHeading({
         )}
       </p>
       <h2 className={`mt-2 text-3xl font-semibold leading-tight sm:text-4xl ${light ? 'text-white' : 'text-navy-deep'}`}>
-        {title}
+        <SplitText text={title} />
       </h2>
       {text && (
         <p className={`mt-3 text-base leading-relaxed ${light ? 'text-white/75' : 'text-ink/80'}`}>{text}</p>

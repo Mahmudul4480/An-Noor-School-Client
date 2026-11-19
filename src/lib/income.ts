@@ -1,13 +1,15 @@
+import { admissionFeeAccountIds } from './admissionLines';
 import { admissionPaidAmount } from './admissions';
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, type WriteBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCurrentActorLabel } from './actor';
 import { isDemoLoginEnabled, waitForAuthUser } from './auth';
+import { assertDayAcceptsMoney } from './dayClose';
 import { recordCollection } from './ledger';
-import { omitUndefined, toIsoString } from './utils';
+import { dhakaToday, omitUndefined, toIsoString } from './utils';
 import type { Admission, IncomeEntry } from '../types';
 
-const INCOME_COLLECTION = 'incomeEntries';
+export const INCOME_COLLECTION = 'incomeEntries';
 const LOCAL_INCOME_KEY = 'an-noor-income-entries';
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -94,15 +96,17 @@ export interface CreateIncomeInput {
   createdBy?: string;
 }
 
-export async function createIncomeEntry(input: CreateIncomeInput): Promise<IncomeEntry> {
+/** Validates and builds a pending income row. Does not write it. */
+export async function buildPendingIncomeEntry(input: CreateIncomeInput): Promise<IncomeEntry> {
   if (!input.category) throw new Error('Income category select করুন।');
   if (!input.source.trim()) throw new Error('Received from কার কাছ থেকে এসেছে লিখুন।');
   if (!input.description.trim()) throw new Error('Description লিখুন।');
   if (!input.amount || input.amount <= 0) throw new Error('Valid amount দিন।');
   if (!input.accountId) throw new Error('Receiving account select করুন।');
 
-  const date = input.date || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const entry: IncomeEntry = normalizeIncome({
+  const date = input.date || dhakaToday();
+  await assertDayAcceptsMoney(date);
+  return normalizeIncome({
     id: generateId('inc'),
     receiptNumber: incomeReceiptNumber(date),
     date,
@@ -118,9 +122,25 @@ export async function createIncomeEntry(input: CreateIncomeInput): Promise<Incom
     createdAt: new Date().toISOString(),
     approvalStatus: 'pending',
   });
+}
 
+export async function createIncomeEntry(input: CreateIncomeInput): Promise<IncomeEntry> {
+  const entry = await buildPendingIncomeEntry(input);
   await persistIncome(entry);
   return entry;
+}
+
+/** Same income document the Accounts form writes, so a sale can share one batch with stock. */
+export function incomeCreatePayload(entry: IncomeEntry): Record<string, unknown> {
+  return omitUndefined({ ...entry, createdAt: serverTimestamp() }) as Record<string, unknown>;
+}
+
+export function queueIncomeWrite(batch: WriteBatch, entry: IncomeEntry): void {
+  batch.set(doc(db, INCOME_COLLECTION, entry.id), incomeCreatePayload(entry));
+}
+
+export async function saveIncomeEntry(entry: IncomeEntry): Promise<void> {
+  await persistIncome(entry);
 }
 
 /** Principal decision. On approval the amount is credited to the selected account. */
@@ -200,6 +220,7 @@ export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
     .map((a) => {
       const date = (a.createdAt || new Date().toISOString()).slice(0, 10);
       const principal = a.approvals?.find((s) => s.department === 'principal');
+      const feeAccounts = admissionFeeAccountIds(a);
       return {
         id: `admission:${a.id}`,
         receiptNumber: a.receiptNumber || a.formSerial,
@@ -208,7 +229,7 @@ export function admissionIncomeRows(admissions: Admission[]): IncomeEntry[] {
         source: `${a.studentName} — ${a.guardianName}`,
         description: `New admission ${a.classApplied}${a.section ? ` (${a.section})` : ''} · ${a.formSerial}`,
         amount: admissionPaidAmount(a),
-        accountId: a.receivedInAccountId || '',
+        accountId: feeAccounts.length === 1 ? feeAccounts[0] : (a.receivedInAccountId || ''),
         paymentMethod: 'cash',
         createdBy: 'Admissions',
         createdAt: a.createdAt,
