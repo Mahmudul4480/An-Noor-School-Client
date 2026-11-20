@@ -2,6 +2,14 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Send } from 'lucide-react';
 import { admission, classChoices, inquiryUrl, site, type InquiryInput } from '../content';
 
+export function WhatsAppMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.44 1.34 4.94L2 22l5.39-1.41a10 10 0 0 0 4.65 1.18h.01c5.46 0 9.89-4.4 9.89-9.83C21.94 6.4 17.5 2 12.04 2Zm5.76 14.16c-.24.68-1.4 1.3-1.94 1.38-.5.08-1.12.11-1.81-.11-.41-.14-.95-.31-1.64-.61-2.88-1.24-4.76-4.14-4.9-4.33-.14-.19-1.16-1.54-1.16-2.94 0-1.4.73-2.09 1-2.37.24-.28.64-.41.85-.41h.61c.2 0 .46-.04.72.55.27.61.91 2.1.99 2.25.08.15.13.33.03.53-.1.2-.15.33-.3.51-.15.18-.31.4-.45.54-.14.14-.29.29-.12.57.16.28.73 1.2 1.57 1.95 1.08.96 1.99 1.26 2.27 1.4.28.14.44.12.61-.07.16-.19.7-.81.89-1.09.19-.28.38-.23.64-.14.26.09 1.64.77 1.92.91.28.14.47.21.54.33.07.12.07.68-.17 1.36Z" />
+    </svg>
+  );
+}
+
 const empty: InquiryInput = {
   guardian: '',
   child: '',
@@ -109,9 +117,13 @@ export function InquiryForm({ id = 'inquiry' }: { id?: string }) {
       )}
       <button
         type="submit"
-        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-navy px-5 py-3 text-base font-semibold text-white transition hover:bg-navy-soft"
+        className={
+          site.whatsapp
+            ? 'inline-flex min-h-12 items-center gap-2 rounded-full bg-[#075E54] px-6 py-3 text-base font-bold text-white shadow-[0_10px_24px_rgba(7,94,84,0.35)] transition hover:bg-[#064E48]'
+            : 'inline-flex min-h-11 items-center gap-2 rounded-full bg-navy px-5 py-3 text-base font-semibold text-white transition hover:bg-navy-soft'
+        }
       >
-        <Send size={16} aria-hidden="true" />
+        {site.whatsapp ? <WhatsAppMark size={18} /> : <Send size={16} aria-hidden="true" />}
         Send by {mode}
       </button>
       {status && <p className="text-sm leading-relaxed text-navy">{status}</p>}

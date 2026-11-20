@@ -1,10 +1,38 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Megaphone } from 'lucide-react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import type { Stat } from '../content';
 import { Art, type ArtName } from '../art';
 import { HoverCard, type SiteTone } from './kit';
 import { SplitText } from './motion';
+
+const toneBar: Record<SiteTone, string> = {
+  navy: 'bg-navy',
+  leaf: 'bg-leaf',
+  orange: 'bg-orange',
+  sky: 'bg-sky',
+  sun: 'bg-sun',
+  coral: 'bg-coral',
+};
+
+const bandWash: Record<SiteTone, string> = {
+  navy: 'bg-gradient-to-br from-[#E7E9FF] via-white to-[#F7F8FF]',
+  leaf: 'bg-gradient-to-br from-[#E5F6EC] via-white to-[#FFF8E4]',
+  orange: 'bg-gradient-to-br from-[#FFF1E2] via-white to-[#FFF8DC]',
+  sky: 'bg-gradient-to-br from-[#E7F5FE] via-white to-[#F7F8FF]',
+  sun: 'bg-gradient-to-br from-[#FFF6D4] via-white to-white',
+  coral: 'bg-gradient-to-br from-[#FFE8E4] via-white to-[#FFF8F6]',
+};
+
+const bandEdge: Record<SiteTone, string> = {
+  navy: 'bg-gradient-to-r from-navy via-sky to-sun',
+  leaf: 'bg-gradient-to-r from-leaf via-sun to-navy',
+  orange: 'bg-gradient-to-r from-orange via-sun to-navy',
+  sky: 'bg-gradient-to-r from-sky via-navy to-sun',
+  sun: 'bg-gradient-to-r from-sun via-orange to-navy',
+  coral: 'bg-gradient-to-r from-coral via-orange to-navy',
+};
 
 export function PageHero({
   kicker,
@@ -13,6 +41,8 @@ export function PageHero({
   lede,
   tone = 'navy',
   art = 'star',
+  band = false,
+  ribbon = false,
 }: {
   kicker: string;
   title: string;
@@ -20,28 +50,67 @@ export function PageHero({
   lede: string;
   tone?: SiteTone;
   art?: ArtName;
+  /** Soft branded wash, icon badge, and a coloured kicker. Opt-in so other pages stay as they are. */
+  band?: boolean;
+  /** Amber gradient banner for the title and Bangla line. Implies `band`. */
+  ribbon?: boolean;
 }) {
-  const accent = {
-    navy: 'bg-navy',
-    leaf: 'bg-leaf',
-    orange: 'bg-orange',
-    sky: 'bg-sky',
-    sun: 'bg-sun',
-    coral: 'bg-coral',
-  }[tone];
+  if (!band && !ribbon) {
+    return (
+      <section className="border-b border-navy/10 bg-white">
+        <div className={`h-1 ${toneBar[tone]}`} />
+        <div className="relative mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-20">
+          <p className="text-sm font-semibold text-navy">{kicker}</p>
+          <h1 className="mt-3 max-w-3xl text-4xl text-navy-deep sm:text-5xl">{title}</h1>
+          {titleBn && (
+            <p lang="bn" className="font-bn mt-2 text-lg text-navy">
+              {titleBn}
+            </p>
+          )}
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-navy-deep/85 sm:text-lg">{lede}</p>
+          <Art name={art} className="absolute right-8 top-16 hidden h-12 w-12 opacity-30 lg:inline-flex" />
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="border-b border-navy/10 bg-white">
-      <div className={`h-1 ${accent}`} />
-      <div className="relative mx-auto max-w-[1200px] px-4 py-16 sm:px-6 sm:py-20">
-        <p className="text-sm font-semibold text-navy">{kicker}</p>
-        <h1 className="mt-3 max-w-3xl text-4xl text-navy-deep sm:text-5xl">{title}</h1>
-        {titleBn && (
-          <p lang="bn" className="font-bn mt-2 text-lg text-navy">
-            {titleBn}
-          </p>
+    <section className={`relative overflow-hidden border-b border-navy/10 ${bandWash[tone]}`}>
+      <div className={`h-1.5 ${bandEdge[tone]}`} />
+      <div className="relative mx-auto max-w-[1200px] px-4 py-12 sm:px-6 sm:py-16">
+        <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-[0_8px_20px_rgba(42,44,137,0.12)]">
+          <Art name={art} className="h-9 w-9" />
+        </span>
+        <p className="mt-4 inline-flex rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-navy shadow-sm">
+          {kicker}
+        </p>
+        {ribbon ? (
+          <div className="mt-5 rounded-[28px] bg-gradient-to-r from-navy via-sun to-orange p-[3px] shadow-[0_16px_36px_rgba(247,147,30,0.28)]">
+            <div className="flex items-start gap-4 rounded-[25px] bg-gradient-to-br from-[#FFE9A8] via-[#FFC928] to-[#FFB347] px-4 py-5 sm:px-7 sm:py-6">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-navy text-sun shadow-[0_8px_16px_rgba(20,21,63,0.25)]">
+                <Megaphone size={22} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-3xl text-navy-deep sm:text-5xl">{title}</h1>
+                {titleBn && (
+                  <p lang="bn" className="font-bn mt-2 text-2xl font-bold leading-snug text-navy-deep sm:text-3xl">
+                    {titleBn}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="mt-4 max-w-3xl text-4xl text-navy-deep sm:text-5xl">{title}</h1>
+            {titleBn && (
+              <p lang="bn" className="font-bn mt-3 inline-flex max-w-full rounded-full bg-white/90 px-3 py-1 text-lg font-semibold text-navy shadow-sm">
+                {titleBn}
+              </p>
+            )}
+          </>
         )}
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-navy-deep/85 sm:text-lg">{lede}</p>
-        <Art name={art} className="absolute right-8 top-16 hidden h-12 w-12 opacity-30 lg:inline-flex" />
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-navy-deep/85 sm:text-lg">{lede}</p>
       </div>
     </section>
   );
