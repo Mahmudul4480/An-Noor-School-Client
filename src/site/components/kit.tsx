@@ -209,6 +209,39 @@ export function BlobFrame({ children, className = '' }: { children: ReactNode; c
   );
 }
 
+/** Tinted icon tile used on coloured cards. The caller picks a palette class with passing contrast. */
+export function IconBadge({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-[0_6px_14px_rgba(42,44,137,0.14)] ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Soft gradient card with a coloured top edge and the shared hover lift. */
+export function AccentCard({
+  children,
+  className = '',
+  barClass,
+  washClass,
+}: {
+  children: ReactNode;
+  className?: string;
+  barClass: string;
+  washClass: string;
+}) {
+  return (
+    <HoverCard
+      className={`flex h-full flex-col overflow-hidden rounded-[24px] border border-navy/10 bg-gradient-to-br to-white shadow-[0_12px_28px_rgba(42,44,137,0.10)] ${washClass} ${className}`}
+    >
+      <div className={`h-1.5 shrink-0 ${barClass}`} />
+      <div className="flex h-full min-w-0 flex-col p-6">{children}</div>
+    </HoverCard>
+  );
+}
+
 export function SoftCard({
   children,
   className = '',
