@@ -100,7 +100,7 @@ export const seo = {
     path: '/academics',
     title: 'Academics · An-Noor International School',
     description:
-      'Play, Nursery, KG, and Class 1 to 6. Islamic studies, Hifz, Arabic, and English on a national curriculum (English version).',
+      'Play, Nursery, KG, and Class 1 to 7. Islamic studies, Hifz, Arabic, and English on a national curriculum (English version).',
   },
   admission: {
     path: '/admission',
@@ -112,7 +112,7 @@ export const seo = {
     path: '/facilities',
     title: 'Facilities · An-Noor International School',
     description:
-      'The An-Noor campus in Rahamotgonj, Chattogram — the school building, classrooms, and outdoor ground.',
+      'Classrooms, the early years room, the multipurpose hall, and the seminar hall at An-Noor International School in Rahamotgonj, Chattogram.',
   },
   teachers: {
     path: '/teachers',
@@ -130,7 +130,7 @@ export const seo = {
     path: '/gallery',
     title: 'Gallery · An-Noor International School',
     description:
-      'Photographs of An-Noor International School — the campus, colleagues, sports day, and school celebrations.',
+      'Photographs from An-Noor International School — tree planting, a vegetables display, science fair and prize giving, sports, meetings, teacher training, and classroom life.',
   },
   contact: {
     path: '/contact',
@@ -216,7 +216,8 @@ export type DepartmentNews = {
 
 /**
  * TODO: add real department news supplied by the school.
- * Never invent a story, a name or a result. A child's photograph or name needs parental consent first.
+ * Never invent a story, a name or a result.
+ * The owner gave consent on 20 Nov 2026 to publish the school photographs of children on this site.
  */
 export const departmentNews: DepartmentNews[] = [];
 
@@ -339,8 +340,7 @@ export type Photo = {
 };
 
 /**
- * TODO: parental consent is required before publishing any new photograph of a child.
- * The pictures already on this site stay; do not add further images of children until the school confirms consent.
+ * The owner gave consent on 20 Nov 2026 to publish these photographs of children.
  */
 export const photos = {
   hero: {
@@ -402,6 +402,52 @@ export const photos = {
   },
 };
 
+export type HeroSlide = {
+  id: string;
+  src: string;
+  srcSet?: string;
+  alt: string;
+  width: number;
+  height: number;
+  objectPosition: string;
+  /** Short name for the slide controls. */
+  label: string;
+};
+
+/** First slide is the clean full-facade building shot. The others load after the page. */
+export const heroSlides: HeroSlide[] = [
+  {
+    id: 'building',
+    src: photos.hero.src,
+    srcSet: '/site/hero-800.webp 960w, /site/hero.webp 1920w',
+    alt: photos.hero.alt,
+    width: photos.hero.width,
+    height: photos.hero.height,
+    objectPosition: 'center center',
+    label: 'School building',
+  },
+  {
+    id: 'classroom',
+    src: '/site/photos/hero-classroom-colorful.webp',
+    srcSet: '/site/photos/sm/hero-classroom-colorful.webp 960w, /site/photos/hero-classroom-colorful.webp 1920w',
+    alt: 'Children in green and white uniforms sit on yellow and red chairs with their hands raised, in a classroom with drawings on the walls.',
+    width: 1920,
+    height: 1080,
+    objectPosition: 'center 36%',
+    label: 'Classroom',
+  },
+  {
+    id: 'dua',
+    src: '/site/photos/hero-dua-quran-session.webp',
+    srcSet: '/site/photos/sm/hero-dua-quran-session.webp 960w, /site/photos/hero-dua-quran-session.webp 1920w',
+    alt: 'A man in a grey tunic and white cap kneels on a blue carpet with his hands raised, while girls in white sit along the wall.',
+    width: 1920,
+    height: 1080,
+    objectPosition: 'center 58%',
+    label: 'A gathering on the carpet',
+  },
+];
+
 export const moments: Photo[] = [
   photos.office,
   photos.sports,
@@ -423,6 +469,10 @@ export type PhotoPlaceholder = {
   category: 'needed';
 };
 
+/**
+ * Not shown on the site. Classroom and Hifz photographs are published.
+ * The owner gave consent on 20 Nov 2026 for the photographs of children on this site.
+ */
 export const photoPlaceholders: PhotoPlaceholder[] = [
   {
     id: 'need-lesson',
@@ -484,6 +534,11 @@ export const home = {
     'Three early-years classes, each with two named sections, then Class 1 through Class 7. The names below are the school’s own.',
   // TODO: publish a per-class subject list and age guide when the school provides them.
   pathFootnote: 'A subject list and age guide for each class will be added when the school provides them.',
+  campusKicker: 'Facilities',
+  campusTitle: 'Rooms at the school',
+  campusText:
+    'Classrooms, the early years room, the multipurpose hall, the seminar hall, and the Hifz program.',
+  campusCta: 'All facilities',
   pathGalleryTitle: 'School life in pictures',
   pathGalleryTitleBn: 'ছবিতে স্কুল',
   pathGalleryCta: 'Open the gallery',
@@ -611,7 +666,7 @@ export const academics = {
   kicker: 'Academics',
   title: 'Play to Class 7, in English and Arabic',
   titleBn: 'প্লে থেকে সপ্তম শ্রেণি',
-  lede: 'Nine classes. Six named sections in the early years. Islamic studies, Hifz, Arabic, and English running with the national curriculum.',
+  lede: 'Play, Nursery, KG, and Class 1 to 7. Six named sections in the early years. Islamic studies, Hifz, Arabic, and English running with the national curriculum.',
   bannerTitle: 'As the school writes it on the building',
   classesTitle: 'Classes and sections',
   classesText: 'Play, Nursery, and KG each have two sections. Class 1 to Class 7 are listed as single classes.',
@@ -668,35 +723,116 @@ export const fees: FeeRow[] = [
   { item: 'Photocopy', amount: 1_000, applies: 'As charged by the office' },
 ];
 
+export type FacilityPhoto = {
+  src: string;
+  /** Smaller candidate for the card. The full file stays available. */
+  srcSet?: string;
+  alt: string;
+  width: number;
+  height: number;
+  /** CSS object-position so faces stay in the frame. */
+  objectPosition?: string;
+};
+
+export type FacilitySpot = {
+  id: string;
+  title: string;
+  text: string;
+  photo?: FacilityPhoto;
+};
+
+const facilitySrc = (file: string, small = 800) => ({
+  src: `/site/photos/${file}.webp`,
+  srcSet: `/site/photos/sm/${file}.webp ${small}w, /site/photos/${file}.webp ${file.startsWith('hero-') ? 1920 : 1200}w`,
+});
+
 export const facilities = {
   kicker: 'Facilities',
   title: 'A campus you can already see',
   titleBn: 'ক্যাম্পাস',
-  lede: 'The building, a school room dressed for a celebration, and the outdoor ground. Spaces we have not photographed yet are marked, not invented.',
-  real: [
+  lede: 'Photographs of the classrooms, the early years room, the multipurpose hall, and the seminar hall. Hifz, the play area, CCTV, and the library are named here; a picture is shown only where we have one.',
+  spots: [
     {
+      id: 'building',
       title: 'The building',
       text: 'A cream-coloured school building in Rahamotgonj, Chattogram, with the name and the curriculum line across the front.',
-      photo: photos.building,
+      photo: {
+        src: photos.building.src,
+        alt: photos.building.alt,
+        width: photos.building.width,
+        height: photos.building.height,
+        objectPosition: 'center center',
+      },
     },
     {
-      title: 'School rooms',
-      text: 'Rooms that hold both lessons and the school’s own celebrations — here, Pitha Utshob.',
-      photo: { src: photos.pitha.src, alt: photos.pitha.alt, width: photos.pitha.width, height: photos.pitha.height },
+      id: 'classrooms',
+      title: 'Classrooms',
+      text: 'Classrooms with desks for lessons.',
+      photo: {
+        ...facilitySrc('facilities-classroom-yellow-desks'),
+        alt: 'Children writing at yellow desks in a classroom, with a teacher standing beside them.',
+        width: 1200,
+        height: 800,
+        objectPosition: 'center 22%',
+      },
     },
     {
-      title: 'The ground',
-      text: 'An outdoor ground used for gatherings such as the annual sports day.',
-      photo: { src: photos.sports.src, alt: photos.sports.alt, width: photos.sports.width, height: photos.sports.height },
+      id: 'early-years',
+      title: 'Early years',
+      text: 'The early years room.',
+      photo: {
+        ...facilitySrc('facilities-colorful-classroom'),
+        alt: 'Young children in green and white uniforms sit on yellow and red chairs with their hands raised, in a classroom with drawings on the walls.',
+        width: 1200,
+        height: 800,
+        objectPosition: 'center 32%',
+      },
     },
     {
-      title: 'The office',
-      text: 'Where families will meet the office — shown here with the Principal and colleagues.',
-      photo: { src: photos.office.src, alt: photos.office.alt, width: photos.office.width, height: photos.office.height },
+      id: 'hall',
+      title: 'Multipurpose hall',
+      text: 'The multipurpose hall.',
+      photo: {
+        ...facilitySrc('facilities-multipurpose-hall'),
+        alt: 'A large room with people seated on a blue carpet and a person standing at the front.',
+        width: 1200,
+        height: 800,
+        objectPosition: 'center 42%',
+      },
     },
-  ],
-  awaitingTitle: 'Still to photograph',
-  awaitingText: 'These belong in the school’s life. We will not pretend a stock photo is the room.',
+    {
+      id: 'seminar',
+      title: 'Seminar hall',
+      text: 'Used for seminars and teacher training.',
+      photo: {
+        ...facilitySrc('facilities-seminar-hall'),
+        alt: 'A man speaking from a podium to women seated at red desks, in a room with a screen and wall displays.',
+        width: 1200,
+        height: 800,
+        objectPosition: 'center 28%',
+      },
+    },
+    {
+      id: 'hifz',
+      title: 'Hifz program',
+      text: 'A Hifz program, alongside the classes.',
+      photo: {
+        src: '/site/photos/hero-dua-quran-session.webp',
+        srcSet: '/site/photos/sm/hero-dua-quran-session.webp 960w, /site/photos/hero-dua-quran-session.webp 1920w',
+        alt: 'A man in a grey tunic and white cap kneels on a blue carpet with his hands raised, while girls in white sit along the wall.',
+        width: 1920,
+        height: 1080,
+        objectPosition: 'center center',
+      },
+    },
+  ] as FacilitySpot[],
+  namedTitle: 'Also on campus',
+  namedText: 'Named here without a photograph.',
+  named: [
+    { id: 'play', title: 'Safe Play Zone', text: 'A play area at the school.' },
+    { id: 'cctv', title: 'CCTV', text: 'CCTV on campus.' },
+    { id: 'library', title: 'Library', text: 'A school library.' },
+  ] as FacilitySpot[],
 };
 
 export const teachersPage = {
@@ -738,7 +874,7 @@ export const noticesPage = {
   eventsNote: 'Dated events will appear here when the school publishes them. Nothing is listed until then.',
   // TODO: replace this shell with the school's academic calendar — terms, exams, holidays.
   calendarTitle: 'Academic calendar',
-  calendarNote: 'Term dates, exams, and holidays for 2027 will be published here by the school. The months below are only a frame.',
+  calendarNote: 'Coming soon. Term dates, exams, and holidays will be published here when the school provides them.',
   months: [
     'January',
     'February',
@@ -755,19 +891,153 @@ export const noticesPage = {
   ],
 };
 
+export type GalleryEvent =
+  | 'tree'
+  | 'vegetables'
+  | 'science'
+  | 'sports'
+  | 'parents'
+  | 'training'
+  | 'classroom'
+  | 'school';
+
+export type GalleryPhoto = {
+  id: string;
+  src: string;
+  srcSet?: string;
+  alt: string;
+  caption: string;
+  width: number;
+  height: number;
+  event: GalleryEvent;
+};
+
+const galleryFile = (
+  id: string,
+  file: string,
+  width: number,
+  height: number,
+  event: GalleryEvent,
+  alt: string,
+  caption: string,
+  small = 640,
+): GalleryPhoto => ({
+  id,
+  src: `/site/photos/${file}.webp`,
+  srcSet: `/site/photos/sm/${file}.webp ${small}w, /site/photos/${file}.webp ${width}w`,
+  alt,
+  caption,
+  width,
+  height,
+  event,
+});
+
 export const galleryPage = {
   kicker: 'Gallery',
   title: 'The school, in its own pictures',
   titleBn: 'ছবি',
-  lede: 'Every photograph on this page was taken at An-Noor. Where a picture does not exist yet, you will see a pattern — and the name of the photograph we still need.',
+  lede: 'Photographs from the school: tree planting, the vegetables display, science fair and prize giving, sports, a parent-teacher meeting, teacher training, and classroom life.',
   filters: [
     { id: 'all', label: 'All' },
-    { id: 'campus', label: 'Campus' },
-    { id: 'people', label: 'People' },
-    { id: 'celebration', label: 'Celebrations' },
-    { id: 'needed', label: 'Needed' },
-  ],
+    { id: 'tree', label: 'Tree Planting' },
+    { id: 'vegetables', label: 'Vegetables Display 2024' },
+    { id: 'science', label: 'Science Fair & Prize Giving' },
+    { id: 'sports', label: 'Sports' },
+    { id: 'parents', label: 'Parent-Teacher Meeting' },
+    { id: 'training', label: 'Teacher Training' },
+    { id: 'classroom', label: 'Classroom life' },
+    { id: 'school', label: 'School life' },
+  ] as { id: 'all' | GalleryEvent; label: string }[],
 };
+
+export const galleryPhotos: GalleryPhoto[] = [
+  galleryFile('tree-01', 'gallery-tree-planting-01', 1200, 900, 'tree', 'Children and a teacher around a tray of small plants, one child holding a watering can.', 'Tree planting'),
+  galleryFile('tree-02', 'gallery-tree-planting-02', 1200, 900, 'tree', 'Children leaning over a planter of soil and seedlings.', 'Tree planting'),
+  galleryFile('tree-03', 'gallery-tree-planting-03', 1200, 900, 'tree', 'Girls in white uniforms and a teacher standing beside a small decorated tree.', 'Tree planting'),
+  galleryFile('tree-04', 'gallery-tree-planting-04', 1200, 900, 'tree', 'Children and teachers posing with paper leaves and potted plants.', 'Tree planting'),
+  galleryFile('tree-05', 'gallery-tree-planting-05', 1200, 900, 'tree', 'Boys in white shirts and a teacher behind trays of seedlings.', 'Tree planting'),
+  galleryFile('tree-06', 'gallery-tree-planting-06', 1200, 900, 'tree', 'A teacher and three boys beside an easel of potted plants and a school sign.', 'Tree planting'),
+  galleryFile('tree-07', 'gallery-tree-planting-07', 1200, 900, 'tree', 'Children holding seedlings, seated with a teacher.', 'Tree planting'),
+  galleryFile('tree-08', 'gallery-tree-planting-08', 1200, 900, 'tree', 'A teacher seated beside two drawings of trees on easels.', 'Tree planting'),
+  galleryFile('tree-09', 'gallery-tree-planting-09', 1200, 900, 'tree', 'Children standing in a wide circle in a hall.', 'Tree planting'),
+  galleryFile('veg-01', 'gallery-veg-display-01', 1200, 900, 'vegetables', 'Baskets of vegetables with handwritten labels on a table, and writing on the wall behind.', 'Vegetables display'),
+  galleryFile('veg-02', 'gallery-veg-display-02', 1200, 900, 'vegetables', 'Cucumber, carrots, cauliflower, tomato, and other vegetables on a tray with paper labels.', 'Vegetables display'),
+  galleryFile('veg-03', 'gallery-veg-display-03', 1200, 900, 'vegetables', 'Children wearing paper vegetable hats and holding a sign that reads Vegetables.', 'Vegetables display'),
+  galleryFile('veg-04', 'gallery-veg-display-04', 1200, 900, 'vegetables', 'Children in paper vegetable hats standing behind a table of vegetables.', 'Vegetables display'),
+  galleryFile('veg-05', 'gallery-veg-display-05', 1200, 900, 'vegetables', 'Boys in white shirts behind trays of labelled vegetables.', 'Vegetables display'),
+  galleryFile('veg-06', 'gallery-veg-display-06', 1200, 900, 'vegetables', 'A teacher and children wearing paper vegetable hats, with a Vegetables sign on the wall.', 'Vegetables display'),
+  galleryFile('science-01', 'gallery-science-fair-01', 1200, 900, 'science', 'Students and teachers behind tables of science models, holding certificates, under a Science Fair banner.', 'Science fair'),
+  galleryFile('science-02', 'gallery-science-fair-02', 1200, 900, 'science', 'Students posed in rows in front of a Science Fair display of models.', 'Science fair'),
+  galleryFile('science-03', 'gallery-science-fair-03', 1200, 900, 'science', 'Students and a teacher with solar-system models under a Science Fair banner.', 'Science fair'),
+  galleryFile('science-04', 'gallery-science-fair-04', 1200, 1600, 'science', 'Students holding certificates in front of a tall Science Fair frame.', 'Science fair'),
+  galleryFile('prize-01', 'gallery-prize-giving-01', 1200, 1600, 'science', 'Students and teachers holding certificates under a Science Fair frame.', 'Prize giving'),
+  galleryFile('prize-02', 'gallery-prize-giving-02', 1200, 1600, 'science', 'Three women holding a certificate under a Science Fair frame.', 'Prize giving'),
+  galleryFile('prize-03', 'gallery-prize-giving-03', 1200, 1600, 'science', 'Students and a teacher holding certificates under a Science Fair frame.', 'Prize giving'),
+  galleryFile('sports-01', 'gallery-sports-01', 1200, 900, 'sports', 'Children in blue football kits and medals, posed in two rows on a green pitch at night.', 'Sports'),
+  galleryFile('sports-02', 'gallery-sports-02', 1200, 900, 'sports', 'Children in orange football kits and medals, with a trophy, posed on a green pitch at night.', 'Sports'),
+  galleryFile('sports-trophies', 'facilities-sports-trophies', 1200, 800, 'sports', 'Gold trophies and medals on a table, with a fenced green pitch behind them.', 'Trophies and medals', 800),
+  {
+    id: photos.sports.id,
+    src: photos.sports.src,
+    alt: photos.sports.alt,
+    caption: photos.sports.caption,
+    width: photos.sports.width,
+    height: photos.sports.height,
+    event: 'sports',
+  },
+  galleryFile('ptm-01', 'gallery-parent-teacher-meeting-01', 1200, 900, 'parents', 'Women standing in a line in a decorated classroom.', 'Parent-teacher meeting'),
+  galleryFile('ptm-02', 'gallery-parent-teacher-meeting-02', 1200, 900, 'parents', 'A woman speaking at a podium beside a banner that reads Parent-Teacher Meeting.', 'Parent-teacher meeting'),
+  galleryFile('training-01', 'gallery-teacher-training-01', 1200, 900, 'training', 'Women and a man posed in front of a whiteboard in a training room.', 'Teacher training'),
+  galleryFile('training-02', 'gallery-teacher-training-02', 1200, 900, 'training', 'A man speaking from a podium to women seated at red desks.', 'Teacher training'),
+  galleryFile('class-01', 'gallery-classroom-01', 1200, 900, 'classroom', 'Young children in green and white uniforms sitting on small colourful chairs.', 'Classroom life'),
+  galleryFile('class-02', 'gallery-classroom-02', 1200, 900, 'classroom', 'Children writing at yellow desks, with a teacher beside them.', 'Classroom life'),
+  galleryFile('class-dua', 'gallery-dua-session-01', 1200, 900, 'classroom', 'Children sitting on a blue carpet with hands raised, adults seated along the wall.', 'Classroom life'),
+  {
+    id: 'campus',
+    src: photos.building.src,
+    alt: photos.building.alt,
+    caption: 'The campus from the street.',
+    width: photos.building.width,
+    height: photos.building.height,
+    event: 'school',
+  },
+  {
+    id: photos.office.id,
+    src: photos.office.src,
+    alt: photos.office.alt,
+    caption: photos.office.caption,
+    width: photos.office.width,
+    height: photos.office.height,
+    event: 'school',
+  },
+  {
+    id: photos.celebration.id,
+    src: photos.celebration.src,
+    alt: photos.celebration.alt,
+    caption: photos.celebration.caption,
+    width: photos.celebration.width,
+    height: photos.celebration.height,
+    event: 'school',
+  },
+  {
+    id: photos.gathering.id,
+    src: photos.gathering.src,
+    alt: photos.gathering.alt,
+    caption: photos.gathering.caption,
+    width: photos.gathering.width,
+    height: photos.gathering.height,
+    event: 'school',
+  },
+  {
+    id: photos.pitha.id,
+    src: photos.pitha.src,
+    alt: photos.pitha.alt,
+    caption: photos.pitha.caption,
+    width: photos.pitha.width,
+    height: photos.pitha.height,
+    event: 'school',
+  },
+];
 
 export const campusPhoto: Photo = {
   id: 'campus',

@@ -7,10 +7,10 @@ import {
   dayAtSchool,
   departmentNews,
   departmentsPage,
+  facilities,
   home,
   moments,
   noticesPage,
-  photos,
   programs,
   seo,
   site,
@@ -18,12 +18,14 @@ import {
 } from '../content';
 import { Seo } from '../seo';
 import { DeptIcon } from '../components/DeptIcon';
+import { FacilityPhotoCard } from '../components/FacilityCards';
+import { HeroSlideshow } from '../components/HeroSlideshow';
 import { InquiryForm } from '../components/InquiryForm';
 import { MomentsCarousel } from '../components/MomentsCarousel';
 import { useReducedMotion, motion } from 'motion/react';
 import { BlobFrame, HoverCard, JoyLink, SoftCard, Sticker } from '../components/kit';
 import { Art, SwayingFlower } from '../art';
-import { ImageReveal, ParallaxPhoto, SplitText } from '../components/motion';
+import { ImageReveal, SplitText } from '../components/motion';
 import { Reveal } from '../components/ui';
 
 const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -41,28 +43,7 @@ export default function HomePage() {
     <>
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
       <section className="relative overflow-hidden bg-white">
-        <div className="relative">
-          <ParallaxPhoto>
-            <motion.img
-              src={photos.hero.src}
-              srcSet="/site/hero-800.webp 960w, /site/hero.webp 1920w"
-              sizes="100vw"
-              alt={photos.hero.alt}
-              width={photos.hero.width}
-              height={photos.hero.height}
-              fetchPriority="high"
-              decoding="async"
-              className="block h-auto w-full origin-center lg:max-h-[calc(100vh-11rem)] lg:object-cover lg:object-[center_40%]"
-              initial={reduce ? false : { scale: 1.12 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 1.8, ease: heroEase }}
-            />
-          </ParallaxPhoto>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent sm:h-28"
-          />
-        </div>
+        <HeroSlideshow />
         <div className="relative mx-auto -mt-6 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-16 lg:pt-20">
           <motion.div
             className="relative"
@@ -274,6 +255,28 @@ export default function HomePage() {
           </aside>
           </div>
           <p className="mt-4 text-sm text-navy-deep/60">{home.pathFootnote}</p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
+        <h2 className="text-3xl font-semibold text-navy-deep sm:text-4xl">
+          <SplitText text={home.campusTitle} />
+        </h2>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-navy-deep/75">{home.campusText}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {facilities.spots.map((item) => (
+            <div key={item.id} className="h-full">
+              <FacilityPhotoCard item={item} linked heading="h3" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-6">
+          <JoyLink
+            to="/facilities"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-navy to-navy-deep px-5 py-3 text-base font-bold text-white shadow-[0_8px_20px_rgba(20,21,63,0.25)]"
+          >
+            {home.campusCta} <ArrowRight size={18} aria-hidden="true" />
+          </JoyLink>
         </div>
       </section>
 

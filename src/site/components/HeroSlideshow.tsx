@@ -1,60 +1,102 @@
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { photos } from '../content';
+import { useReducedMotion } from 'motion/react';
+import { heroSlides } from '../content';
 
-const slides = [
-  photos.hero,
-  { src: photos.sports.src, alt: photos.sports.alt, width: photos.sports.width, height: photos.sports.height },
-  { src: photos.pitha.src, alt: photos.pitha.alt, width: photos.pitha.width, height: photos.pitha.height },
-  { src: photos.office.src, alt: photos.office.alt, width: photos.office.width, height: photos.office.height },
-  { src: photos.celebration.src, alt: photos.celebration.alt, width: photos.celebration.width, height: photos.celebration.height },
-  { src: photos.gathering.src, alt: photos.gathering.alt, width: photos.gathering.width, height: photos.gathering.height },
-];
+const COUNT = heroSlides.length;
+/** How long each photograph stays before the next crossfade. */
+const DWELL_MS = 6000;
 
 export function HeroSlideshow() {
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
-  const count = slides.length;
+  const [mounted, setMounted] = useState<number[]>([0]);
+  const active = index;
+
+  const mount = (slideIndex: number) => {
+    setMounted((current) => (current.includes(slideIndex) ? current : [...current, slideIndex]));
+  };
+
+  const show = (slideIndex: number) => {
+    mount(slideIndex);
+    setIndex(slideIndex);
+  };
 
   useEffect(() => {
     if (reduce) return;
-    const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % count);
-    }, 7000);
-    return () => window.clearInterval(timer);
-  }, [reduce, count]);
-
-  const active = slides[reduce ? 0 : index];
+    let prefetchTimer = 0;
+    let advanceTimer = 0;
+    const arm = () => {
+      const next = (index + 1) % COUNT;
+      prefetchTimer = window.setTimeout(() => mount(next), DWELL_MS - 1200);
+      advanceTimer = window.setTimeout(() => {
+        setIndex((current) => (current + 1) % COUNT);
+      }, DWELL_MS);
+    };
+    if (document.readyState === 'complete') arm();
+    else window.addEventListener('load', arm, { once: true });
+    return () => {
+      window.removeEventListener('load', arm);
+      window.clearTimeout(prefetchTimer);
+      window.clearTimeout(advanceTimer);
+    };
+  }, [index, reduce]);
 
   return (
-    <div className="absolute inset-0">
-      <AnimatePresence mode="sync">
-        <motion.img
-          key={active.src}
-          src={active.src}
-          alt={active.alt}
-          width={active.width}
-          height={active.height}
-          className="absolute inset-0 h-full w-full object-cover"
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.1, ease: 'easeInOut' }}
-        />
-      </AnimatePresence>
-      <div className="absolute right-5 top-24 z-[1] flex gap-2 md:right-8 md:top-28" aria-hidden={reduce ? true : undefined}>
-        {slides.map((slide, slideIndex) => (
-          <button
-            key={slide.src}
-            type="button"
-            aria-label={`Show photograph ${slideIndex + 1}`}
-            aria-current={slideIndex === (reduce ? 0 : index)}
-            onClick={() => setIndex(slideIndex)}
-            className={`h-1.5 rounded-full transition-all ${
-              slideIndex === (reduce ? 0 : index) ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
-            }`}
+    <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#e7eef6] lg:max-h-[min(640px,calc(100svh-9rem))]">
+      {heroSlides.map((slide, slideIndex) => {
+        if (!mounted.includes(slideIndex) && slideIndex !== active) return null;
+        const isActive = slideIndex === active;
+        const first = slideIndex === 0;
+        return (
+          <img
+            key={slide.id}
+            src={slide.src}
+            srcSet={slide.srcSet}
+            sizes="100vw"
+            alt={isActive ? slide.alt : ''}
+            width={slide.width}
+            height={slide.height}
+            decoding="async"
+            fetchPriority={first ? 'high' : 'low'}
+            aria-hidden={isActive ? undefined : true}
+            style={{ objectPosition: slide.objectPosition }}
+            className={`absolute inset-0 h-full w-full object-cover ${
+              reduce ? '' : 'transition-opacity duration-[1200ms] ease-in-out'
+            } ${isActive ? 'opacity-100' : 'opacity-0'}`}
           />
-        ))}
+        );
+      })}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-white to-transparent sm:h-28"
+      />
+      <div
+        className="absolute inset-x-0 bottom-16 z-20 flex justify-center sm:bottom-28"
+        role="tablist"
+        aria-label="Hero photographs"
+      >
+        <div className="flex items-center gap-1 rounded-full bg-navy-deep/55 px-1.5 py-1 shadow-[0_6px_16px_rgba(20,21,63,0.25)]">
+          {heroSlides.map((slide, slideIndex) => {
+            const selected = slideIndex === active;
+            return (
+              <button
+                key={slide.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-label={`Show photograph ${slideIndex + 1} of ${COUNT}: ${slide.label}`}
+                onClick={() => show(slideIndex)}
+                className="inline-flex h-11 w-11 items-center justify-center"
+              >
+                <span
+                  className={`block rounded-full bg-white transition-[width] duration-300 ${
+                    selected ? 'h-2 w-6' : 'h-2 w-2 bg-white/70'
+                  } ${reduce ? 'transition-none' : ''}`}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

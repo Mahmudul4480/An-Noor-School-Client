@@ -32,27 +32,16 @@ export default function NoticesPage() {
         ))}
       </section>
 
-      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 pb-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
         <CreamCard>
           <h2 className="text-2xl font-semibold text-navy-deep">{noticesPage.eventsTitle}</h2>
           <p className="mt-3 text-base leading-relaxed text-navy-deep/85">{noticesPage.eventsNote}</p>
         </CreamCard>
         <div>
-          <h2 className="text-2xl font-semibold text-navy-deep">{noticesPage.calendarTitle}</h2>
-          <p className="mt-3 text-base leading-relaxed text-navy-deep/80">{noticesPage.calendarNote}</p>
-          <ol className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {noticesPage.months.map((month, index) => (
-              <li key={month}>
-                <HoverCard className="site-card px-4 py-4">
-                <p className="text-sm font-semibold text-navy">
-                  {String(index + 1).padStart(2, '0')}
-                </p>
-                <p className="mt-1 font-semibold text-navy-deep">{month}</p>
-                <p className="mt-1 text-sm text-navy-deep/70">Dates to be published</p>
-                </HoverCard>
-              </li>
-            ))}
-          </ol>
+          <HoverCard className="site-card border border-dashed border-navy/25 p-6">
+            <h2 className="text-2xl font-semibold text-navy-deep">{noticesPage.calendarTitle}</h2>
+            <p className="mt-3 text-base leading-relaxed text-navy-deep/80">{noticesPage.calendarNote}</p>
+          </HoverCard>
         </div>
       </section>
     </>
