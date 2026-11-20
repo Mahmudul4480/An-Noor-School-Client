@@ -79,7 +79,7 @@ export default function AboutPage() {
                 alt={`Portrait of ${site.principal.name}, Principal.`}
                 width={900}
                 height={1158}
-                className="absolute left-1/2 top-[2%] h-auto w-[136%] max-w-none -translate-x-1/2"
+                className="absolute left-[-21%] top-[2%] h-auto w-[154%] max-w-none"
                 loading="lazy"
               />
             </div>
