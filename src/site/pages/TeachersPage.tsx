@@ -2,6 +2,9 @@ import { about, moments, seo, site, teachersPage } from '../content';
 import { Seo } from '../seo';
 import { CreamCard, PageHero } from '../components/ui';
 
+const portraitFrame =
+  'relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#e8ebf8] to-[#fff6df]';
+
 export default function TeachersPage() {
   return (
     <>
@@ -12,33 +15,35 @@ export default function TeachersPage() {
         titleBn={teachersPage.titleBn}
         lede={teachersPage.lede}
       />
-      <section className="mx-auto grid max-w-[1200px] gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
-        <CreamCard className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
-          <img
-            src={site.principal.photo}
-            alt={`Portrait of ${site.principal.name}, Principal.`}
-            width={site.principal.photoWidth}
-            height={site.principal.photoHeight}
-            className="aspect-[3/4] w-full rounded-2xl object-cover object-top"
-            loading="lazy"
-          />
-          <div>
-            <p className="text-sm font-semibold text-navy">{site.principal.title}</p>
-            <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.principal.name}</h2>
+      <section className="mx-auto grid max-w-[1200px] items-stretch gap-5 px-4 py-14 sm:px-6 lg:grid-cols-2">
+        <CreamCard className="flex h-full flex-col">
+          <div className={portraitFrame}>
+            <img
+              src={site.managingPartner.photo}
+              alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
+              width={site.managingPartner.photoWidth}
+              height={site.managingPartner.photoHeight}
+              className="absolute inset-0 h-full w-full object-cover object-[center_15%]"
+              loading="lazy"
+            />
           </div>
-        </CreamCard>
-        <CreamCard className="flex flex-col justify-center">
-          <img
-            src={site.managingPartner.photo}
-            alt={`Portrait of ${site.managingPartner.name}, ${site.managingPartner.title}.`}
-            width={site.managingPartner.photoWidth}
-            height={site.managingPartner.photoHeight}
-            className="aspect-[3/4] w-full max-w-[260px] rounded-2xl object-cover object-top"
-            loading="lazy"
-          />
           <p className="mt-4 text-sm font-semibold text-navy">{site.managingPartner.title}</p>
           <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.managingPartner.name}</h2>
           <p className="mt-3 text-base leading-relaxed text-navy-deep/85">{about.partnerNote}</p>
+        </CreamCard>
+        <CreamCard className="flex h-full flex-col">
+          <div className={portraitFrame}>
+            <img
+              src="/site/principal-card.webp"
+              alt={`Portrait of ${site.principal.name}, Principal.`}
+              width={900}
+              height={1158}
+              className="absolute left-[-21%] top-[2%] h-auto w-[154%] max-w-none"
+              loading="lazy"
+            />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-navy">{site.principal.title}</p>
+          <h2 className="mt-1 text-2xl font-semibold text-navy-deep">{site.principal.name}</h2>
         </CreamCard>
       </section>
 
