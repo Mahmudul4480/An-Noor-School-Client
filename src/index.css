@@ -134,6 +134,20 @@
   from { background-position: 100% 0; }
   to { background-position: 0% 0; }
 }
+/* Tailwind preflight sets margin: 0, which pins a native dialog to the top-left.
+   inset + margin auto centers it in the viewport, including after the page has scrolled. */
+.site-shell dialog.site-lightbox {
+  position: fixed;
+  inset: 0;
+  height: fit-content;
+  max-height: 90vh;
+  width: min(1100px, 94vw);
+  margin: auto;
+}
+.site-shell dialog.site-lightbox::backdrop {
+  background: rgba(8, 10, 24, 0.82);
+}
+
 .site-marquee {
   animation: site-marquee 46s linear infinite;
 }
@@ -163,8 +177,16 @@
   }
   .site-marquee {
     animation: none;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     width: 100% !important;
+    overflow: hidden;
+  }
+  .site-marquee > span {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .site-marquee-copy {
     display: none;

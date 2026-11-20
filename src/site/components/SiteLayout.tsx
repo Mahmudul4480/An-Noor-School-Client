@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Mail, MapPin, Menu, Phone, X } from 'lucide-react';
 import { nav, phoneDisplay, site } from '../content';
-import { FacebookButton, JoyLink, Wave } from './kit';
+import { FacebookButton, JoyLink, SocialMarks, Wave } from './kit';
 import { ScrollProgress } from './motion';
 
 export function SiteLayout() {
@@ -33,6 +33,7 @@ export function SiteLayout() {
 }
 
 function Ticker() {
+  const reduce = useReducedMotion();
   const items = [
     site.sessionLabel,
     phoneDisplay(),
@@ -41,6 +42,15 @@ function Ticker() {
     'English & Arabic based education',
     'Hifz department',
   ];
+  if (reduce) {
+    return (
+      <div className="bg-gradient-to-r from-sun via-[#FFD95A] to-sun text-navy-deep">
+        <p className="truncate px-4 py-2 text-center text-sm font-semibold whitespace-nowrap">
+          {site.sessionLabel} · {phoneDisplay()}
+        </p>
+      </div>
+    );
+  }
   const line = `${items.join('   ·   ')}   ·   ${items.join('   ·   ')}   ·   `;
   return (
     <div className="bg-gradient-to-r from-sun via-[#FFD95A] to-sun text-navy-deep">
@@ -135,6 +145,7 @@ function Header() {
             Portal Login
           </JoyLink>
           <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" className="hidden sm:inline-flex" />
+          <SocialMarks className="hidden sm:inline-flex" />
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-navy/20 text-navy xl:hidden"
@@ -184,6 +195,10 @@ function Header() {
             >
               Portal Login
             </Link>
+            <div className="mt-3 flex items-center gap-2 px-1 pb-1 sm:hidden">
+              <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" />
+              <SocialMarks />
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>
@@ -217,8 +232,9 @@ function Footer() {
           <p lang="bn" className="font-bn mt-1 max-w-sm text-sm leading-relaxed text-white/70">
             {site.taglineBn}
           </p>
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <FacebookButton href={site.facebook} label="An-Noor International School on Facebook" />
+            <SocialMarks />
             <a
               href={site.facebook}
               className="text-sm font-semibold text-white hover:text-gold"

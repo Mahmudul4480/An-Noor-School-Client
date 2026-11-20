@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
-import { Facebook } from 'lucide-react';
+import { Facebook, Instagram, Youtube } from 'lucide-react';
 import { SwayingFlower } from '../art';
 
 export type SiteTone = 'navy' | 'leaf' | 'orange' | 'sky' | 'sun' | 'coral';
@@ -148,6 +148,25 @@ export function FacebookButton({ href, label, className = '' }: { href: string; 
         <Facebook size={20} aria-hidden="true" />
       </motion.span>
     </motion.a>
+  );
+}
+
+/**
+ * YouTube and Instagram marks with no destination. The school has no accounts yet,
+ * so these are decorative: not links, not focusable, hidden from assistive tech.
+ */
+export function SocialMarks({ className = '' }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={className}>
+      <span className="inline-flex items-center gap-2">
+        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FF0000] text-white">
+          <Youtube size={20} />
+        </span>
+        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white">
+          <Instagram size={20} />
+        </span>
+      </span>
+    </span>
   );
 }
 
