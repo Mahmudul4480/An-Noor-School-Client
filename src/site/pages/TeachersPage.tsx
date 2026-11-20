@@ -38,7 +38,7 @@ export default function TeachersPage() {
               alt={`Portrait of ${site.principal.name}, Principal.`}
               width={900}
               height={1158}
-              className="absolute inset-x-[8%] top-[5%] bottom-[8%] object-contain object-center"
+              className="absolute left-1/2 top-[2%] h-auto w-[136%] max-w-none -translate-x-1/2"
               loading="lazy"
             />
           </div>
