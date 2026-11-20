@@ -68,14 +68,14 @@ export function HeroSlideshow() {
       })}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-white to-transparent sm:h-28"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-white to-transparent sm:h-28"
       />
       <div
-        className="absolute inset-x-0 bottom-16 z-20 flex justify-center sm:bottom-28"
+        className="absolute inset-x-0 bottom-3.5 z-20 flex justify-center sm:bottom-28"
         role="tablist"
         aria-label="Hero photographs"
       >
-        <div className="flex items-center gap-1 rounded-full bg-navy-deep/55 px-1.5 py-1 shadow-[0_6px_16px_rgba(20,21,63,0.25)]">
+        <div className="flex items-center gap-0.5 rounded-full bg-navy-deep/55 px-1 py-0.5 shadow-[0_4px_12px_rgba(20,21,63,0.25)] sm:gap-1 sm:px-1.5 sm:py-1">
           {heroSlides.map((slide, slideIndex) => {
             const selected = slideIndex === active;
             return (
@@ -86,11 +86,11 @@ export function HeroSlideshow() {
                 aria-selected={selected}
                 aria-label={`Show photograph ${slideIndex + 1} of ${COUNT}: ${slide.label}`}
                 onClick={() => show(slideIndex)}
-                className="inline-flex h-11 w-11 items-center justify-center"
+                className="inline-flex h-6 w-6 items-center justify-center sm:h-11 sm:w-11"
               >
                 <span
                   className={`block rounded-full bg-white transition-[width] duration-300 ${
-                    selected ? 'h-2 w-6' : 'h-2 w-2 bg-white/70'
+                    selected ? 'h-1.5 w-4 sm:h-2 sm:w-6' : 'h-1.5 w-1.5 bg-white/70 sm:h-2 sm:w-2'
                   } ${reduce ? 'transition-none' : ''}`}
                 />
               </button>

@@ -44,7 +44,7 @@ export default function HomePage() {
       <Seo title={seo.home.title} description={seo.home.description} path={seo.home.path} />
       <section className="relative overflow-hidden bg-white">
         <HeroSlideshow />
-        <div className="relative mx-auto -mt-6 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-16 lg:pt-20">
+        <div className="relative mx-auto mt-3 max-w-[1100px] px-4 pb-10 sm:-mt-16 sm:px-6 lg:-mt-16 lg:pt-20">
           <motion.div
             className="relative"
             initial={reduce ? false : { opacity: 0, y: 40 }}

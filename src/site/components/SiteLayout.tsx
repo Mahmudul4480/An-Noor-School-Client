@@ -33,6 +33,7 @@ export function SiteLayout() {
 }
 
 function Ticker() {
+  const reduce = useReducedMotion();
   const items = [
     site.sessionLabel,
     phoneDisplay(),
@@ -41,6 +42,15 @@ function Ticker() {
     'English & Arabic based education',
     'Hifz department',
   ];
+  if (reduce) {
+    return (
+      <div className="bg-gradient-to-r from-sun via-[#FFD95A] to-sun text-navy-deep">
+        <p className="truncate px-4 py-2 text-center text-sm font-semibold whitespace-nowrap">
+          {site.sessionLabel} · {phoneDisplay()}
+        </p>
+      </div>
+    );
+  }
   const line = `${items.join('   ·   ')}   ·   ${items.join('   ·   ')}   ·   `;
   return (
     <div className="bg-gradient-to-r from-sun via-[#FFD95A] to-sun text-navy-deep">

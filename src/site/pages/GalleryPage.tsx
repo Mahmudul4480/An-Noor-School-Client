@@ -93,7 +93,7 @@ export default function GalleryPage() {
       </section>
       <dialog
         ref={dialogRef}
-        className="w-[min(960px,calc(100%-1rem))] max-w-[960px] rounded-3xl border border-navy/10 bg-white p-2 text-navy-deep backdrop:bg-navy-deep/75 sm:p-3"
+        className="site-lightbox m-auto h-fit max-h-[90vh] w-[min(1100px,94vw)] overflow-auto rounded-3xl border border-white/10 bg-white p-2 text-navy-deep shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-3"
         onClose={() => setActive(null)}
         onKeyDown={onKeyDown}
         aria-label={current ? current.caption : 'Photograph'}
@@ -107,7 +107,7 @@ export default function GalleryPage() {
                 width={current.width}
                 height={current.height}
                 draggable={false}
-                className="max-h-[72vh] w-full rounded-2xl bg-[#eef1f6] object-contain"
+                className="mx-auto block max-h-[calc(90vh-5.5rem)] w-full rounded-2xl bg-[#eef1f6] object-contain"
               />
               <button
                 type="button"
